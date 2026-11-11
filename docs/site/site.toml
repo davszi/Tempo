@@ -21,3 +21,13 @@ group = "synthetic-clients"
 label = "Review Dataset"
 file = "review-dataset.html"
 group = "review-dataset"
+
+[[nav]]
+label = "System Architecture"
+file = "system-architecture.html"
+group = "system-architecture"
+
+[[nav]]
+label = "End-to-End Flow"
+file = "whole-flow.html"
+group = "whole-flow"

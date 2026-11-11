@@ -1,12 +1,12 @@
 flowchart TD
-    subgraph Live["Live application · Python and SQLite"]
-        UI["Chess UI · Learning and Repeating"]
-        UC["UI controller"]
-        DB["SQLite · Real player data"]
+    subgraph Client["Player device"]
+        UI["Chess UI in browser · Planned"]
+    end
+    subgraph Live["Single application host · Python backend"]
+        UC["Practice controller"]
+        DB["SQLite file · Persistent storage"]
         MC["ML controller"]
         ME["ML engine · FSRS and review planner"]
-        UI -->|Start session or submit move| UC
-        UC -.->|Board state, move feedback, or review availability| UI
         UC -->|Load opening lines or save practice results| DB
         DB -.->|Line data or write confirmation| UC
         UC -->|Request next review line| MC
@@ -16,9 +16,11 @@ flowchart TD
         MC -->|Request suggestion with player data| ME
         ME -.->|Selected line ID or no line due| MC
     end
+    UI -->|Planned HTTPS request| UC
+    UC -.->|Board state and feedback| UI
     subgraph Offline["Offline training"]
         SC["Synthetic clients"] -->|Generate simulated practice| CSV["Synthetic practice history CSV"]
-        CSV -->|Supply training data| TS["Python training script"]
-        TS -->|Save model| MODEL["Trained general model"]
+        CSV -->|Supply training data| TS["Python training script · Planned"]
+        TS -->|Save model| MODEL["Trained general model · Planned"]
     end
     MODEL -->|Supply trained model| ME

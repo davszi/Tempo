@@ -2,6 +2,10 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## TEMPO practice backend and presentation walkthrough
+
+Added the practice controller, ML controller, FSRS runtime, and SQLite schema for Learning and Repeating. Added the offline synthetic review generator and a Windows launcher for the local demo. The documentation site now links the System Architecture and End-to-End Flow pages from the sidebar. Verified all four review grades using the supplied weights, persisted stability and due dates, and reproduced the 50,400-session synthetic CSV. The documentation build, freshness check, and lint passed. Generated site files and local demo data are Git-ignored. The landing commit supplies the source identity.
+
 ## Review dataset schema and human calibration topic record
 
 Created the canonical topic record (`docs/topics/review-dataset/record.md`) and page source (`docs/topics/review-dataset/index.md`) defining the CSV review session schema (`agent_name, opening_name, review_status, t_days, grade, total_time_ms, accuracy`), the normalized 4-point FSRS grading function based on blunder status and cognitive delay ($\bar{\Delta}$), and the Stage 2 human telemetry calibration pipeline. Registered the topic in `docs/site/site.toml` and `docs/index.md`. No application code was implemented.

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TEMPO Database Schema</title>
+<style>
+:root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; background: #101822; color: #edf3fa; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 960px; margin: auto; padding: clamp(18px, 5vw, 52px); }
+h1 { font-size: clamp(30px, 6vw, 50px); letter-spacing: -.04em; margin: 0 0 12px; }
+h2 { font-size: clamp(18px, 4vw, 25px); margin: 0 0 8px; }
+small { font: inherit; font-size: .68em; color: #b5c6d8; }
+p, li { color: #c3cfdd; line-height: 1.55; }
+section { margin-top: 30px; }
+table { width: 100%; border-collapse: collapse; background: #192534; }
+th, td { border: 1px solid #344456; text-align: left; padding: 9px 12px; vertical-align: top; overflow-wrap: anywhere; }
+thead { background: #23374b; }
+tbody th { width: 32%; font-weight: 500; }
+code, a { color: #a9e6c6; }
+li + li { margin-top: 8px; }
+</style>
+</head>
+<body><main>
+<header><h1>TEMPO Database Schema</h1>
+<p>TEMPO uses three SQLite tables for opening lines, practice history, and each player&#x27;s current repertoire and review schedule.</p><p>Opening lines are sourced from the <a href="https://huggingface.co/datasets/Lichess/chess-openings">Lichess chess-openings dataset</a>.</p></header>
+<section aria-labelledby="opening_lines"><h2 id="opening_lines"><code>opening_lines</code> <small>7 fields</small></h2><p>One row per opening line. Each line contains moves for both colors.</p><table aria-labelledby="opening_lines"><thead><tr><th scope="col">Field</th><th scope="col">What it stores</th></tr></thead><tbody>
+<tr><th scope="row"><code>line_id</code></th><td>Unique opening line ID. Primary key.</td></tr>
+<tr><th scope="row"><code>opening_family</code></th><td>Opening group shown in the UI, such as Sicilian Defence.</td></tr>
+<tr><th scope="row"><code>name</code></th><td>Full name of the opening line.</td></tr>
+<tr><th scope="row"><code>eco</code></th><td>Lichess opening classification code. Multiple lines can share a code.</td></tr>
+<tr><th scope="row"><code>moves_uci</code></th><td>Full move sequence for White and Black in UCI notation.</td></tr>
+<tr><th scope="row"><code>family_side</code></th><td>Side traditionally associated with the opening family. White, Black, Both, or empty if unknown.</td></tr>
+<tr><th scope="row"><code>side_in_games</code></th><td>Side supported by observed Lichess games. White, Black, Both, or empty when evidence is unavailable.</td></tr>
+</tbody></table><p>The catalog&#x27;s family maps to opening_family. Convert pgn to moves_uci before inserting. The side labels describe catalog entries and are separate from the side selected for a practice session.</p></section>
+<section aria-labelledby="practice_events"><h2 id="practice_events"><code>practice_events</code> <small>12 fields</small></h2><p>One row per suggestion, move attempt, or completed session.</p><table aria-labelledby="practice_events"><thead><tr><th scope="col">Field</th><th scope="col">What it stores</th></tr></thead><tbody>
+<tr><th scope="row"><code>event_id</code></th><td>Unique event ID. Primary key.</td></tr>
+<tr><th scope="row"><code>player_id</code></th><td>Player the event belongs to.</td></tr>
+<tr><th scope="row"><code>line_id</code></th><td>Reference to opening_lines.line_id.</td></tr>
+<tr><th scope="row"><code>session_id</code></th><td>Groups events from the same session. Can be empty for a suggestion.</td></tr>
+<tr><th scope="row"><code>event_type</code></th><td>line_suggested, move_attempted, or session_completed.</td></tr>
+<tr><th scope="row"><code>mode</code></th><td>learning or repeating.</td></tr>
+<tr><th scope="row"><code>side</code></th><td>Selected perspective for the session. Values are white, black, or both. Can be empty for a suggestion made before the player chooses.</td></tr>
+<tr><th scope="row"><code>occurred_at</code></th><td>When the event happened.</td></tr>
+<tr><th scope="row"><code>move_index</code></th><td>Position of the expected move in the full line. Filled for move attempts.</td></tr>
+<tr><th scope="row"><code>is_correct</code></th><td>Whether the move attempt matched the expected move. Filled for move attempts.</td></tr>
+<tr><th scope="row"><code>response_time_ms</code></th><td>Time taken to attempt the move in milliseconds. Filled for move attempts.</td></tr>
+<tr><th scope="row"><code>fsrs_rating</code></th><td>Again, Hard, Good, or Easy for a completed Repeating session.</td></tr>
+</tbody></table></section>
+<section aria-labelledby="player_lines"><h2 id="player_lines"><code>player_lines</code> <small>6 fields</small></h2><p>One row per player and opening line. The primary key is (player_id, line_id).</p><table aria-labelledby="player_lines"><thead><tr><th scope="col">Field</th><th scope="col">What it stores</th></tr></thead><tbody>
+<tr><th scope="row"><code>player_id</code></th><td>Player who owns this progress record.</td></tr>
+<tr><th scope="row"><code>line_id</code></th><td>Reference to opening_lines.line_id.</td></tr>
+<tr><th scope="row"><code>learned_at</code></th><td>When the player first completed Learning for this line as White, Black, or Both.</td></tr>
+<tr><th scope="row"><code>last_reviewed_at</code></th><td>When the player last completed a review of the line.</td></tr>
+<tr><th scope="row"><code>next_review_at</code></th><td>When the line is due for review again.</td></tr>
+<tr><th scope="row"><code>fsrs_state</code></th><td>Current FSRS state used to update the review schedule.</td></tr>
+</tbody></table></section>
+<section aria-labelledby="reviews"><h2 id="reviews">Repertoire and reviews</h2><ul><li>A player&#x27;s repertoire contains their player_lines rows with learned_at set. Later Learning sessions preserve the first completion date.</li><li>The planner opens a due line before the player selects White, Black, or Both. In Both, the player makes every move in one run. The full-line move_index identifies the color of each attempted move.</li><li>A completed review records one session completion in practice_events and updates last_reviewed_at, next_review_at, and fsrs_state once in player_lines.</li></ul></section></main></body></html>

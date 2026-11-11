@@ -15,6 +15,7 @@ toc = []
 <h1>A shared language for project knowledge</h1>
 <p>Write durable knowledge once, draw the explanation for people, and build it with a pinned shared kit.</p>
 <div class="home-cta">
+<a href="whole-flow.html">Open the TEMPO walkthrough</a>
 <a href="guide.html">Explore the visual guide</a>
 <a class="alt" href="../PROJECT_CONTEXT.md">Read the project map</a>
 </div>

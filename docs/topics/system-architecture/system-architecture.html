@@ -53,22 +53,26 @@
     <figure id="component-diagram">
       <div class="diagram" role="region" aria-label="Scrollable system architecture diagram" tabindex="0">
         <svg viewBox="0 0 970 422" role="img" aria-labelledby="diagram-title diagram-desc">
-          <title id="diagram-title">TEMPO live application and offline training</title>
-          <desc id="diagram-desc">The Chess UI exchanges session and move data with the UI controller. The UI controller exchanges line and practice data with SQLite and requests review lines from the ML controller. The ML controller exchanges player data with SQLite and requests suggestions from the ML engine. Offline, synthetic clients generate a CSV for the Python training script, which saves a model for the ML engine.</desc>
+          <title id="diagram-title">TEMPO components and proposed deployment</title>
+          <desc id="diagram-desc">The proposed browser frontend exchanges session and move data over HTTPS with the Practice controller on a single Python application host. The SQLite file is on persistent storage on that host. The Practice controller exchanges line and practice data with SQLite and requests review lines from the ML controller. The ML controller exchanges player data with SQLite and requests suggestions from the ML engine. Offline, synthetic clients generate a CSV. A planned training script will fit a model for the ML engine.</desc>
           <defs>
             <marker id="request-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 8 4 0 8Z" fill="#8fc8f3"/></marker>
             <marker id="response-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 8 4 0 8Z" fill="#d4dce5"/></marker>
             <marker id="transfer-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 8 4 0 8Z" fill="#a9e6c6"/></marker>
           </defs>
-          <rect class="region" x="16" y="16" width="938" height="256" rx="12"/>
+          <rect class="region" x="16" y="48" width="196" height="118" rx="12"/>
+          <rect class="region" x="345" y="16" width="609" height="256" rx="12"/>
           <rect class="region training" x="16" y="302" width="938" height="104" rx="12"/>
-          <text class="region-title" x="34" y="44">Live application · Python and SQLite</text>
+          <text class="region-title" x="34" y="72">Player device</text>
+          <text class="region-title" x="365" y="44">Single application host · Python backend</text>
           <text class="region-title" x="34" y="331">Offline training</text>
           <g text-anchor="middle">
-            <rect class="node" x="42" y="82" width="150" height="52" rx="8"/><text x="117" y="113">Chess UI</text>
-            <rect class="node" x="386" y="82" width="150" height="52" rx="8"/><text x="461" y="113">UI controller</text>
+            <rect class="node" x="42" y="82" width="150" height="52" rx="8"/><text x="117" y="113">Chess UI in browser</text>
+            <text class="label" x="117" y="153">Planned frontend</text>
+            <text class="label" x="269" y="65">HTTPS · planned</text>
+            <rect class="node" x="386" y="82" width="150" height="52" rx="8"/><text x="461" y="113">Practice controller</text>
             <rect class="node" x="770" y="82" width="160" height="52" rx="8"/><text x="850" y="113">ML controller</text>
-            <rect class="node" x="386" y="207" width="150" height="48" rx="8"/><text x="461" y="236">SQLite</text>
+            <rect class="node" x="386" y="207" width="150" height="48" rx="8"/><text x="461" y="227">SQLite file</text><text class="label" x="461" y="244">Persistent storage</text>
             <rect class="node" x="770" y="207" width="160" height="48" rx="8"/><text x="850" y="227">ML engine</text><text class="label" x="850" y="244">FSRS and review planner</text>
 
             <path class="request" d="M192 97H386" marker-end="url(#request-arrow)"/><text class="label" x="289" y="89">Session or move request</text>
@@ -97,26 +101,31 @@
   <section aria-labelledby="modes-title">
     <h2 id="modes-title">Learning and Repeating</h2>
     <div class="modes">
-      <article><h3>Learning</h3><p>The player chooses a line. The UI controller loads it and the board shows the expected move with an arrow. A correct move advances the line. A wrong move keeps the same position for a guided retry. Completing the session adds the line to the player’s repertoire.</p></article>
+      <article><h3>Learning</h3><p>The player chooses a line. The Practice controller loads it and the board shows the expected move with an arrow. A correct move advances the line. A wrong move keeps the same position for a guided retry. Completing the session adds the line to the player’s repertoire.</p></article>
       <article><h3>Repeating</h3><p>The planner chooses a due line and the app opens it automatically. The player recalls the moves without hints. A wrong move is taken back immediately so the player can retry from the same position.</p></article>
     </div>
   </section>
   <section aria-labelledby="scheduling-title">
     <h2 id="scheduling-title">Review scheduling</h2>
     <p>An empty repertoire directs the player to Learning. A player who has learned a line can receive a first suggestion from the initial FSRS schedules. The planner picks the most overdue line and uses the earliest learned line to break ties. When nothing is due, the UI shows that state.</p>
-    <p>Completed Repeating sessions supply the ratings and timestamps used to calculate the next review date for each player and line. The initial scheduling rule, rating assignment, how the model and FSRS share line selection, and when personalization runs remain team decisions.</p>
+    <p>The first Learning completion makes the line due immediately. After Repeating, the ML engine grades the recorded moves and uses Py-FSRS to calculate stability and the next review date.</p>
   </section>
   <section aria-labelledby="ownership-title">
     <h2 id="ownership-title">Component responsibilities</h2>
     <dl>
       <dt>Chess UI</dt><dd>Shows the board, line selection, Learning arrows, and Repeating feedback.</dd>
-      <dt>UI controller</dt><dd>Loads lines, starts sessions, checks moves, and records practice events.</dd>
+      <dt>Practice controller</dt><dd>Loads lines, starts sessions, checks moves, and records practice events.</dd>
       <dt>SQLite</dt><dd>Stores opening lines, real player practice history, and past suggestions.</dd>
       <dt>ML controller</dt><dd>Fetches the player’s repertoire, practice history, and suggestions, calls the engine, and records the suggested line.</dd>
-      <dt>ML engine</dt><dd>Uses FSRS and the review planner to return a line ID or indicate that no line is due.</dd>
-      <dt>Offline training</dt><dd>Uses synthetic practice history to produce the general model loaded by the ML engine.</dd>
+      <dt>ML engine</dt><dd>Chooses a due line, grades completed reviews, and uses Py-FSRS to update stability and the due date.</dd>
+      <dt>Offline data</dt><dd>Generates synthetic reviews for training. The demo uses a supplied FSRS weights file.</dd>
     </dl>
     <p style="margin-top: 14px"><a href="system-architecture.md">Read the architecture record</a></p>
+  </section>
+  <section id="live-demo" aria-labelledby="demo-title">
+    <h2 id="demo-title">Run the demo</h2>
+    <p>From the repo root in PowerShell, run <code>.\run-demo.cmd</code> for a clean review or <code>.\run-demo.cmd --side black --grade Again</code> to show a wrong move and retry.</p>
+    <p>Open <code>demo/tempo_demo.sqlite</code> in DB Browser for SQLite and filter <code>practice_events</code> and <code>player_lines</code> by the player ID printed by the demo.</p>
   </section>
 </main>
 </body>
