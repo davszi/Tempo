@@ -168,6 +168,8 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 
 ## Repository map
 
+- `frontend/`: Zeel's React + TypeScript dashboard and navigation, with sample data. See [frontend ownership and scope](topics/frontend/frontend.md).
+
 - `.docs-kit/`: initialize the shared-kit Git submodule at the project's reviewed revision.
 - `docs/site/site.toml`: site identity, source repository/ref and navigation.
 - `docs/topics/home/index.md`: rendered landing page and automatic site map.
@@ -178,6 +180,20 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 - `.build/docs/`: ignored generated output, never source.
 
 ## Build and review
+
+### Frontend development
+
+Use Node.js 22.12 or later in the Node 22 line (or another Vite-supported release). From the repository root:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`. Stop the server with Ctrl+C. Run `npm run build` in `frontend/` for TypeScript checking and a production build; `npm run typecheck` checks TypeScript alone. Generated `dist/` and installed `node_modules/` are ignored. Frontend commands do not build the documentation website.
+
+### Documentation website
 
 Run from the project root after initializing the submodule. Use Python 3.12 or the later version supported by the pinned kit.
 

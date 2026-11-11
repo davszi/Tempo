@@ -7,6 +7,8 @@ each action.
 
 ## Current documentation
 
+- [Frontend dashboard](topics/frontend/frontend.md): scope, design source, component ownership and validation.
+
 - [Starter topic record](topics/guide/guide.md): architecture, ownership and adoption acceptance.
 - [Visual guide source](topics/guide/index.md): the registered human-facing authoring example.
 - [Home source](topics/home/index.md): the optional project-owned landing page.
