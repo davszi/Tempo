@@ -7,6 +7,7 @@ each action.
 
 ## Current documentation
 
+- [TEMPO system architecture](topics/system-architecture/system-architecture.md) covers component data flow, practice modes, and review scheduling.
 - [Starter topic record](topics/guide/guide.md): architecture, ownership and adoption acceptance.
 - [Visual guide source](topics/guide/index.md): the registered human-facing authoring example.
 - [Synthetic clients topic record](topics/synthetic-clients/record.md): specification for cognitive traits, latency and familiarity simulation.
