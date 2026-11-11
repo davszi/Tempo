@@ -1,0 +1,3 @@
+[submodule ".docs-kit"]
+	path = .docs-kit
+	url = https://github.com/davszi/documentation-kit.git
