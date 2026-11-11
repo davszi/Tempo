@@ -23,6 +23,8 @@ $env:PYTHONUTF8 = '1'
 python .docs-kit/docsite.py build --project .
 ```
 
+The documentation also has a GitHub Pages workflow. A repository administrator selects **GitHub Actions** as the source under **Settings → Pages**. A push to `main` then builds and checks the generated site before deploying it.
+
 ## Project layout
 
 | Path | Purpose |
