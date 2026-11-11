@@ -1,6 +1,7 @@
 # Documentation reading index
 
-[Project context](PROJECT_CONTEXT.md) owns the repository map, build commands
+[Project context](PROJECT_CONTEXT.md) owns TEMPO's purpose, vocabulary and
+settled decisions, the repository map, build commands
 and project choices. [Task routes](../AGENTS.md) name the guides to read before
 each action.
 
