@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Menu } from "lucide-react";
 import { Dashboard } from "./components/Dashboard";
+import { LearningPage } from "./components/LearningPage";
 import { Sidebar, MobileBottomNav, ProfileButton, pages } from "./components/Navigation";
 import { TempoLogo } from "./components/TempoLogo";
 import { demoUser } from "./mocks/dashboard";
@@ -49,6 +50,7 @@ export default function App() {
       </div></div>
       {page === "dashboard" ? <Dashboard username={demoUser.name}
         onLearn={() => navigate("openings")} onReview={() => navigate("practice")} />
+        : page === "openings" ? <LearningPage />
         : <div className="page"><header className="page-header"><div><p className="eyebrow">COMING LATER</p>
           <h1>{destination.label}</h1><p>{page === "practice"
             ? "Your review plan and repeating sessions, together in one place."
