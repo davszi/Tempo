@@ -1,0 +1,13 @@
+{
+  "_comment": "recovery_test_overdue with recall_mode 'move' (every move right with probability R, synthetic-clients record 3.3, taken literally). Shows what per-move recall does to weight recovery.",
+  "n_agents": 300,
+  "weight_noise": 0.0,
+  "trait_jitter": 0.0,
+  "archetypes": {
+    "slow_learner": {"weight": 1.0, "init_stability_mult": 0.6, "growth_shift": -0.4, "C": 0.2005}
+  },
+  "break_prob": 0.05,
+  "break_days": [7, 60],
+  "desired_retention": [0.7, 0.95],
+  "recall_mode": "move"
+}

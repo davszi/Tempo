@@ -34,6 +34,7 @@ The documentation also has a GitHub Pages workflow. A repository administrator s
 | `tempo/ml_engine.py` | Grades reviews and calls Py-FSRS with the configured weights. |
 | `tempo/store.py` | Owns the SQLite schema and transactions. |
 | `tempo/offline/synthetic_clients.py` | Generates synthetic review telemetry for offline training. |
+| `ml/` | Synthetic-client simulator, FSRS training runs, and the opening library ([FSRS training](docs/topics/fsrs-training/fsrs-training.md)). |
 | `demo/` | Local presentation database, supplied weights, and synthetic review CSV. |
 | `docs/` | Documentation source for the system architecture and datasets. |
 
