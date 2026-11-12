@@ -1,15 +1,25 @@
 import { useEffect, useRef } from "react";
-import { BookOpen, CalendarDays, Home, LogOut, RotateCcw, Settings, X } from "lucide-react";
+import { BookOpen, Home, LogOut, RotateCcw, Settings, X } from "lucide-react";
 import { TempoLogo } from "./TempoLogo";
 import type { Page } from "../types";
 
-export const navigation = [
+export const pages = [
   { id: "dashboard", label: "Dashboard", short: "Home", icon: Home },
   { id: "openings", label: "Learning mode", short: "Learn", icon: BookOpen },
-  { id: "practice", label: "Repeating mode", short: "Repeat", icon: RotateCcw },
-  { id: "planner", label: "Review planner", short: "Reviews", icon: CalendarDays },
+  { id: "practice", label: "Repeating & reviews", short: "Review", icon: RotateCcw },
   { id: "settings", label: "Settings", short: "Settings", icon: Settings },
 ] as const;
+
+export const navigation = pages.filter((item) => item.id !== "settings");
+
+export function ProfileButton({ username, active, onClick }: {
+  username: string; active: boolean; onClick: () => void;
+}) {
+  return <button type="button" className={`avatar profile-button ${active ? "profile-active" : ""}`}
+    aria-label="Open settings" aria-current={active ? "page" : undefined} title="Open settings" onClick={onClick}>
+    {username.slice(0, 1).toUpperCase()}
+  </button>;
+}
 
 type NavigationProps = { page: Page; onSelect: (page: Page) => void };
 export function Sidebar({ page, onSelect, username, open, onClose }: NavigationProps & {
@@ -49,7 +59,8 @@ export function Sidebar({ page, onSelect, username, open, onClose }: NavigationP
           <Icon size={20} strokeWidth={1.8} />{label}
         </button>)}
       </nav>
-      <div className="sidebar-user"><span className="avatar">{username.slice(0, 1)}</span>
+      <div className="sidebar-user"><ProfileButton username={username} active={page === "settings"}
+        onClick={() => { onSelect("settings"); onClose(); }} />
         <div><b>{username}</b><small>Demo student</small></div>
         <button disabled aria-label="Log out unavailable in demo" title="Demo only — no account is signed in"><LogOut size={19} /></button>
       </div>

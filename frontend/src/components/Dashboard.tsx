@@ -1,26 +1,13 @@
-import { BookOpen, Clock3, ChevronRight, RotateCcw } from "lucide-react";
-import type { Opening, UserProgress } from "../types";
-import { todayISO } from "../lib/dates";
-import { UpcomingReviews } from "./UpcomingReviews";
+import { BookOpen, ChevronRight, RotateCcw } from "lucide-react";
 export function Dashboard({
   username,
-  progress,
   onLearn,
   onReview,
-  onPlanner,
-  openings,
 }: {
   username: string;
-  progress: UserProgress;
   onLearn: () => void;
   onReview: () => void;
-  onPlanner: () => void;
-  openings: Opening[];
 }) {
-  const learned = openings.filter((opening) => progress[opening.id]?.status === "completed").length;
-  const due = Object.values(progress).filter(
-    (item) => item.nextReview && item.nextReview <= todayISO(),
-  ).length;
   return (
     <div className="page dashboard-page">
       <header className="page-header welcome-header">
@@ -33,28 +20,6 @@ export function Dashboard({
           ♞
         </div>
       </header>
-      <section className="stat-grid">
-        <article className="stat-card">
-          <span className="stat-icon">
-            <BookOpen />
-          </span>
-          <div>
-            <strong>{learned}</strong>
-            <p>Opening lines learned</p>
-          </div>
-          <span className="stat-total">of {openings.length}</span>
-        </article>
-        <article className="stat-card">
-          <span className="stat-icon">
-            <Clock3 />
-          </span>
-          <div>
-            <strong>{due}</strong>
-            <p>Reviews due today</p>
-          </div>
-          <span className="stat-total">{due ? "Ready" : "All clear"}</span>
-        </article>
-      </section>
       <section className="action-grid">
         <button className="action-card primary-action" onClick={onLearn}>
           <span className="action-icon">
@@ -77,9 +42,6 @@ export function Dashboard({
           <ChevronRight />
         </button>
       </section>
-      <div className="dashboard-insights">
-        <UpcomingReviews progress={progress} onOpen={onPlanner} />
-      </div>
     </div>
   );
 }

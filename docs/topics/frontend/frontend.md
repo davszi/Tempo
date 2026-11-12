@@ -2,7 +2,9 @@
 
 ## Scope and ownership
 
-Zeel owns the React frontend in `frontend/`. This milestone implements the dashboard and navigation using sample data. Learning mode, Repeating Mode, review planner and settings destinations are explicit placeholders. Backend, database and ML implementation are outside this change.
+Zeel owns the React frontend in `frontend/`. This milestone implements the dashboard and navigation using sample data. Learning mode, the combined Repeating & reviews destination and settings are explicit placeholders. Backend, database and ML implementation are outside this change.
+
+Navigation update on 2026-11-12: Repeating mode and Review planner share the `practice` destination, labeled Repeating & reviews (Review on mobile). Settings is absent from the main and bottom navigation; the bottom-left profile avatar opens it. Mobile also exposes a profile button in the top bar, and the drawer retains the profile entry. Settings remains directly addressable at `#settings`. `npm run build` passed. Browser checks verified opening Settings from the desktop and drawer profile buttons, the combined mobile review destination, and returning to Dashboard. Preview: `.build/frontend-review/dashboard-profile-navigation.jpg`.
 
 ## Design source
 
@@ -11,6 +13,8 @@ Adapted from the user-supplied `Tempo - Chess Learning.zip`, specifically its `s
 The export's local-storage account/password implementation, lesson logic, review scheduling and Figma-specific development scripts are not included. The app opens directly into the dashboard with sample data. No authentication or backend requests are implemented.
 
 ## Requested simplification
+
+On 2026-11-12, Zeel also requested removal of Opening lines learned, Reviews due today and the entire Upcoming reviews section. The dashboard now contains the welcome area and Start learning / Start review actions. Removed the unused schedule component, date helpers, progress types, mock practice data and associated styles. The sample profile remains. TypeScript checking and the production build passed via `npm run build`; the refreshed browser confirmed the removed content is absent and the remaining actions render. Preview capture: `.build/frontend-review/dashboard-actions-only.jpg`.
 
 Follow-up sizing: learning and review actions use a 160px minimum height on desktop and 140px on mobile, larger icons and headings, and increased spacing. Upcoming reviews sizes to its content, with compact day tiles instead of stretching to fill a fixed-height row. The planner link aligns to the right on desktop. `npm run build` passed after this CSS change. Browser checks at 1280-by-850 and 390-by-844 confirmed the intended action heights and no horizontal page overflow; the desktop schedule was approximately 237px tall. These dimensions describe this checked layout, not a performance claim. Preview: `.build/frontend-review/dashboard-sized.jpg`.
 
@@ -21,9 +25,8 @@ Validation after removal: `npm run build` passed TypeScript checking and the pro
 ## Structure
 
 - `frontend/src/App.tsx`: page selection, hash-based navigation, mobile menu and placeholder destinations.
-- `frontend/src/components/`: dashboard, navigation, logo and upcoming review components.
-- `frontend/src/mocks/dashboard.ts`: sample user and practice history; replace through an agreed backend interface later.
-- `frontend/src/lib/dates.ts`: local calendar date helpers.
+- `frontend/src/components/`: dashboard, navigation and logo components.
+- `frontend/src/mocks/dashboard.ts`: sample user profile; replace through an agreed backend interface later.
 - `frontend/src/index.css`: styles adapted from the export, plus responsive and keyboard-accessibility fixes.
 - `frontend/vite.config.ts`: standard React and Tailwind Vite plugins; no Figma-hosted runtime integration.
 
