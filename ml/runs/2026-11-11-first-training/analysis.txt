@@ -1,0 +1,38 @@
+# Analysis of the global fit on data/tempo_v1
+
+| weights | log-loss | RMSE(bins) | AUC |
+|---|---|---|---|
+| default | 0.3930 | 0.0335 | 0.670 |
+| global | 0.3910 | 0.0201 | 0.670 |
+| archetype_fit | 0.3905 | 0.0121 | 0.671 |
+| oracle | 0.3849 | 0.0126 | 0.692 |
+
+Bootstrap over val agents (2000 resamples), log-loss difference, 95% interval:
+
+- default-global: 0.0020  [0.0007, 0.0034]  share > 0: 1.000
+- global-archetype: 0.0004  [0.0001, 0.0008]  share > 0: 0.990
+- global-oracle: 0.0060  [0.0045, 0.0079]  share > 0: 1.000
+- share of the default->oracle gap closed by the global fit: 25% [11%, 37%]
+
+log-loss by archetype (val):
+
+          default  global  archetype_fit  oracle  pass_rate       n
+arch                                                               
+balanced   0.3877  0.3859         0.3856  0.3806     0.8564  5934.0
+diligent   0.4006  0.3999         0.3995  0.3941     0.8506  6519.0
+fast       0.3900  0.3864         0.3858  0.3795     0.8537  6178.0
+
+mean predicted pass vs observed, by archetype (calibration-in-the-large):
+
+          observed  default  global  archetype_fit  oracle
+arch                                                      
+balanced     0.856    0.868   0.848          0.852   0.854
+diligent     0.851    0.867   0.848          0.853   0.852
+fast         0.854    0.867   0.846          0.849   0.852
+
+C (w20): true median by archetype vs fits:
+
+           true  archetype_fit  global
+balanced  0.501          0.449   0.428
+diligent  0.350          0.253   0.428
+fast      0.647          0.597   0.428
