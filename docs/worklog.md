@@ -2,6 +2,10 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## Bring the latest demo data into the frontend branch
+
+On 2026-11-12, merged main at `dc4678d` into `feature/frontend`. The incoming tree changes add `demo/fitted_global.csv`, `demo/synthetic_reviews.csv` and `demo/tempo_demo.sqlite` without conflicts. Verified the staged demo files match main and that the merge changes no frontend files. Builds and backend runtime tests were not rerun because no source or dependency inputs changed; the demo data was imported unchanged. The merge commit supplies the source identity.
+
 ## Merge main into the frontend branch
 
 On 2026-11-12, merged main at `4b2824d` into `feature/frontend` to bring the team's current backend, architecture documentation and GitHub Pages configuration into the frontend branch. Resolved the single conflict in `docs/index.md` by retaining the frontend route and all routes from main. The frontend TypeScript check and production build passed through `npm run build`. Backend runtime tests and documentation rendering were not rerun: their source was imported unchanged from main, and the manual resolution only combines documentation links. The merge commit supplies the source identity.
