@@ -1,0 +1,51 @@
+name: Publish TEMPO documentation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out TEMPO and the pinned documentation kit
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install documentation dependencies
+        run: python -m pip install -r .docs-kit/requirements.txt
+      - name: Build the site
+        run: python .docs-kit/docsite.py build --project .
+      - name: Lint strictly
+        run: python .docs-kit/docsite.py lint --project . --strict
+      - name: Upload the documentation site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: .build/docs
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

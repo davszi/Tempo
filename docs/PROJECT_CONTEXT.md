@@ -196,9 +196,11 @@ python -m http.server 8321 --bind 127.0.0.1 --directory .build/docs
 
 Open `http://127.0.0.1:8321/html/guide.html` through the approved browser surface. Check the listener's owner before reuse. Review wide, narrow and paired reading; inspect keyboard focus, reduced motion, no-JavaScript fallback and print. Consult the kit README for shared-engine development checks; Node.js is needed only for applicable JavaScript checks, not ordinary content builds.
 
-## Project choices still required
+## Documentation hosting
 
-Replace `https://github.com/example/project` in site configuration. Choose the source ref and actual hosting/deployment policy. No hosting target, release tag, published URL or project test result is assumed by the starter.
+The [GitHub Pages workflow](../.github/workflows/pages.yml) checks out the pinned Documentation Kit, builds `.build/docs`, and runs strict lint before deploying. It publishes from `main`. The Pages artifact contains the generated documentation site.
+
+A repository administrator enables the workflow under **Settings → Pages → Build and deployment → Source → GitHub Actions**. Once the first deployment succeeds, the workflow's `github-pages` environment shows the live URL.
 
 ## Documentation index
 
