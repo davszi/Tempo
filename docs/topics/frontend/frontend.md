@@ -2,7 +2,17 @@
 
 ## Scope and ownership
 
-Zeel owns the React frontend in `frontend/`. This milestone implements the dashboard and navigation using sample data. Learning mode, the combined Repeating & reviews destination and settings are explicit placeholders. Backend, database and ML implementation are outside this change.
+Zeel owns the React frontend in `frontend/`. The frontend implements the dashboard, navigation, opening library and a guided Learning demo using sample data. The combined Repeating & reviews destination and settings are placeholders. Backend, database and ML implementation are outside this change.
+
+## Learning library and guided board
+
+On 2026-11-12, Zeel supplied an opening-card reference image and requested its layout idea while preserving TEMPO's existing colors and fonts. Learning mode groups board-preview cards under King's Pawn Openings, with White-side labels, learned-line counts, guided-move counts and functional bookmarks. Ruy López, Italian Game and Scotch Game are frontend sample lines, not a query of the database catalog. Retention percentages from the reference image are not included because no model-backed values are available.
+
+Selecting a card opens a White-side guided lesson. An SVG arrow points from the prescribed piece's source square to its destination, with the same coordinates written next to the board. The learner clicks/taps a piece and destination, or uses Tab and Enter. A wrong move leaves the position unchanged and displays retry feedback. A correct White move includes the scripted Black reply and updates the arrow. Castling updates both king and rook. Restart resets the line. Completion marks the line learned in this Learning visit; returning to the library preserves those marks and bookmarks until the Learning page unmounts or the browser reloads.
+
+`chess.js` 1.4.0 validates sample positions and supplies move coordinates. `frontend/src/lib/learning.ts` is a demo adapter only: real session checking, completion records and history remain the backend Practice controller's responsibility. No backend files or authentication flow are changed. Only the White-side sample experience is implemented; no data is persisted or submitted to the backend, and the arrow is confined to Learning mode.
+
+Validation: `npm test` passed three tests covering every sample line and preview, rejected off-line moves, automatic replies and castling. `npm run build` passed TypeScript and production bundling. Browser checks completed a Ruy López session, rejected e2-e3 without changing position, played Black's reply, updated Learned to 1/1, toggled an Italian bookmark, and advanced using Enter on mobile. Visual checks used 1440-by-1000 desktop and 390-by-844 mobile layouts, with no horizontal page overflow on mobile and no browser console errors. Captures are `.build/frontend-review/learning-library.jpg` and `.build/frontend-review/learning-session.jpg`. These are frontend demo checks, not verification of backend integration or training results.
 
 Navigation update on 2026-11-12: Repeating mode and Review planner share the `practice` destination, labeled Repeating & reviews (Review on mobile). Settings is absent from the main and bottom navigation; the bottom-left profile avatar opens it. Mobile also exposes a profile button in the top bar, and the drawer retains the profile entry. Settings remains directly addressable at `#settings`. `npm run build` passed. Browser checks verified opening Settings from the desktop and drawer profile buttons, the combined mobile review destination, and returning to Dashboard. Preview: `.build/frontend-review/dashboard-profile-navigation.jpg`.
 
@@ -26,6 +36,11 @@ Validation after removal: `npm run build` passed TypeScript checking and the pro
 
 - `frontend/src/App.tsx`: page selection, hash-based navigation, mobile menu and placeholder destinations.
 - `frontend/src/components/`: dashboard, navigation and logo components.
+- `frontend/src/components/LearningPage.tsx` and `ChessBoard.tsx`: opening library, guided session and reusable board with SVG arrows.
+- `frontend/src/data/openings.ts`: sample lines, preview positions and move explanations.
+- `frontend/src/lib/learning.ts`: pure sample position and guided progression functions.
+- `frontend/tests/learning.test.mjs`: sample-line and move-flow tests.
+- `frontend/src/learning.css`: library and learning-session layout using the existing TEMPO theme.
 - `frontend/src/mocks/dashboard.ts`: sample user profile; replace through an agreed backend interface later.
 - `frontend/src/index.css`: styles adapted from the export, plus responsive and keyboard-accessibility fixes.
 - `frontend/vite.config.ts`: standard React and Tailwind Vite plugins; no Figma-hosted runtime integration.

@@ -13,7 +13,7 @@
 .learning-opening-main { width: 100%; display: block; text-align: left; padding: 14px; color: inherit; background: none; border: 0; }
 .learning-opening-main:focus-visible { outline-offset: -4px; }
 .opening-board-preview { position: relative; }
-.opening-board-side { position: absolute; right: 10px; top: 10px; background: white; box-shadow: 0 2px 8px #17251f15; color: var(--green); border-radius: 6px; padding: 5px 9px; font-size: 10px; font-weight: 800; letter-spacing: .05em; }
+.opening-board-side { position: absolute; z-index: 5; right: 10px; top: 10px; background: white; box-shadow: 0 2px 8px #17251f15; color: var(--green); border-radius: 6px; padding: 5px 9px; font-size: 10px; font-weight: 800; letter-spacing: .05em; }
 .opening-card-copy { padding: 18px 4px 4px; }
 .opening-card-copy h3 { font: 700 19px/1.35 "Manrope", sans-serif; letter-spacing: -.025em; margin: 0 0 8px; }
 .opening-card-copy > p { margin: 0 0 18px; min-height: 44px; color: var(--muted); font-size: 13px; line-height: 1.6; }

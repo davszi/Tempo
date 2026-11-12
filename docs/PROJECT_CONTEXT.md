@@ -193,6 +193,8 @@ npm run dev
 
 Open `http://127.0.0.1:5173`. Stop the server with Ctrl+C. Run `npm run build` in `frontend/` for TypeScript checking and a production build; `npm run typecheck` checks TypeScript alone. Generated `dist/` and installed `node_modules/` are ignored. Frontend commands do not build the documentation website.
 
+Run `npm test` in `frontend/` for the Learning demo's sample-line, guided-retry and castling checks. This uses Node's built-in test runner and experimental TypeScript stripping on the recorded Node 22 environment.
+
 ### Documentation website
 
 Run from the project root after initializing the submodule. Use Python 3.12 or the later version supported by the pinned kit.

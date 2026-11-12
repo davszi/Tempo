@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowUpRight, Bookmark, Check, ChevronRight, RotateCcw } from "lucide-react";
 import type { Square } from "chess.js";
 import { openingLines, type OpeningLine } from "../data/openings";
@@ -54,6 +54,8 @@ export function LearningPage() {
 }
 
 function LearningSession({ opening, onExit, onComplete }: { opening: OpeningLine; onExit: () => void; onComplete: () => void }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { heading.current?.focus(); }, []);
   const [ply, setPly] = useState(0);
   const [selected, setSelected] = useState<Square | null>(null);
   const [feedback, setFeedback] = useState("Follow the arrow: select the piece, then its destination.");
@@ -83,7 +85,7 @@ function LearningSession({ opening, onExit, onComplete }: { opening: OpeningLine
   function restart() { setPly(0); setSelected(null); setFeedback("A fresh start. Follow the arrow to play your first move."); }
   return <div className="page learning-page learning-session">
     <button type="button" className="learning-back" onClick={onExit}><ArrowLeft size={17} /> All openings</button>
-    <header className="learning-session-heading"><div><p className="eyebrow">GUIDED LEARNING · WHITE</p><h1>{opening.name}</h1></div>
+    <header className="learning-session-heading"><div><p className="eyebrow">GUIDED LEARNING · WHITE</p><h1 ref={heading} tabIndex={-1}>{opening.name}</h1></div>
       <span className="learning-side-badge">{completed} / {total} moves</span></header>
     <div className="learning-session-layout">
       <section className="lesson-board-panel" aria-label="Guided chessboard">
