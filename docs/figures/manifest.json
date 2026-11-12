@@ -1,0 +1,9 @@
+{
+  "tempo-system-architecture.svg": {
+    "source": "docs/topics/system-architecture/system-architecture.html",
+    "diagram_definition": "docs/topics/system-architecture/component-flow.mmd",
+    "revision": "working tree",
+    "date": "2026-11-11",
+    "sha256": "e2b93304e1aa898aa957872ec527a8dd139e2d7765c869c38c32e6f04fbd2cca"
+  }
+}

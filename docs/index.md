@@ -8,9 +8,15 @@ each action.
 ## Current documentation
 
 - [Frontend dashboard](topics/frontend/frontend.md): scope, design source, component ownership and validation.
-
+- [TEMPO end-to-end flow](topics/whole-flow/whole-flow.md) connects the catalog, practice, scheduling, and offline data.
+- [TEMPO database schema](topics/database-schema/database-schema.md) describes opening lines, practice events, and player progress.
+- [TEMPO system architecture](topics/system-architecture/system-architecture.md) covers component data flow, practice modes, and review scheduling.
 - [Starter topic record](topics/guide/guide.md): architecture, ownership and adoption acceptance.
 - [Visual guide source](topics/guide/index.md): the registered human-facing authoring example.
+- [Synthetic clients topic record](topics/synthetic-clients/record.md): specification for cognitive traits, latency and familiarity simulation.
+- [Synthetic clients page source](topics/synthetic-clients/index.md): visual explanation of synthetic client simulation.
+- [Review dataset topic record](topics/review-dataset/record.md): specification for review session CSV schema, FSRS grading function, and human calibration.
+- [Review dataset page source](topics/review-dataset/index.md): visual explanation of session telemetry, grading decision tree, and calibration pipeline.
 - [Home source](topics/home/index.md): the optional project-owned landing page.
 - [Open work](open/OPEN.md): routes to unfinished owners.
 - [Worklog](worklog.md): append-only chronology.

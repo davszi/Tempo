@@ -98,7 +98,7 @@ From the concept, the system needs to keep, somewhere:
 
 **Questions to discuss:** what exactly is stored and at what level of detail; which of the items above belong to this layer and which belong elsewhere (for example inside the ML engine); how data for one player is kept separate from general data; whether synthetic training data sits alongside real player data; what the other parts need from this layer.
 
-### 8.2 UI controller
+### 8.2 Practice controller
 
 **Purpose:** the bridge between the user interface and the rest of the system.
 
@@ -111,7 +111,7 @@ Behaviour from the concept that touches this part:
 - taking back a wrong move in Repeating Mode so the player can try again,
 - capturing the outcome of each session for the shared record.
 
-**Questions to discuss:** which of these behaviours live in this controller and which live in the UI or elsewhere; whether anything beyond "try again" is shown after a mistake in Repeating Mode, given the no-hints rule; what the UI controller asks of the other parts and what it hands back; what happens when a session is interrupted or abandoned.
+**Questions to discuss:** which of these behaviours live in this controller and which live in the UI or elsewhere; whether anything beyond "try again" is shown after a mistake in Repeating Mode, given the no-hints rule; what the Practice controller asks of the other parts and what it hands back; what happens when a session is interrupted or abandoned.
 
 ### 8.3 ML controller
 
@@ -212,9 +212,11 @@ python -m http.server 8321 --bind 127.0.0.1 --directory .build/docs
 
 Open `http://127.0.0.1:8321/html/guide.html` through the approved browser surface. Check the listener's owner before reuse. Review wide, narrow and paired reading; inspect keyboard focus, reduced motion, no-JavaScript fallback and print. Consult the kit README for shared-engine development checks; Node.js is needed only for applicable JavaScript checks, not ordinary content builds.
 
-## Project choices still required
+## Documentation hosting
 
-Replace `https://github.com/example/project` in site configuration. Choose the source ref and actual hosting/deployment policy. No hosting target, release tag, published URL or project test result is assumed by the starter.
+The [GitHub Pages workflow](../.github/workflows/pages.yml) checks out the pinned Documentation Kit, builds `.build/docs`, and runs strict lint before deploying. It publishes from `main`. The Pages artifact contains the generated documentation site.
+
+A repository administrator enables the workflow under **Settings → Pages → Build and deployment → Source → GitHub Actions**. Once the first deployment succeeds, the workflow's `github-pages` environment shows the live URL.
 
 ## Documentation index
 

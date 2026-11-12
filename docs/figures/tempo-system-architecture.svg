@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 970 422" role="img" aria-labelledby="diagram-title diagram-desc">
+          <title id="diagram-title">TEMPO components and proposed deployment</title>
+          <desc id="diagram-desc">The proposed browser frontend exchanges session and move data over HTTPS with the Practice controller on a single Python application host. The SQLite file is on persistent storage on that host. The Practice controller exchanges line and practice data with SQLite and requests review lines from the ML controller. The ML controller exchanges player data with SQLite and requests suggestions from the ML engine. Offline, synthetic clients generate a CSV. A planned training script will fit a model for the ML engine.</desc>
+          <defs>
+<style>text { fill: #edf3fa; font-size: 14px; font-weight: 650; }
+.region { fill: #172535; stroke: #34485e; }
+.training { fill: #1c2832; }
+.node { fill: #23374b; stroke: #5a7993; }
+.training-node { fill: #213a38; stroke: #629083; }
+.region-title { fill: #b8cadd; font-size: 16px; }
+.label { fill: #c9d8e8; font-size: 12px; font-weight: 500; }
+.request, svg .response, svg .transfer { fill: none; stroke-width: 2; }
+.request { stroke: #8fc8f3; }
+.response { stroke: #d4dce5; stroke-dasharray: 6 4; }
+.transfer { stroke: #a9e6c6; }</style>
+            <marker id="request-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 8 4 0 8Z" fill="#8fc8f3"/></marker>
+            <marker id="response-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 8 4 0 8Z" fill="#d4dce5"/></marker>
+            <marker id="transfer-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 8 4 0 8Z" fill="#a9e6c6"/></marker>
+          </defs>
+          <rect class="region" x="16" y="48" width="196" height="118" rx="12"/>
+          <rect class="region" x="345" y="16" width="609" height="256" rx="12"/>
+          <rect class="region training" x="16" y="302" width="938" height="104" rx="12"/>
+          <text class="region-title" x="34" y="72">Player device</text>
+          <text class="region-title" x="365" y="44">Single application host · Python backend</text>
+          <text class="region-title" x="34" y="331">Offline training</text>
+          <g text-anchor="middle">
+            <rect class="node" x="42" y="82" width="150" height="52" rx="8"/><text x="117" y="113">Chess UI in browser</text>
+            <text class="label" x="117" y="153">Planned frontend</text>
+            <text class="label" x="269" y="65">HTTPS · planned</text>
+            <rect class="node" x="386" y="82" width="150" height="52" rx="8"/><text x="461" y="113">Practice controller</text>
+            <rect class="node" x="770" y="82" width="160" height="52" rx="8"/><text x="850" y="113">ML controller</text>
+            <rect class="node" x="386" y="207" width="150" height="48" rx="8"/><text x="461" y="227">SQLite file</text><text class="label" x="461" y="244">Persistent storage</text>
+            <rect class="node" x="770" y="207" width="160" height="48" rx="8"/><text x="850" y="227">ML engine</text><text class="label" x="850" y="244">FSRS and review planner</text>
+
+            <path class="request" d="M192 97H386" marker-end="url(#request-arrow)"/><text class="label" x="289" y="89">Session or move request</text>
+            <path class="response" d="M386 118H192" marker-end="url(#response-arrow)"/><text class="label" x="289" y="136">Board state and feedback</text>
+            <path class="request" d="M536 97H770" marker-end="url(#request-arrow)"/><text class="label" x="653" y="89">Request next review line</text>
+            <path class="response" d="M770 118H536" marker-end="url(#response-arrow)"/><text class="label" x="653" y="136">Line ID or availability</text>
+            <path class="request" d="M448 134V207" marker-end="url(#request-arrow)"/><text class="label" x="438" y="165" text-anchor="end">Load lines</text><text class="label" x="438" y="181" text-anchor="end">Save practice</text>
+            <path class="response" d="M475 207V134" marker-end="url(#response-arrow)"/><text class="label" x="485" y="165" text-anchor="start">Lines or</text><text class="label" x="485" y="181" text-anchor="start">confirmation</text>
+            <path class="request" d="M782 134V196H570V223H536" marker-end="url(#request-arrow)"/><text class="label" x="667" y="188">Read history or save suggestion</text>
+            <path class="response" d="M536 240H748V202H800V134" marker-end="url(#response-arrow)"/><text class="label" x="650" y="255">Player data or confirmation</text>
+            <path class="request" d="M837 134V207" marker-end="url(#request-arrow)"/><text class="label" x="827" y="182" text-anchor="end">Suggest</text>
+            <path class="response" d="M864 207V134" marker-end="url(#response-arrow)"/><text class="label" x="874" y="182" text-anchor="start">Line ID or</text><text class="label" x="874" y="198" text-anchor="start">none due</text>
+
+            <rect class="node training-node" x="34" y="349" width="152" height="42" rx="8"/><text x="110" y="375">Synthetic clients</text>
+            <rect class="node training-node" x="254" y="349" width="182" height="42" rx="8"/><text x="345" y="375">Synthetic history CSV</text>
+            <rect class="node training-node" x="504" y="349" width="176" height="42" rx="8"/><text x="592" y="375">Python training script</text>
+            <rect class="node training-node" x="752" y="349" width="178" height="42" rx="8"/><text x="841" y="375">Trained general model</text>
+            <path class="transfer" d="M186 370H254" marker-end="url(#transfer-arrow)"/><path class="transfer" d="M436 370H504" marker-end="url(#transfer-arrow)"/><path class="transfer" d="M680 370H752" marker-end="url(#transfer-arrow)"/>
+            <path class="transfer" d="M850 349V255" marker-end="url(#transfer-arrow)"/><text class="label" x="861" y="292" text-anchor="start">Load model</text>
+          </g>
+        </svg>
