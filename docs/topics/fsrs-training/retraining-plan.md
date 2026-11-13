@@ -91,6 +91,16 @@ Each arm returns one global set of 21 FSRS-6 weights.
   optimizer. A1c runs the binary target through the B1 trainer, so A1c
   against B1 changes only target and loss. A2 and B2 already share an
   optimizer.
+- **Which trainer each arm uses.** A2, B2, A1c and B1 all use one shared
+  trainer: the vectorised FSRS-6 model and L-BFGS-B fit of `ml_300bots`
+  ([task 4](#task-4-shared-trainer-and-the-b1-b2-and-a1c-arms)). The
+  variants differ only in how they load data and which truth they read. A1
+  alone keeps py-fsrs `Optimizer` (Adam), because it is the method of the
+  first run, so old and new results compare directly, and it is the official
+  FSRS trainer likely to be used on real players.
+- **What each comparison isolates.** A1 against A1c: the trainer, with the
+  same target. A1c against B1, and A2 against B2: the target, with the same
+  trainer.
 - Per-player fine-tuning (`personal*.py`, the personalisation step of
   `train.py`) is not part of the arms. Its earlier results stay historical.
 
@@ -338,7 +348,7 @@ all keys above.
 
 ### Task 4: shared trainer and the B1, B2 and A1c arms
 
-One trainer serves B1, B2 and A1c: the vectorised FSRS-6 model and bounded
+One trainer serves A2, B2, A1c and B1 (A1 keeps py-fsrs): the vectorised FSRS-6 model and bounded
 L-BFGS-B fit that already exist in `ml_300bots`
 (`tempo_ml/fsrs/model.py` `predict`, bounds `LOWER_BOUNDS`/`UPPER_BOUNDS`;
 `tempo_ml/fsrs/train.py` `fit`). Do not replay `tempo_sim/fsrs6.py` review
