@@ -50,7 +50,7 @@ See the [system architecture](system-architecture.html) for the component diagra
 
 | SQLite table | What to inspect |
 |---|---|
-| `opening_lines` | Catalog names, move sequences, and side classifications. |
+| `opening_lines` | Catalog names, move sequences, and each line's parent in the line tree. Family sides are in `opening_families`. |
 | `practice_events` | Move attempts, suggestions, and the completed review grade. |
 | `player_lines` | Repertoire, due dates, and the serialized FSRS state. |
 

@@ -264,11 +264,16 @@ Rules for every task:
 Write one small reader per variant (no shared module between the variants):
 
 ```sql
-SELECT l.line_id, l.name, l.eco, l.moves_uci, l.side_in_games,
+SELECT l.line_id, l.name, l.eco, l.moves_uci,
        f.name AS family, f.family_side
 FROM opening_lines AS l JOIN opening_families AS f USING (family_id)
 ORDER BY l.line_id
 ```
+
+The backend catalog no longer has `side_in_games`; a line's side is its
+family's `family_side`, which is always `white` or `black`. Where
+`ml_300bots` needs `side_in_games`, use `family_side`. See
+[opening catalog structure](../opening-catalog/opening-catalog.md).
 
 Derived values: `plies = len(moves_uci.split())`,
 `white_moves = (plies + 1) // 2`, `black_moves = plies // 2`.

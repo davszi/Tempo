@@ -5,9 +5,12 @@ export const sideLabels: Record<Side, string> = { white: "White", black: "Black"
 export type OpeningLine = {
   line_id: number;
   opening_family: string;
+  family_side: "white" | "black";
   name: string;
   eco: string;
   moves_uci: string;
+  parent_line_id: number | null;
+  learnable: boolean;
   learned: boolean;
 };
 

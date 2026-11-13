@@ -4,6 +4,8 @@
 
 The React app uses the Python API in `backend/web.py` for the opening catalog, move checks, Learning completion, and Review. Completing a line saves it to the player's SQLite repertoire. The review planner selects the line, the board hides the move arrow, and completion stores the FSRS grade and next review date. The frontend uses a browser-local demo player ID. The prototype milestones below describe earlier revisions.
 
+Since 2026-11-13 the Learning list shows only lines the backend marks `learnable`: lines that no other line in their family extends. When several of those lines share a name, each card shows the moves from where it first differs from the others, for example "7…Be6 8.f3", computed by `distinguishingMoves` in `frontend/src/lib/learning.ts`. [Opening catalog structure](../opening-catalog/opening-catalog.md) owns these rules. The change has a unit test in `frontend/tests/learning.test.mjs`. With Node.js 26.13.1, `npm test` passed 4 tests and `npm run build` passed; the live Learning page listed 1,889 lines with distinct labels on same-name lines and no console errors.
+
 ## Scope and ownership
 
 Zeel owns the React frontend in `frontend/`. The frontend implements the dashboard, navigation, opening library and a guided Learning demo using sample data. The combined Repeating & reviews destination and settings are placeholders. Backend, database and ML implementation are outside this change.

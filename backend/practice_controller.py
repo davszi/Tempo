@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from .ml_controller import MLController
 from .ml_engine import MLEngine
-from .store import Store, add_event
+from .store import Store, add_event, is_learnable
 
 
 def utc_now():
@@ -60,8 +60,10 @@ class PracticeController:
             line = db.execute(
                 "SELECT name, moves_uci FROM opening_lines WHERE line_id = ?", (line_id,)
             ).fetchone()
-        if line is None:
-            raise LookupError("Unknown opening line")
+            if line is None:
+                raise LookupError("Unknown opening line")
+            if mode == "learning" and not is_learnable(db, line_id):
+                raise ValueError("This line is extended by longer lines; learn one of those instead")
 
         session_id = uuid4().hex
         session = Session(player_id, line_id, mode, line["name"], tuple(line["moves_uci"].split()))

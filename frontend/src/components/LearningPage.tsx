@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bookmark, Check, ChevronRight } from "lucide-react";
-import { positionAt } from "../lib/learning";
+import { distinguishingMoves, positionAt } from "../lib/learning";
 import { practiceRequest, sideLabels, sides, type OpeningLine, type Session, type Side } from "../lib/practiceApi";
 import { ChessBoard } from "./ChessBoard";
 import { PracticeSession } from "./PracticeSession";
@@ -26,8 +26,12 @@ export function LearningPage() {
     return () => request.abort();
   }, [catalogVersion]);
 
+  // Only lines that no other line extends can be learned; shorter lines are covered by them.
+  const learnable = useMemo(() => catalog.filter((line) => line.learnable), [catalog]);
+  const moveLabels = useMemo(() => distinguishingMoves(learnable), [learnable]);
+
   const term = query.trim().toLowerCase();
-  const matches = catalog.filter((line) =>
+  const matches = learnable.filter((line) =>
     (side === "white" || line.moves_uci.includes(" ")) &&
     [line.name, line.opening_family, line.eco].some((value) => value.toLowerCase().includes(term)));
 
@@ -78,7 +82,9 @@ export function LearningPage() {
           <button type="button" className="learning-opening-main" disabled={busy} onClick={() => void start(line.line_id)}>
             <div className="opening-board-preview"><ChessBoard fen={preview.fen()} lastMove={preview.history({ verbose: true }).at(-1)}
               flipped={side === "black"} /></div>
-            <div className="opening-card-copy"><h3>{line.name}</h3><p>{line.opening_family} · {line.eco}</p>
+            <div className="opening-card-copy"><h3>{line.name}</h3>
+              {moveLabels.has(line.line_id) && <p className="opening-line-moves" title={moveLabels.get(line.line_id)}>{moveLabels.get(line.line_id)}</p>}
+              <p>{line.opening_family} · {line.eco}</p>
               <div className="opening-card-metadata"><span>{line.learned && <Check size={14} />} {line.learned ? "Learned" : "New line"}</span></div>
               <span className="opening-start-link">{line.learned ? "Learn again" : "Start learning"}<ChevronRight size={17} /></span>
             </div>

@@ -1,6 +1,6 @@
 """Coordinate SQLite and the ML engine for Repeating."""
 
-from .store import add_event, timestamp
+from .store import add_event, is_learnable, timestamp
 
 
 class MLController:
@@ -28,6 +28,8 @@ class MLController:
         ).fetchone()
         if existing:
             return
+        if not is_learnable(db, line_id):
+            raise ValueError("Only lines that no other line extends can join a repertoire")
         due, state = self.engine.initial_schedule(now)
         db.execute(
             """INSERT INTO player_lines (player_id, line_id, learned_at, next_review_at, fsrs_state)

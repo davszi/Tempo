@@ -24,20 +24,20 @@ li + li { margin-top: 8px; }
 </head>
 <body><main>
 <header><h1>TEMPO Database Schema</h1>
-<p>TEMPO uses four SQLite tables for opening families, opening lines, practice history, and each player&#x27;s repertoire and review schedule.</p><p>Opening lines are sourced from the <a href="https://huggingface.co/datasets/Lichess/chess-openings">Lichess chess-openings dataset</a>.</p><p>This page describes the schema as implemented. Accepted changes to the opening tables that have not landed yet are in <a href="../opening-catalog/opening-catalog.md">opening catalog structure</a>.</p></header>
+<p>TEMPO uses four SQLite tables for opening families, opening lines, practice history, and each player&#x27;s repertoire and review schedule.</p><p>Opening lines are sourced from the <a href="https://huggingface.co/datasets/Lichess/chess-openings">Lichess chess-openings dataset</a>.</p><p><a href="../opening-catalog/opening-catalog.md">Opening catalog structure</a> explains why the opening tables have this shape: family sides, merged gambit families, the line tree and which lines can be learned.</p></header>
 <section aria-labelledby="opening_families"><h2 id="opening_families"><code>opening_families</code> <small>3 fields</small></h2><table aria-labelledby="opening_families"><thead><tr><th scope="col">Field</th><th scope="col">What it stores</th></tr></thead><tbody>
 <tr><th scope="row"><code>family_id</code></th><td>Unique family ID. Primary key.</td></tr>
-<tr><th scope="row"><code>name</code></th><td>Unique family name, such as Sicilian Defence.</td></tr>
-<tr><th scope="row"><code>family_side</code></th><td>Side traditionally associated with the family, or empty if unknown.</td></tr>
+<tr><th scope="row"><code>name</code></th><td>Unique family name, such as Sicilian Defense. Accepted and Declined lines belong to their gambit&#x27;s family, such as Queen&#x27;s Gambit.</td></tr>
+<tr><th scope="row"><code>family_side</code></th><td>Side the family belongs to: <code>white</code> or <code>black</code>. Required.</td></tr>
 </tbody></table></section>
 <section aria-labelledby="opening_lines"><h2 id="opening_lines"><code>opening_lines</code> <small>6 fields</small></h2><p>One row per opening line. Each line contains moves for both colors.</p><table aria-labelledby="opening_lines"><thead><tr><th scope="col">Field</th><th scope="col">What it stores</th></tr></thead><tbody>
-<tr><th scope="row"><code>line_id</code></th><td>Unique opening line ID. Primary key.</td></tr>
-<tr><th scope="row"><code>family_id</code></th><td>Reference to <code>opening_families.family_id</code>. One family can have many lines.</td></tr>
-<tr><th scope="row"><code>name</code></th><td>Full name of the opening line.</td></tr>
+<tr><th scope="row"><code>line_id</code></th><td>Unique opening line ID. Primary key. Never reassigned.</td></tr>
+<tr><th scope="row"><code>family_id</code></th><td>Reference to <code>opening_families.family_id</code>. One family can have many lines. A line&#x27;s side is its family&#x27;s side.</td></tr>
+<tr><th scope="row"><code>parent_line_id</code></th><td>Reference to <code>opening_lines.line_id</code>: the longest other line of the same family whose moves start this line. Empty when there is none.</td></tr>
+<tr><th scope="row"><code>name</code></th><td>Full name of the opening line. Several lines can share a name.</td></tr>
 <tr><th scope="row"><code>eco</code></th><td>Lichess opening classification code. Multiple lines can share a code.</td></tr>
-<tr><th scope="row"><code>moves_uci</code></th><td>Unique ordered move sequence for White and Black in UCI notation.</td></tr>
-<tr><th scope="row"><code>side_in_games</code></th><td>Side supported by observed Lichess games. White, Black, Both, or empty when evidence is unavailable.</td></tr>
-</tbody></table><p>The catalog&#x27;s family maps to the family name. Convert PGN to UCI before inserting a line. The side labels describe catalog entries and are separate from the side selected for a practice session.</p><p>The backend migrates older catalogs at startup and preserves line IDs and practice references. SQLite rejects duplicate move sequences during migration and rolls the transaction back.</p></section>
+<tr><th scope="row"><code>moves_uci</code></th><td>Unique ordered move sequence for White and Black in UCI notation. The line&#x27;s permanent identity.</td></tr>
+</tbody></table><p>A line can be learned only when no other line names it as <code>parent_line_id</code>. This is derived, not stored. Learning a line that other lines extend is refused, and only learnable lines can join a repertoire. A line already in a player&#x27;s repertoire stays reviewable if the catalog later gains a longer line.</p><p><code>Store.add_line</code> takes moves in UCI; convert PGN first. It inserts a line or, when the moves already exist, updates that line&#x27;s family, name and ECO code and keeps its <code>line_id</code>. A new family needs a side. The family side is separate from the side selected for a practice session.</p><p>When the backend opens an older database, it rebuilds the two opening tables in this layout inside one transaction, keeping every line ID and family ID and leaving practice history and progress untouched. The transaction rolls back if any reference would break or a family&#x27;s side cannot be decided.</p></section>
 <section aria-labelledby="practice_events"><h2 id="practice_events"><code>practice_events</code> <small>12 fields</small></h2><p>One row per suggestion, move attempt, or completed session.</p><table aria-labelledby="practice_events"><thead><tr><th scope="col">Field</th><th scope="col">What it stores</th></tr></thead><tbody>
 <tr><th scope="row"><code>event_id</code></th><td>Unique event ID. Primary key.</td></tr>
 <tr><th scope="row"><code>player_id</code></th><td>Player the event belongs to.</td></tr>
