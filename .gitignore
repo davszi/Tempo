@@ -1,3 +1,5 @@
 .build/
-/demo/
+/backend/*.sqlite-journal
+/backend/*.sqlite-shm
+/backend/*.sqlite-wal
 __pycache__/

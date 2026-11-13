@@ -29,6 +29,6 @@ The first Learning completion adds the line to the player's repertoire and makes
 
 ## Presentation demo
 
-Run `run-demo.cmd` from the repo root on Windows. The demo calls the practice controller and ML controller, loads the supplied 21 FSRS weights from `demo/fitted_global.csv`, and prints the grade, stability, next review time, and player ID. Use `--side black --grade Again` to demonstrate a wrong move followed by a retry.
+Run `backend\run-demo.cmd` from the repo root on Windows. The demo calls the practice controller and ML controller, loads the supplied 21 FSRS weights from `backend/fitted_global.csv`, and prints the grade, stability, next review time, and player ID. Use `--side black --grade Again` to demonstrate a wrong move followed by a retry.
 
-`demo/tempo_demo.sqlite` contains the opening catalog and demo runs. In DB Browser for SQLite, inspect `practice_events` and `player_lines` by player ID. The synthetic dataset in `demo/synthetic_reviews.csv` is a separate 50,400-session export for offline training.
+`backend/tempo_demo.sqlite` contains the opening catalog and demo runs. In DB Browser for SQLite, inspect `practice_events` and `player_lines` by player ID. The synthetic dataset in `backend/synthetic_reviews.csv` is a separate 50,400-session export for offline training.

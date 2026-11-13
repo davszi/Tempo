@@ -7,6 +7,7 @@ each action.
 
 ## Current documentation
 
+- [Frontend dashboard](topics/frontend/frontend.md): scope, design source, component ownership and validation.
 - [TEMPO end-to-end flow](topics/whole-flow/whole-flow.md) connects the catalog, practice, scheduling, and offline data.
 - [TEMPO database schema](topics/database-schema/database-schema.md) describes opening lines, practice events, and player progress.
 - [TEMPO system architecture](topics/system-architecture/system-architecture.md) covers component data flow, practice modes, and review scheduling.

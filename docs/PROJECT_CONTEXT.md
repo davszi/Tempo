@@ -183,7 +183,37 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 - `docs/worklog.md`: append-only chronology.
 - `.build/docs/`: ignored generated output, never source.
 
+- `frontend/`: React browser application. See [frontend ownership and scope](topics/frontend/frontend.md).
+- `backend/`: Python application, requirements, and demo data.
+
 ## Build and review
+
+### Python backend
+
+From the repository root:
+
+```powershell
+python -m pip install -r backend/requirements.txt
+python -m backend.web
+```
+
+The server listens on `127.0.0.1:8000` and uses the SQLite catalog and FSRS weights in `backend/`. Run `.\backend\run-demo.cmd` from the repository root for the terminal demo.
+
+### Frontend development
+
+Use Node.js 22.12 or later in the Node 22 line (or another Vite-supported release). From the repository root:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+With the Python backend running, open `http://127.0.0.1:5173`. Stop the server with Ctrl+C. Run `npm run build` in `frontend/` for TypeScript checking and a production build; `npm run typecheck` checks TypeScript alone. Generated `dist/` and installed `node_modules/` are ignored. Frontend commands do not build the documentation website.
+
+Run `npm test` in `frontend/` for the Learning demo's sample-line, guided-retry and castling checks. This uses Node's built-in test runner and experimental TypeScript stripping on the recorded Node 22 environment.
+
+### Documentation website
 
 Run from the project root after initializing the submodule. Use Python 3.12 or the later version supported by the pinned kit.
 
