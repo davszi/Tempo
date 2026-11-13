@@ -8,7 +8,7 @@ synthetic clients study, how each line is classified, and how the side
 simulator that uses the library is described in
 [FSRS training on synthetic clients](../fsrs-training/fsrs-training.md).
 
-Status: implemented in `ml/openings/`. The side labels are a proposal
+Status: implemented in `ml/ml_1000bots/openings/`. The side labels are a proposal
 from the ML work; the team has not accepted them yet (see
 [open questions](#open-questions)).
 
@@ -18,7 +18,7 @@ from the ML work; the team has not accepted them yet (see
 |---|---|
 | Source | [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings), files `a.tsv` to `e.tsv` from `master`, fetched 2026-11-11 |
 | Licence | CC0 (public domain) |
-| Local copy | `ml/openings/lichess_openings.tsv`, 3,865 lines plus header, sha256 `ea20307b7d5edba152ca69f2f9c8f92cb2260169d53e3596ea6fadbeca916b18` |
+| Local copy | `ml/ml_1000bots/openings/lichess_openings.tsv`, 3,865 lines plus header, sha256 `ea20307b7d5edba152ca69f2f9c8f92cb2260169d53e3596ea6fadbeca916b18` |
 | Columns | `eco`, `name`, `pgn` (no side information) |
 
 Opening names and moves are used as Lichess publishes them; they were not
@@ -26,8 +26,8 @@ checked against other opening references.
 
 ## Classification
 
-`python ml/openings/classify.py` writes
-`ml/openings/lichess_openings_classified.csv` (sha256
+`python ml/ml_1000bots/openings/classify.py` writes
+`ml/ml_1000bots/openings/lichess_openings_classified.csv` (sha256
 `2d9c59dcea685032e79218df25ade2b017d8b2111e0957440ff9e57fd9f5e69b`). The
 column meanings are documented at the top of `classify.py`. In short:
 
@@ -70,7 +70,7 @@ Result: 69 white, 70 black and 1 both family.
   (side ratio 3.18 towards White). The base-gambit rule agreed with all of
   them.
 
-**Evidence from real games.** `ml/openings/side_evidence.py` measures
+**Evidence from real games.** `ml/ml_1000bots/openings/side_evidence.py` measures
 which side's players keep returning to a family. For each family and colour,
 it takes P(a player's next game with that colour is the same family) divided
 by the family's overall share. `side_ratio` = white value / black value:

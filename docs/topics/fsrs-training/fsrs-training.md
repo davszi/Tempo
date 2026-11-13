@@ -2,7 +2,7 @@
 
 ## Scope
 
-This record owns the implemented synthetic-client simulator in `ml/`,
+This record owns the implemented synthetic-client simulator in `ml/ml_1000bots/`,
 the dataset it produced (`tempo_v1`), how FSRS-6 weights are trained and
 evaluated on it, and the results. The client model and the dataset schema
 are specified by the team in the
@@ -17,8 +17,8 @@ been accepted by the team (see [open questions](#open-questions)).
 
 ## Implementation
 
-Code: `ml/` (Python package `ml/tempo_sim/`). How to run it:
-`ml/README.md`. Every knob is in `ml/tempo_sim/config.py`.
+Code: `ml/ml_1000bots/` (Python package `ml/ml_1000bots/tempo_sim/`). How to run it:
+`ml/ml_1000bots/README.md`. Every knob is in `ml/ml_1000bots/tempo_sim/config.py`.
 
 **Follows the team records:**
 
@@ -64,7 +64,7 @@ against the hidden weights. The record's rule remains available as
 Measured 2026-11-11 with `configs/recovery_test_overdue.json` (line) and
 `configs/recovery_test_move.json` (move): 300 clients with one shared weight
 vector, app scheduling with default weights. Raw output is in
-`ml/runs/2026-11-11-first-training/recovery_tests/`.
+`ml/ml_1000bots/runs/2026-11-11-first-training/recovery_tests/`.
 
 | | line | move |
 |---|---|---|
@@ -81,16 +81,16 @@ weights is then meaningless.
 ## Dataset tempo_v1
 
 - Command: `python generate.py --out data/tempo_v1 --config configs/tempo_v1.json`
-  (run in `ml/`).
+  (run in `ml/ml_1000bots/`).
 - Content: 1,000 clients over 180 days; 300 library lines with 4–16 moves for
   the studied side; seed 7.
 - Size: 121,532 rows, of which 97,605 are reviews.
 - Split: 800 train / 200 val clients, split by client.
 - Grade mix: Again 15.3%, Hard 10.1%, Good 59.5%, Easy 15.1%.
-- Storage: `ml/data/tempo_v1/` (38 MB, in Git). Its `MANIFEST.txt` holds the
+- Storage: `ml/ml_1000bots/data/tempo_v1/` (38 MB, in Git). Its `MANIFEST.txt` holds the
   sha256 of every file and of the producing code. Regenerating from that code reproduced all
   seven files byte for byte (checked 2026-11-12).
-- Every parameter is listed in `ml/runs/2026-11-11-first-training/TRAINING_PARAMETERS.md`.
+- Every parameter is listed in `ml/ml_1000bots/runs/2026-11-11-first-training/TRAINING_PARAMETERS.md`.
 
 The grade mix depends strongly on the archetype through the absolute
 500/1800 ms thresholds. In tempo_v1, fast clients got 42.9% Easy and no
@@ -103,7 +103,7 @@ The method is one global FSRS-6 fit with py-fsrs 6.3.2 `Optimizer`, default
 settings, on the 800 train clients. Evaluation predicts pass (grade > 1) for
 clients the fit never saw. The full report, with reproduction commands,
 environment and every attempt, is
-[first training run](../../../ml/runs/2026-11-11-first-training/SUMMARY.md).
+[first training run](../../../ml/ml_1000bots/runs/2026-11-11-first-training/SUMMARY.md).
 
 | tempo_v1 val (200 clients) | log-loss | RMSE(bins) | AUC |
 |---|---|---|---|

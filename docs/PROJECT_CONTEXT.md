@@ -175,10 +175,10 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 - `docs/topics/guide/index.md`: human-facing visual authoring guide.
 - `docs/topics/fsrs-training/fsrs-training.md`: synthetic-client simulator, FSRS training method and results.
 - `docs/topics/opening-library/opening-library.md`: opening library and side classification.
-- `ml/`: synthetic-client simulator and FSRS training code; install and run commands in `ml/README.md`.
-- `ml/openings/`: opening library files and the scripts that classify them.
-- `ml/data/tempo_v1/`: dataset of the first training run; other generated datasets in `ml/data/` are ignored by Git.
-- `ml/runs/`: one folder per training run with its parameters, results and raw outputs.
+- `ml/ml_1000bots/`: synthetic-client simulator and FSRS training code; install and run commands in `ml/ml_1000bots/README.md`.
+- `ml/ml_1000bots/openings/`: opening library files and the scripts that classify them.
+- `ml/ml_1000bots/data/tempo_v1/`: dataset of the first training run; other generated datasets in `ml/ml_1000bots/data/` are ignored by Git.
+- `ml/ml_1000bots/runs/`: one folder per training run with its parameters, results and raw outputs.
 - `docs/open/OPEN.md`: unfinished-work routes.
 - `docs/worklog.md`: append-only chronology.
 - `.build/docs/`: ignored generated output, never source.
