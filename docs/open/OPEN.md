@@ -3,8 +3,10 @@
 Routes only. The linked owner holds the checklist, rationale and evidence.
 
 - Starter adoption: [guide acceptance checklist](../topics/guide/guide.md#acceptance-checklist) owns configuration replacement, kit initialization and integration review.
+- The implemented opening catalog structure (family sides, merged gambits, line tree, learnable subvariations) awaits team confirmation: [opening catalog structure](../topics/opening-catalog/opening-catalog.md#open-questions).
 - Side labels of the opening library await team confirmation: [opening library open questions](../topics/opening-library/opening-library.md#open-questions).
 - Recall per line, extra dataset columns and ML engine start-up proposals await team decisions: [FSRS training open questions](../topics/fsrs-training/fsrs-training.md#open-questions).
+- Retraining both FSRS-6 variants on the cleaned catalog, with true-recall arms, a days metric and dataset removal: [retraining plan](../topics/fsrs-training/retraining-plan.md).
 - [Product to-dos](#product-to-dos) covers forgetting estimates, benchmark metrics, review intervals, the schedule view, repertoire access, and cleaning the opening dataset.
 
 ## Product to-dos
@@ -76,7 +78,7 @@ Routes only. The linked owner holds the checklist, rationale and evidence.
 
 **Details:**
 - Add a permanent entry (navigation tab or button) for the repertoire.
-- List every line the player has learned: opening family, name, ECO code, side (white, black or both), and the moves (`opening_lines` and `player_lines`).
+- List every line the player has learned: opening family, name, ECO code, side (white or black, from `opening_families.family_side`), and the moves (`opening_lines` and `player_lines`).
 - Show the practice status per line: date learned, last review and grade, next review date, and days until forgetting (item 1).
 - Allow search or filtering by opening family, side and status (due, upcoming, not yet learned).
 - From a line, let the player start Learning or Repeating directly through the existing `PracticeController` calls (`start_learning`, `start_repeating`).

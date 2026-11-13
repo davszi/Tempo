@@ -6,6 +6,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from .practice_controller import create_backend
+from .store import LEARNABLE
 
 
 RESPONSE_SECONDS = {"Again": 0.7, "Hard": 2.0, "Good": 0.7, "Easy": 0.3}
@@ -15,7 +16,9 @@ def run_demo(database, weights, expected_grade, side):
     backend = create_backend(database, weights_file=weights)
     player = f"demo_{uuid4().hex[:12]}"
     with backend.store.transaction() as db:
-        lines = db.execute("SELECT line_id, name, moves_uci FROM opening_lines ORDER BY line_id").fetchall()
+        lines = db.execute(
+            f"SELECT line_id, name, moves_uci FROM opening_lines AS o WHERE {LEARNABLE} ORDER BY line_id"
+        ).fetchall()
     line = next((line for line in lines if len(line["moves_uci"].split()) >= 2), None)
     if line is None:
         raise ValueError("The demo needs an imported opening line with moves for both sides")

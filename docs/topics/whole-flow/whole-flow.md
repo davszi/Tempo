@@ -4,7 +4,7 @@ This walkthrough connects the [system architecture](../system-architecture/syste
 
 ## 1. Prepare the opening catalog and weights
 
-The supplied Lichess catalog contains 3,865 opening lines across 140 families. The import converts the PGN moves to UCI and stores them in `opening_lines`, together with names, ECO codes, and the two side classifications. The local demo uses `backend/tempo_demo.sqlite` and loads the supplied 21 FSRS parameters from `backend/fitted_global.csv` at startup.
+The demo catalog holds 2,719 Lichess opening lines in 82 families. Moves are stored in UCI in `opening_lines` with names and ECO codes; `opening_families` holds each family's side. Lines that other lines extend are headings and cannot be learned; see [opening catalog structure](../opening-catalog/opening-catalog.md). The local demo uses `backend/tempo_demo.sqlite` and loads the supplied 21 FSRS parameters from `backend/fitted_global.csv` at startup.
 
 ## 2. Learn, repeat, and schedule
 

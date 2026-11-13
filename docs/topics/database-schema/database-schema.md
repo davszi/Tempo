@@ -4,13 +4,15 @@ TEMPO uses four SQLite tables for opening families, opening lines, practice hist
 
 Opening lines are sourced from the [Lichess chess-openings dataset](https://huggingface.co/datasets/Lichess/chess-openings).
 
+[Opening catalog structure](../opening-catalog/opening-catalog.md) owns why the opening tables have this shape: family sides, merged gambit families, the line tree and which lines can be learned.
+
 ## opening_families (3 fields)
 
 | Field | What it stores |
 |---|---|
 | `family_id` | Unique family ID. Primary key. |
-| `name` | Unique family name, such as Sicilian Defence. |
-| `family_side` | Side traditionally associated with the family, or empty if unknown. |
+| `name` | Unique family name, such as Sicilian Defense. Accepted and Declined lines belong to their gambit's family, such as Queen's Gambit. |
+| `family_side` | Side the family belongs to: `white` or `black`. Required. |
 
 ## opening_lines (6 fields)
 
@@ -18,16 +20,18 @@ One row per opening line. Each line contains moves for both colors.
 
 | Field | What it stores |
 |---|---|
-| `line_id` | Unique opening line ID. Primary key. |
-| `family_id` | Reference to `opening_families.family_id`. One family can have many lines. |
-| `name` | Full name of the opening line. |
+| `line_id` | Unique opening line ID. Primary key. Never reassigned. |
+| `family_id` | Reference to `opening_families.family_id`. One family can have many lines. A line's side is its family's side. |
+| `parent_line_id` | Reference to `opening_lines.line_id`: the longest other line of the same family whose moves start this line. Empty when there is none. |
+| `name` | Full name of the opening line. Several lines can share a name. |
 | `eco` | Lichess opening classification code. Multiple lines can share a code. |
-| `moves_uci` | Unique ordered move sequence for White and Black in UCI notation. |
-| `side_in_games` | Side supported by observed Lichess games. White, Black, Both, or empty when evidence is unavailable. |
+| `moves_uci` | Unique ordered move sequence for White and Black in UCI notation. The line's permanent identity. |
 
-The catalog's family maps to the family name. Convert PGN to UCI before inserting a line. The side labels describe catalog entries and are separate from the side selected for a practice session.
+A line can be learned only when no other line names it as `parent_line_id`. This is derived, not stored; `LEARNABLE` in `backend/store.py` holds the condition. Learning a line that other lines extend is refused, and only learnable lines can join a repertoire. A line already in a player's repertoire stays reviewable if the catalog later gains a longer line.
 
-The backend migrates older catalogs at startup and preserves line IDs and practice references. SQLite rejects duplicate move sequences during migration and rolls the transaction back.
+`Store.add_line` takes moves in UCI; convert PGN first. It inserts a line or, when the moves already exist, updates that line's family, name and ECO code and keeps its `line_id`. A new family needs a side. After every change it recomputes `parent_line_id` for the catalog. The family side is separate from the side selected for a practice session.
+
+When the backend opens an older database, it rebuilds the two opening tables in this layout inside one transaction. It keeps every `line_id` and family ID, folds Accepted and Declined families into their gambit, sets each family's side, drops `side_in_games` and computes `parent_line_id`. Practice history and progress are untouched. The transaction rolls back if any reference would break or a family's side cannot be decided.
 
 ## practice_events (12 fields)
 
