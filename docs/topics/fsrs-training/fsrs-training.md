@@ -14,6 +14,9 @@ The opening lines come from the [opening library](../opening-library/opening-lib
 Status: implemented and measured on synthetic data only. The departures
 listed under [implementation](#implementation) are proposals and have not
 been accepted by the team (see [open questions](#open-questions)).
+The results below were trained on the opening catalog before commit `5cbe0a6`
+removed its short lines; retraining is planned in the
+[retraining plan](retraining-plan.md).
 
 ## Implementation
 

@@ -2,6 +2,12 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## Plan the retraining on the cleaned opening catalog
+
+Added the [retraining plan](topics/fsrs-training/retraining-plan.md) after the opening catalog lost its short lines in `5cbe0a6`. Both variants (`ml/ml_1000bots/`, `ml/ml_300bots/`) are to be retrained on the binary target, gain one true-recall arm each (MSE against the hidden true recall, diagnostic only), report the error in days, and stop holding datasets. Found that the `ml_300bots` generator cannot run: its catalog file `ml/ml_300bots/openings/opening_lines.csv` is not in the repository. Routed from `docs/index.md` and `docs/open/OPEN.md`; probe scripts kept in `docs/topics/fsrs-training/evidence/2026-11-13-probe/`. Nothing was retrained or deleted. Documentation lint reports no new errors; the build check needs Mistune, which is not installed here. The commit hash is assigned by this entry's landing commit.
+
+probed scheduling error in days on `tempo_v1` val agents → first-run global fit schedules a median 0.27 days early (median absolute error 1.30 days, −10.5 days median on lines with a true interval of 30 days or more), default weights +0.04 days; true intervals up to 1,867 days dominate the mean, about 5 minutes.
+
 ## Integrate the browser frontend and fitted FSRS runtime
 
 Combined Zeel's `frontend/` and `backend/` layout with the simulator, opening library, and first training run already on main. Moved the existing SQLite seed byte for byte and used the training run's fitted CSV at `backend/fitted_global.csv`. Excluded installed dependencies and build output. Main advanced to `ce8c46f` during integration. Its database added 78 practice events and six progress rows without changing the catalog or schema. Kept the original tracked seed from `4ef8d43` to exclude those added demo records. Moved the product to-do details into their own record to satisfy strict documentation lint.

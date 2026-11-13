@@ -18,6 +18,7 @@ each action.
 - [Review dataset topic record](topics/review-dataset/record.md): specification for review session CSV schema, FSRS grading function, and human calibration.
 - [Review dataset page source](topics/review-dataset/index.md): visual explanation of session telemetry, grading decision tree, and calibration pipeline.
 - [FSRS training on synthetic clients](topics/fsrs-training/fsrs-training.md): the implemented simulator `ml/ml_1000bots/`, dataset tempo_v1, FSRS-6 training method, results and proposals.
+- [Retraining plan for the cleaned catalog](topics/fsrs-training/retraining-plan.md): retrain both FSRS-6 variants, add true-recall experiment arms and an error metric in days, and remove datasets from the variant folders.
 - [Opening library](topics/opening-library/opening-library.md): real Lichess lines used by the simulator, their classification and White/Black side with evidence from real games.
 - [First training run, 2026-11-11](../ml/ml_1000bots/runs/2026-11-11-first-training/SUMMARY.md): experiment record with parameters, reproduction commands, environment, attempts and raw outputs.
 - [Home source](topics/home/index.md): the optional project-owned landing page.
