@@ -14,7 +14,7 @@ export type VariationGroups<T extends VariationLine> = {
   continuations: T[];
   /** Every other line of the same family, in opening-tree order. */
   others: T[];
-  /** The suggested next line: the shortest unlearned continuation, else the first unlearned line of the family. */
+  /** The suggested next line: the shortest unlearned continuation, else the shortest unlearned line of the family. */
   next: T | null;
 };
 
@@ -32,9 +32,9 @@ export function groupVariations<T extends VariationLine>(lines: T[], current: T)
   const continuations = family.filter((line) => line.moves_uci.startsWith(`${current.moves_uci} `)).sort(treeOrder);
   const extending = new Set(continuations.map((line) => line.line_id));
   const others = family.filter((line) => !extending.has(line.line_id)).sort(treeOrder);
-  const shortestUnlearned = continuations.filter((line) => !line.learned)
+  const shortestUnlearned = (candidates: T[]) => candidates.filter((line) => !line.learned)
     .sort((a, b) => plies(a) - plies(b) || treeOrder(a, b))[0];
-  return { continuations, others, next: shortestUnlearned ?? others.find((line) => !line.learned) ?? null };
+  return { continuations, others, next: shortestUnlearned(continuations) ?? shortestUnlearned(others) ?? null };
 }
 
 /** The moves a continuation adds after the current line, in numbered SAN, for example "3. d4 d6 4. c4". */

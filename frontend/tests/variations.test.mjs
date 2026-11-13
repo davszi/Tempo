@@ -31,7 +31,7 @@ test("continuations extend the current line and the rest of the family is listed
 
 test("when every continuation is learned the next suggestion comes from the other variations", () => {
   const learned = catalog.map((l) => [2, 3, 4].includes(l.line_id) ? { ...l, learned: true } : l);
-  assert.equal(groupVariations(learned, main).next?.opening_family, "Alekhine Defense");
+  assert.equal(groupVariations(learned, main).next?.line_id, 5, "the shortest unlearned other variation is suggested");
   assert.equal(groupVariations(learned, main).continuations.find((l) => !l.learned), undefined);
   const allLearned = learned.map((l) => ({ ...l, learned: true }));
   assert.equal(groupVariations(allLearned, main).next, null);
