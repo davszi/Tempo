@@ -1,53 +1,41 @@
 # TEMPO
 
-TEMPO is a Python and SQLite chess-opening trainer. The local demo walks through Learning, Repeating, and FSRS scheduling using a line from the Lichess catalog.
+TEMPO is a chess opening trainer. Learn a line with hints, then review it from memory. The app uses FSRS to schedule the next review.
 
-## Run the presentation demo
+| Folder | Purpose |
+| --- | --- |
+| `frontend/` | React browser app |
+| `backend/` | Python API, SQLite demo data, and FSRS scheduling |
+| `ml/` | Synthetic-client simulator, Lichess opening library, and [FSRS training](docs/topics/fsrs-training/fsrs-training.md) |
+| `docs/` | Architecture and project documentation |
 
-1. Open PowerShell in the project folder. For a fresh setup, install the dependencies with `python -m pip install -r requirements.txt`.
-2. Run `.\run-demo.cmd`. It starts a fresh demo player, completes both practice modes, and prints the grade, stability, and next review time in UTC.
-3. To show a wrong move and retry, run `.\run-demo.cmd --side black --grade Again`. The other supported grades are `Hard`, `Good`, and `Easy`.
-4. In DB Browser for SQLite, open `demo/tempo_demo.sqlite`. Use **Browse Data** and the printed player ID to locate the saved events in `practice_events` and the schedule in `player_lines`.
+## Run locally
 
-The default demo uses Both sides and simulates a clean `Good` review. Each run records a new demo player in the same database.
+Open two PowerShell windows from the repository root.
 
-## Present the architecture
-
-Open `.build/docs/html/index.html` in a desktop browser and choose **System Architecture**. The local reader covers deployment, practice flow, and the live demo. The playable browser frontend is planned. The walkthrough runs through the Python backend.
-
-To rebuild the docs after the site sources are tracked in Git, use:
+**Backend**
 
 ```powershell
-python -m pip install -r .docs-kit/requirements.txt
-$env:PYTHONUTF8 = '1'
-python .docs-kit/docsite.py build --project .
+python -m pip install -r backend/requirements.txt
+python -m backend.web
 ```
 
-The documentation also has a GitHub Pages workflow. A repository administrator selects **GitHub Actions** as the source under **Settings → Pages**. A push to `main` then builds and checks the generated site before deploying it.
-
-## Project layout
-
-| Path | Purpose |
-|---|---|
-| `tempo/practice_controller.py` | Runs Learning and Repeating sessions and records move attempts. |
-| `tempo/ml_controller.py` | Coordinates the review flow and stores results. |
-| `tempo/ml_engine.py` | Grades reviews and calls Py-FSRS with the configured weights. |
-| `tempo/store.py` | Owns the SQLite schema and transactions. |
-| `tempo/offline/synthetic_clients.py` | Generates synthetic review telemetry for offline training. |
-| `ml/` | Synthetic-client simulator, FSRS training runs, and the opening library ([FSRS training](docs/topics/fsrs-training/fsrs-training.md)). |
-| `demo/` | Local presentation database, supplied weights, and synthetic review CSV. |
-| `docs/` | Documentation source for the system architecture and datasets. |
-
-## Demo data
-
-- `demo/tempo_demo.sqlite` contains 3,865 Lichess opening lines across 140 families and the saved demo sessions.
-- `demo/fitted_global.csv` contains the 21 supplied FSRS weights. The demo reads it at startup.
-- `demo/synthetic_reviews.csv` contains 50,400 sessions from 30 simulated agents on one line per family. It is separate from the training run that produced the supplied weights.
-
-To regenerate the synthetic CSV in an environment with Py-FSRS installed:
+**Frontend**
 
 ```powershell
-python -m tempo.offline.synthetic_clients --database demo/tempo_demo.sqlite --one-line-per-family --clients-per-profile 10 --sessions 12 --seed 42 --output demo/synthetic_reviews.csv
+cd frontend
+npm.cmd ci
+npm.cmd run dev
 ```
 
-The three demo files are local Git-ignored inputs and outputs. A fresh checkout needs copies of them for the presentation.
+Open [Tempo](http://127.0.0.1:5173/). Install dependencies once, then start both servers whenever you want to run the app.
+
+## Terminal demo
+
+From the repository root, run `.\backend\run-demo.cmd` in PowerShell. To demonstrate a wrong move and retry, run `.\backend\run-demo.cmd --side black --grade Again`. The demo prints the grade, stability, next review time in UTC, and player ID. Use that ID to find records in `practice_events` and `player_lines` in `backend/tempo_demo.sqlite`.
+
+The tracked SQLite seed contains 3,865 Lichess lines across 140 opening families. The app loads the 21 fitted FSRS weights from `backend/fitted_global.csv`. The presentation telemetry in `backend/synthetic_reviews.csv` is separate from the training dataset in `ml/data/tempo_v1/`.
+
+The browser app and terminal demo write practice history to the database. To keep the tracked seed pristine, copy it to a scratch location and pass the copy with `--database`.
+
+See the [project documentation](docs/PROJECT_CONTEXT.md) for architecture and documentation build instructions.

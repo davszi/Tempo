@@ -23,7 +23,7 @@ page_css = ["build-sheet.css"]
 
 ## Prepare the catalog and weights
 
-The demo database contains 3,865 Lichess opening lines across 140 families. During import, the PGN sequences were converted to UCI and stored alongside names, ECO codes, and side classifications. The demo loads the 21 supplied weights from `demo/fitted_global.csv` at startup.
+The demo database contains 3,865 Lichess opening lines across 140 families. During import, the PGN sequences were converted to UCI and stored alongside names, ECO codes, and side classifications. The demo loads the 21 supplied weights from `backend/fitted_global.csv` at startup.
 
 See the [system architecture](system-architecture.html) for the component diagram and proposed deployment.
 
@@ -74,12 +74,12 @@ See the [system architecture](system-architecture.html) for the component diagra
 In PowerShell, from the TEMPO repository root:
 
 ```powershell
-.\run-demo.cmd
-.\run-demo.cmd --side black --grade Again
+.\backend\run-demo.cmd
+.\backend\run-demo.cmd --side black --grade Again
 ```
 
-The first command runs a clean Both-side review. The second demonstrates a wrong move and retry. Use the printed player ID to find the run in `demo/tempo_demo.sqlite` with **DB Browser for SQLite**. The terminal prints stability in days and the next review time in UTC. An initial FSRS learning step can make the next review due in minutes.
+The first command runs a clean Both-side review. The second demonstrates a wrong move and retry. Use the printed player ID to find the run in `backend/tempo_demo.sqlite` with **DB Browser for SQLite**. The terminal prints stability in days and the next review time in UTC. An initial FSRS learning step can make the next review due in minutes.
 
-The [Synthetic Clients](synthetic-clients.html) generate recall attempts and timing for offline training. The local `demo/synthetic_reviews.csv` contains 50,400 sessions from 30 simulated agents on one line per opening family. It follows the [Review Dataset](review-dataset.html) format and is separate from the run that produced the fitted weights.
+The [Synthetic Clients](synthetic-clients.html) generate recall attempts and timing for offline training. The local `backend/synthetic_reviews.csv` contains 50,400 sessions from 30 simulated agents on one line per opening family. It follows the [Review Dataset](review-dataset.html) format and is separate from the run that produced the fitted weights.
 
 </section>

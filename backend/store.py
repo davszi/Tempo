@@ -105,6 +105,20 @@ class Store:
                    ORDER BY opening_family, name, line_id"""
             )]
 
+    def learning_catalog(self, player_id):
+        with self.transaction() as db:
+            return [
+                {**dict(row), "learned": bool(row["learned"])}
+                for row in db.execute(
+                    """SELECT o.line_id, o.opening_family, o.name, o.eco, o.moves_uci,
+                              p.line_id IS NOT NULL AS learned
+                       FROM opening_lines AS o
+                       LEFT JOIN player_lines AS p ON p.line_id = o.line_id AND p.player_id = ?
+                       ORDER BY o.opening_family, o.name, o.line_id""",
+                    (player_id,),
+                )
+            ]
+
 
 def add_event(db, player_id, line_id, event_type, mode, at, *, session_id=None,
               side=None, move_index=None, is_correct=None, response_time_ms=None,

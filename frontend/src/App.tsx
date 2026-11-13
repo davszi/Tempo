@@ -1,0 +1,65 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Menu } from "lucide-react";
+import { Dashboard } from "./components/Dashboard";
+import { LearningPage } from "./components/LearningPage";
+import { RepeatingPage } from "./components/RepeatingPage";
+import { Sidebar, MobileBottomNav, ProfileButton, pages } from "./components/Navigation";
+import { TempoLogo } from "./components/TempoLogo";
+import { demoUser } from "./mocks/dashboard";
+import type { Page } from "./types";
+
+function currentPage(): Page {
+  const hash = window.location.hash.slice(1);
+  return pages.find((item) => item.id === hash)?.id ?? "dashboard";
+}
+export default function App() {
+  const [page, setPage] = useState<Page>(currentPage);
+  const [mobileNav, setMobileNav] = useState(false);
+  const main = useRef<HTMLElement>(null);
+  const closeMenu = useCallback(() => setMobileNav(false), []);
+  function navigate(next: Page) {
+    window.location.hash = next;
+    setMobileNav(false);
+  }
+  useEffect(() => {
+    const update = () => {
+      setPage(currentPage());
+      window.scrollTo({ top: 0 });
+      requestAnimationFrame(() => main.current?.focus());
+    };
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+  useEffect(() => {
+    document.title = `TEMPO · ${pages.find((item) => item.id === page)?.label}`;
+  }, [page]);
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 801px)");
+    const closeOnDesktop = () => { if (desktop.matches) setMobileNav(false); };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, []);
+  const destination = pages.find((item) => item.id === page)!;
+  return <div className="app-shell">
+    <a className="skip-link" href="#main-content" onClick={(event) => { event.preventDefault(); main.current?.focus(); }}>Skip to content</a>
+    <Sidebar page={page} onSelect={navigate} username={demoUser.name} open={mobileNav} onClose={closeMenu} />
+    <main ref={main} id="main-content" className="main-area" tabIndex={-1} inert={mobileNav}>
+      <div className="mobile-topbar"><TempoLogo /><div className="mobile-topbar-actions">
+        <ProfileButton username={demoUser.name} active={page === "settings"} onClick={() => navigate("settings")} />
+        <button className="mobile-menu" onClick={() => setMobileNav(true)}
+          aria-label="Open menu" aria-expanded={mobileNav} aria-controls="primary-navigation"><Menu /></button>
+      </div></div>
+      {page === "dashboard" ? <Dashboard username={demoUser.name}
+        onLearn={() => navigate("openings")} onReview={() => navigate("practice")} />
+        : page === "openings" ? <LearningPage />
+        : page === "practice" ? <RepeatingPage />
+        : <div className="page"><header className="page-header"><div><p className="eyebrow">COMING LATER</p>
+          <h1>{destination.label}</h1><p>This section is planned for a future milestone.</p></div></header>
+          <section className="placeholder-card"><destination.icon size={32} aria-hidden="true" />
+            <h2>Account settings</h2>
+            <button className="primary-button" onClick={() => navigate("dashboard")}>Back to dashboard</button>
+          </section></div>}
+    </main>
+    <div inert={mobileNav}><MobileBottomNav page={page} onSelect={navigate} /></div>
+  </div>;
+}

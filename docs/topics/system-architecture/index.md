@@ -93,14 +93,14 @@ For the full walkthrough from catalog import to the saved review, open the [End-
 From the TEMPO repo root in PowerShell, run:
 
 ```powershell
-.\run-demo.cmd
-.\run-demo.cmd --side black --grade Again
+.\backend\run-demo.cmd
+.\backend\run-demo.cmd --side black --grade Again
 ```
 
 The first command runs a clean review using Both sides. The second demonstrates a wrong move and retry. Each prints the player ID, grade, stability in days, and next review time in UTC. An early FSRS learning step can schedule a review in minutes even when estimated stability is measured in days.
 
-Open `demo/tempo_demo.sqlite` in **DB Browser for SQLite**. Use **Browse Data** to find `practice_events` and `player_lines`, then filter by the player ID printed in PowerShell.
+Open `backend/tempo_demo.sqlite` in **DB Browser for SQLite**. Use **Browse Data** to find `practice_events` and `player_lines`, then filter by the player ID printed in PowerShell.
 
-`demo/fitted_global.csv` supplies the FSRS weights at runtime. `demo/synthetic_reviews.csv` contains 50,400 generated review sessions from 30 simulated agents, using one line per opening family. This CSV was generated separately from the training run that produced the supplied weights.
+`backend/fitted_global.csv` supplies the FSRS weights at runtime. `backend/synthetic_reviews.csv` contains 50,400 generated review sessions from 30 simulated agents, using one line per opening family. This CSV was generated separately from the training run that produced the supplied weights.
 
 </section>
