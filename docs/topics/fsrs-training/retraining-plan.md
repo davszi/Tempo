@@ -60,9 +60,16 @@ players have no true recall. They are the one deliberate exception to "Never
 train on `hidden/`" in `ml/ml_1000bots/README.md`, and their weights must
 never be copied to `backend/fitted_global.csv`.
 
-Proposed in this plan and not yet accepted: the metric details (90% target,
-medians, bands), the control arm A1c, folder names, the shared line key and
-the order of work.
+Also decided on 2026-11-13, after the plan was first written:
+
+5. The days metric as defined below: predicted minus true days to 90%,
+   reported as medians and split by interval band and session type.
+6. The control arm A1c stays.
+7. The pass bar for the trainer's recovery test (see
+   [task 4](#task-4-shared-trainer-and-the-b1-b2-and-a1c-arms)).
+
+Proposed in this plan and not yet accepted: folder names, the shared line
+key and the order of work.
 
 ## The arms
 
@@ -72,7 +79,7 @@ the order of work.
 | A2 | `ml_300bots` | 300 clients: 210 fit, 30 validation, 60 test; plus 60 hold-out clients | clean session (grade > 1) | log-loss | L-BFGS-B, `tempo_ml/fsrs/train.py` |
 | B1 | `ml_1000bots` | same agents and data as A1 | true recall `R_true` (`hidden/truth.csv`) | MSE | the shared trainer (see [task 4](#task-4-shared-trainer-and-the-b1-b2-and-a1c-arms)) |
 | B2 | `ml_300bots` | same clients and data as A2 | true chance of a clean session `p_clean` (`ground_truth.csv`) | MSE | `train.py` with the target and loss switched ([task 4](#task-4-shared-trainer-and-the-b1-b2-and-a1c-arms)) |
-| A1c (proposed) | `ml_1000bots` | same as A1 | pass (grade > 1) | log-loss | the shared trainer, same as B1 |
+| A1c | `ml_1000bots` | same as A1 | pass (grade > 1) | log-loss | the shared trainer, same as B1 |
 
 Each arm returns one global set of 21 FSRS-6 weights.
 
@@ -389,8 +396,8 @@ python fit_shared.py <data_dir> <out_dir> --target {pass,true}
 Checks before the real runs:
 
 - **Recovery test.** Generate `configs/recovery_test.json` (300 agents, one
-  shared weight vector) and fit it with `--target true`. Proposed bar (not
-  yet agreed): the identifiable weights (all except w0, w1, w3, w19; see
+  shared weight vector) and fit it with `--target true`. Pass bar (decided
+  2026-11-13): the identifiable weights (all except w0, w1, w3, w19; see
   `fit_global.py`) come back within 10% of `hidden/agents.csv`, and
   `rmse_vs_truth` on val is below 0.005. If not, the trainer or the
   alignment of `R_true` is wrong; stop and report.
