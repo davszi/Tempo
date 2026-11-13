@@ -1,24 +1,33 @@
 # TEMPO database schema
 
-TEMPO uses three SQLite tables for opening lines, practice history, and each player's current repertoire and review schedule.
+TEMPO uses four SQLite tables for opening families, opening lines, practice history, and each player's repertoire and review schedule.
 
 Opening lines are sourced from the [Lichess chess-openings dataset](https://huggingface.co/datasets/Lichess/chess-openings).
 
-## opening_lines (7 fields)
+## opening_families (3 fields)
+
+| Field | What it stores |
+|---|---|
+| `family_id` | Unique family ID. Primary key. |
+| `name` | Unique family name, such as Sicilian Defence. |
+| `family_side` | Side traditionally associated with the family, or empty if unknown. |
+
+## opening_lines (6 fields)
 
 One row per opening line. Each line contains moves for both colors.
 
 | Field | What it stores |
 |---|---|
 | `line_id` | Unique opening line ID. Primary key. |
-| `opening_family` | Opening group shown in the UI, such as Sicilian Defence. |
+| `family_id` | Reference to `opening_families.family_id`. One family can have many lines. |
 | `name` | Full name of the opening line. |
 | `eco` | Lichess opening classification code. Multiple lines can share a code. |
-| `moves_uci` | Full move sequence for White and Black in UCI notation. |
-| `family_side` | Side traditionally associated with the opening family. White, Black, Both, or empty if unknown. |
+| `moves_uci` | Unique ordered move sequence for White and Black in UCI notation. |
 | `side_in_games` | Side supported by observed Lichess games. White, Black, Both, or empty when evidence is unavailable. |
 
-The catalog's family maps to opening_family. Convert pgn to moves_uci before inserting. The side labels describe catalog entries and are separate from the side selected for a practice session.
+The catalog's family maps to the family name. Convert PGN to UCI before inserting a line. The side labels describe catalog entries and are separate from the side selected for a practice session.
+
+The backend migrates older catalogs at startup and preserves line IDs and practice references. SQLite rejects duplicate move sequences during migration and rolls the transaction back.
 
 ## practice_events (12 fields)
 

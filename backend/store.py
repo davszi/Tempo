@@ -1,24 +1,33 @@
-"""SQLite persistence for the three TEMPO tables."""
+"""SQLite persistence for the TEMPO catalog and practice history."""
 
 from contextlib import contextmanager
 from datetime import timezone
 from sqlite3 import Row, connect
 
 
-OPENING_SIDE_COLUMNS = ("family_side", "side_in_games")
 SIDE_VALUES = "('white', 'black', 'both')"
 
-SCHEMA = f"""
-CREATE TABLE IF NOT EXISTS opening_lines (
+FAMILY_SCHEMA = f"""
+CREATE TABLE IF NOT EXISTS opening_families (
+    family_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    family_side TEXT CHECK (family_side IN {SIDE_VALUES})
+)"""
+
+LINE_SCHEMA = f"""
+CREATE TABLE IF NOT EXISTS {{table}} (
     line_id INTEGER PRIMARY KEY,
-    opening_family TEXT NOT NULL,
+    family_id INTEGER NOT NULL REFERENCES opening_families,
     name TEXT NOT NULL,
     eco TEXT NOT NULL,
-    moves_uci TEXT NOT NULL,
-    family_side TEXT CHECK (family_side IN {SIDE_VALUES}),
+    moves_uci TEXT NOT NULL UNIQUE,
     side_in_games TEXT CHECK (side_in_games IN {SIDE_VALUES})
-);
+)"""
 
+SCHEMA = f"""
+{FAMILY_SCHEMA};
+{LINE_SCHEMA.format(table="opening_lines")};
+CREATE INDEX IF NOT EXISTS opening_lines_family ON opening_lines (family_id);
 CREATE TABLE IF NOT EXISTS practice_events (
     event_id INTEGER PRIMARY KEY,
     player_id TEXT NOT NULL,
@@ -60,23 +69,46 @@ class Store:
 
     def __init__(self, path):
         self.path = path
-        with self.transaction() as db:
-            db.executescript(SCHEMA)
-        with self.transaction(write=True) as db:
+        # SQLite table rebuilds require foreign keys off on this connection.
+        # Check all references before committing the rebuild.
+        with self.transaction(write=True, foreign_keys=False) as db:
             columns = {row["name"] for row in db.execute("PRAGMA table_info(opening_lines)")}
-            for column in OPENING_SIDE_COLUMNS:
-                if column not in columns:
-                    db.execute(
-                        f"ALTER TABLE opening_lines ADD COLUMN {column} TEXT "
-                        f"CHECK ({column} IN {SIDE_VALUES})"
-                    )
+            if "opening_family" in columns:
+                self._split_opening_families(db, columns)
+            for statement in SCHEMA.strip().rstrip(";").split(";"):
+                db.execute(statement)
+
+    @staticmethod
+    def _split_opening_families(db, columns):
+        family_side = "family_side" if "family_side" in columns else "NULL"
+        game_side = "o.side_in_games" if "side_in_games" in columns else "NULL"
+        db.execute(FAMILY_SCHEMA)
+        db.execute(f"""
+            INSERT INTO opening_families (name, family_side)
+            SELECT opening_family,
+                   CASE WHEN COUNT(DISTINCT {family_side}) = 1 THEN MAX({family_side}) END
+            FROM opening_lines
+            GROUP BY opening_family
+            ORDER BY opening_family
+        """)
+        db.execute(LINE_SCHEMA.format(table="new_opening_lines"))
+        db.execute(f"""
+            INSERT INTO new_opening_lines (line_id, family_id, name, eco, moves_uci, side_in_games)
+            SELECT o.line_id, f.family_id, o.name, o.eco, o.moves_uci, {game_side}
+            FROM opening_lines AS o
+            JOIN opening_families AS f ON f.name = o.opening_family
+        """)
+        db.execute("DROP TABLE opening_lines")
+        db.execute("ALTER TABLE new_opening_lines RENAME TO opening_lines")
+        if db.execute("PRAGMA foreign_key_check").fetchone():
+            raise ValueError("Opening catalog migration would leave invalid references")
 
     @contextmanager
-    def transaction(self, *, write=False):
+    def transaction(self, *, write=False, foreign_keys=True):
         db = connect(self.path)
         db.row_factory = Row
         try:
-            db.execute("PRAGMA foreign_keys = ON")
+            db.execute("PRAGMA foreign_keys = ON" if foreign_keys else "PRAGMA foreign_keys = OFF")
             with db:
                 if write:
                     db.execute("BEGIN IMMEDIATE")
@@ -89,20 +121,31 @@ class Store:
         if not moves:
             raise ValueError("An opening line must contain at least one move")
         with self.transaction(write=True) as db:
+            db.execute(
+                """INSERT INTO opening_families (name, family_side) VALUES (?, ?)
+                   ON CONFLICT(name) DO UPDATE SET
+                       family_side = COALESCE(opening_families.family_side, excluded.family_side)""",
+                (opening_family, family_side),
+            )
+            family_id = db.execute(
+                "SELECT family_id FROM opening_families WHERE name = ?", (opening_family,)
+            ).fetchone()["family_id"]
             cursor = db.execute(
                 """INSERT INTO opening_lines (
-                       opening_family, name, eco, moves_uci, family_side, side_in_games
-                   ) VALUES (?, ?, ?, ?, ?, ?)""",
-                (opening_family, name, eco, " ".join(moves), family_side, side_in_games),
+                       family_id, name, eco, moves_uci, side_in_games
+                   ) VALUES (?, ?, ?, ?, ?)""",
+                (family_id, name, eco, " ".join(moves), side_in_games),
             )
             return cursor.lastrowid
 
     def list_lines(self):
         with self.transaction() as db:
             return [dict(row) for row in db.execute(
-                """SELECT line_id, opening_family, name, eco, family_side, side_in_games
-                   FROM opening_lines
-                   ORDER BY opening_family, name, line_id"""
+                """SELECT o.line_id, f.name AS opening_family, o.name, o.eco,
+                          f.family_side, o.side_in_games
+                   FROM opening_lines AS o
+                   JOIN opening_families AS f USING (family_id)
+                   ORDER BY f.name, o.name, o.line_id"""
             )]
 
     def learning_catalog(self, player_id):
@@ -110,11 +153,12 @@ class Store:
             return [
                 {**dict(row), "learned": bool(row["learned"])}
                 for row in db.execute(
-                    """SELECT o.line_id, o.opening_family, o.name, o.eco, o.moves_uci,
+                    """SELECT o.line_id, f.name AS opening_family, o.name, o.eco, o.moves_uci,
                               p.line_id IS NOT NULL AS learned
                        FROM opening_lines AS o
+                       JOIN opening_families AS f USING (family_id)
                        LEFT JOIN player_lines AS p ON p.line_id = o.line_id AND p.player_id = ?
-                       ORDER BY o.opening_family, o.name, o.line_id""",
+                       ORDER BY f.name, o.name, o.line_id""",
                     (player_id,),
                 )
             ]
