@@ -119,7 +119,10 @@ def read_lines(database, *, one_line_per_family=False):
     uri = database.resolve().as_uri() + "?mode=ro"
     with closing(connect(uri, uri=True)) as db:
         lines = db.execute(
-            "SELECT line_id, name, moves_uci, opening_family FROM opening_lines ORDER BY line_id"
+            """SELECT o.line_id, o.name, o.moves_uci, f.name
+               FROM opening_lines AS o
+               JOIN opening_families AS f USING (family_id)
+               ORDER BY o.line_id"""
         ).fetchall()
     names = Counter(name for _, name, _, _ in lines)
     if one_line_per_family:
