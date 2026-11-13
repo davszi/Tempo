@@ -5,7 +5,7 @@ Routes only. The linked owner holds the checklist, rationale and evidence.
 - Starter adoption: [guide acceptance checklist](../topics/guide/guide.md#acceptance-checklist) owns configuration replacement, kit initialization and integration review.
 - Side labels of the opening library await team confirmation: [opening library open questions](../topics/opening-library/opening-library.md#open-questions).
 - Recall per line, extra dataset columns and ML engine start-up proposals await team decisions: [FSRS training open questions](../topics/fsrs-training/fsrs-training.md#open-questions).
-- [Product to-dos](#product-to-dos) covers forgetting estimates, benchmark metrics, review intervals, the schedule view, and repertoire access.
+- [Product to-dos](#product-to-dos) covers forgetting estimates, benchmark metrics, review intervals, the schedule view, repertoire access, and cleaning the opening dataset.
 
 ## Product to-dos
 
@@ -83,5 +83,18 @@ Routes only. The linked owner holds the checklist, rationale and evidence.
 - Lines available but not yet learned (`list_lines`) should be shown separately so the player can add them.
 
 **Done when:** the repertoire opens from any screen, lists all learned and available lines with their status, and practice can be started from it.
+
+### 6. Clean the opening dataset
+
+**Goal:** the opening library holds only lines long enough to be worth training, with every line of 3 moves or less removed.
+
+**Details:**
+- Source: `ml/ml_1000bots/openings/lichess_openings.tsv` (3,865 lines) and the derived `lichess_openings_classified.csv`, which `ml/ml_1000bots/openings/classify.py` writes.
+- "3 moves or less" means 3 full moves or fewer (the `white_moves` column is 3 or less), which removes 1,146 lines. Counted in half-moves (`plies` column is 3 or less) it would remove only 269. Confirm the definition before deleting.
+- Filter in `classify.py` (or a separate cleaning step) rather than editing the TSV by hand, so the library can be rebuilt from the Lichess source. Record the rule and the new line count and sha256 in the [opening library record](../topics/opening-library/opening-library.md).
+- The simulator already draws only lines with 4 to 16 player moves (`user_moves` in `ml/ml_1000bots/tempo_sim/config.py`), so dataset `tempo_v1` contains no short lines and does not need regenerating.
+- Check that `frontend/src/data/openings.ts` and the demo database contain no short lines either.
+
+**Done when:** no line of 3 moves or less remains in the library files, the filter is reproducible from the script, and the opening library record states the rule and the new counts.
 
 **Note:** the React frontend in `frontend/` supports Learning and Repeating. Items 4 and 5 cover the schedule and repertoire views.
