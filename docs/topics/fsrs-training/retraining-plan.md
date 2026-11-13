@@ -70,9 +70,9 @@ the order of work.
 |---|---|---|---|---|---|
 | A1 | `ml_1000bots` | 1,000 agents: 800 train, 200 val; plus 200 control agents | pass (grade > 1) | log-loss | py-fsrs 6.3.2 `Optimizer`, as in the first run |
 | A2 | `ml_300bots` | 300 clients: 210 fit, 30 validation, 60 test; plus 60 hold-out clients | clean session (grade > 1) | log-loss | L-BFGS-B, `tempo_ml/fsrs/train.py` |
-| B1 | `ml_1000bots` | same agents and data as A1 | true recall `R_true` (`hidden/truth.csv`) | MSE | new code: L-BFGS-B over a replay of `tempo_sim/fsrs6.py` |
-| B2 | `ml_300bots` | same clients and data as A2 | true chance of a clean session `p_clean` (`ground_truth.csv`) | MSE | `train.py` with the objective swapped |
-| A1c (proposed) | `ml_1000bots` | same as A1 | pass (grade > 1) | log-loss | the B1 trainer |
+| B1 | `ml_1000bots` | same agents and data as A1 | true recall `R_true` (`hidden/truth.csv`) | MSE | the shared trainer (see [task 4](#task-4-shared-trainer-and-the-b1-b2-and-a1c-arms)) |
+| B2 | `ml_300bots` | same clients and data as A2 | true chance of a clean session `p_clean` (`ground_truth.csv`) | MSE | `train.py` with the target and loss switched ([task 4](#task-4-shared-trainer-and-the-b1-b2-and-a1c-arms)) |
+| A1c (proposed) | `ml_1000bots` | same as A1 | pass (grade > 1) | log-loss | the shared trainer, same as B1 |
 
 Each arm returns one global set of 21 FSRS-6 weights.
 
@@ -184,6 +184,9 @@ records its generation command, seed and file hashes.
 
 ## Order of work
 
+Summary; the [implementation guide](#implementation-guide-for-agents) has
+the files, commands and checks for each step.
+
 1. **Clean up.** Remove the datasets listed above and update the ignore rules,
    the README files and [FSRS training](fsrs-training.md) where they point at
    committed data.
@@ -204,6 +207,244 @@ records its generation command, seed and file hashes.
    `ml/ml_300bots/ml_engine/experiments/fsrs-synthetic-v2/`, each with a
    summary, reproduction commands, environment and raw outputs. Update the
    results in [FSRS training](fsrs-training.md) and add a worklog entry.
+
+## Implementation guide for agents
+
+Each task below names its files, what to build, and when it is done. Do them
+in order; each task's checks must pass before the next starts. Paths are
+relative to the repository root. Before changing code, read
+`.docs-kit/rules/engineering/code.md`; before running the experiments, read
+`.docs-kit/rules/experiments/workflow.md`.
+
+Rules for every task:
+
+- Never use `hidden/truth.csv`, `hidden/agents.csv` or `ground_truth.csv`
+  in A runs. B runs may read them for **training players only**.
+- Evaluation players (1000: val and control; 300: test and hold-out) are
+  never used for training or for picking settings.
+- Do not change `backend/tempo_demo.sqlite`; open it read-only
+  (`sqlite3.connect(Path(p).resolve().as_uri() + "?mode=ro", uri=True)`).
+- Do not commit generated data. Commit code, tests, run records and small
+  result files.
+
+### Task 1: remove the datasets
+
+- Delete the paths in [remove datasets](#remove-datasets-from-the-variant-folders),
+  except the `openings/` files (open question).
+- `ml/ml_1000bots/.gitignore`: remove the `!data/tempo_v1/` line.
+- Add an ignore rule for `ml/ml_300bots/ml_engine/experiments/*/data/*.csv`
+  and `.../holdout_data/*.csv`; keep the `manifest.json` files.
+- Update every text that says the data is in Git: `ml/ml_1000bots/README.md`,
+  `README.md` (line about `ml/data/tempo_v1/`),
+  [FSRS training](fsrs-training.md) "Dataset tempo_v1", and
+  `runs/2026-11-11-first-training/SUMMARY.md` "Inputs" (say the data is at
+  commit `5cbe0a6`, hashes in `dataset_MANIFEST.txt`).
+- Done when: `git ls-files ml | grep -E 'data/.*\.csv$'` prints nothing, and
+  no README or record says a deleted file is in the repository.
+
+### Task 2: read the catalog from the backend
+
+Write one small reader per variant (no shared module between the variants):
+
+```sql
+SELECT l.line_id, l.name, l.eco, l.moves_uci, l.side_in_games,
+       f.name AS family, f.family_side
+FROM opening_lines AS l JOIN opening_families AS f USING (family_id)
+ORDER BY l.line_id
+```
+
+Derived values: `plies = len(moves_uci.split())`,
+`white_moves = (plies + 1) // 2`, `black_moves = plies // 2`.
+
+- `ml_1000bots`: in `tempo_sim/config.py` replace `openings_file` by
+  `catalog_db = "../../backend/tempo_demo.sqlite"` (relative to
+  `ml/ml_1000bots/`). In `tempo_sim/play.py`, `_library_catalogue` reads the
+  query above instead of the CSV; the moves the player must produce are
+  counted from `plies` and the side from `family_side` as today. Line IDs
+  become `f"line_{line_id}"` with the backend `line_id`.
+- `ml_300bots`: in `tempo_ml/openings.py` replace `DEFAULT_LINES_CSV` by the
+  database path (`Path(__file__).resolve().parents[5] / "backend" / "tempo_demo.sqlite"`;
+  `parents[5]` of `ml/ml_300bots/ml_engine/src/tempo_ml/openings.py` is the
+  repository root) and let `load_opening_lines` read the query. `line_id` becomes
+  the backend `line_id` as a string. `family_games` has no source: set it to
+  0 (uniform family choice) until the [open question](#open-questions) is
+  decided, and say so in the run record.
+- Update the tests that build lines from a CSV
+  (`ml/ml_300bots/ml_engine/tests/`) to use a tiny temporary SQLite file
+  with the two tables.
+- Done when: both test suites pass (`python -m pytest tests/` in
+  `ml/ml_1000bots/`: 21 tests; `python -m pytest` in
+  `ml/ml_300bots/ml_engine/`: 34 tests, plus any new ones), and a small
+  generation run (`generate.py` with a config setting `"n_agents": 10`;
+  `generate --clients-per-archetype 2`)
+  only uses lines that exist in the backend catalog.
+
+### Task 3: metrics
+
+Add to both variants, with the same names and units:
+
+| Name in output | Formula | Unit |
+|---|---|---|
+| `rmse_vs_truth` | `sqrt(mean((p - p_true)^2))` | probability (report × 100 as percentage points) |
+| `mae_vs_truth` | `mean(abs(p - p_true))` | probability |
+| `brier` | `mean((p - y)^2)` | probability² |
+| `rmse_bins` | as `tempo_sim/evaluate.py` `metrics()`, 20 bins | probability |
+| `days_*` | see [days metric](#days-metric) | days, % |
+
+`p_true` is `R_true` (1000) or `p_clean` (300) for the same review.
+
+Days metric, step by step:
+
+1. Add a function that returns the model's stability **after** every
+   session: in `ml_300bots`, `fsrs/model.py` gets
+   `predict_states(w, t, g, valid) -> (r, s_after)`, a copy of `predict`
+   that also stores `s` after each step (including step 0). `predict` stays
+   unchanged.
+2. `d_pred = s_after` (FSRS-6 reaches 90% exactly at `t = S`).
+3. `d_true`:
+   - 1000: `S_after` from `hidden/truth.csv`, joined by `review_id`.
+   - 300: `S = stability_after`, `M = num_moves` (both `ground_truth.csv`,
+     same row as `sessions.csv`), `C` from `clients.csv` by `agent_name`;
+     `F = 0.9**(-1/C) - 1`; `d_true = S / F * ((0.9**(1/M))**(-1/C) - 1)`.
+4. Use every session of an evaluation player, learning sessions included;
+   drop sessions where `d_true` is missing.
+5. Output keys: `days_median_error`, `days_median_abs_error`,
+   `days_median_rel_error`, `days_share_too_early`, `days_mean_error`,
+   `days_n_beyond_horizon` (`d_true > 180`), and the same first three per
+   band `lt7`, `7to30`, `ge30` and per session type `after_learning`,
+   `after_review`.
+
+Put the 1000 version in `tempo_sim/evaluate.py` (new function
+`days_error(reviews, truth, weights_for)`) and print it from `fit_global.py`;
+put the 300 version in `tempo_ml/fsrs/train.py` `metrics()` (new optional
+arguments) so that `train.py` and `benchmark.py` both report it.
+
+Tests (new):
+
+- `d_true` with `M = 1` equals `S`.
+- Scoring a model against data generated from its own weights gives
+  `days_median_abs_error == 0` (1000: run `replay` with the true weights).
+- `rmse_vs_truth` is 0 when `p == p_true`.
+
+Done when: the tests pass and `fit_global.py` on a 50-agent dataset prints
+all keys above.
+
+### Task 4: shared trainer and the B1, B2 and A1c arms
+
+One trainer serves B1, B2 and A1c: the vectorised FSRS-6 model and bounded
+L-BFGS-B fit that already exist in `ml_300bots`
+(`tempo_ml/fsrs/model.py` `predict`, bounds `LOWER_BOUNDS`/`UPPER_BOUNDS`;
+`tempo_ml/fsrs/train.py` `fit`). Do not replay `tempo_sim/fsrs6.py` review
+by review: with finite-difference gradients that is 22 full replays per
+optimizer step and takes hours.
+
+**Generalise the objective** in `train.py`:
+
+```python
+def objective(w, cards, mask, target, loss="bce", prior=None, lam=0.0):
+    p = predict(w, cards.t, cards.g, cards.valid)
+    if loss == "bce":
+        value = bce(p[mask], target[mask]).mean()
+    elif loss == "mse":
+        value = np.mean((p[mask] - target[mask]) ** 2)
+    ...  # prior term unchanged
+```
+
+`fit()` passes `target` and `loss` through. Default `target=cards.y`,
+`loss="bce"`, so A2 runs exactly as before. Add
+`--target {pass,true}` to `train.py`. `pass` uses `cards.y` with
+`bce`; `true` uses `p_clean` aligned with `cards.row` (as `truth_all` is
+today) with `mse`. That is B2.
+
+**1000-agent loader** for the shared trainer, new file
+`ml/ml_1000bots/tempo_sim/cards.py`:
+
+- `load_cards_1000(data_dir, agents) -> Cards` builds the same arrays as
+  `tempo_ml/fsrs/data.py` `load_cards`, from `reviews.csv`.
+- Key a card by `(agent_name, line_id)`, **not** by opening name: 688 names
+  repeat in the catalog.
+- Sort by `agent_name, line_id, day, review_id`. `t` = `t_days`, `g` =
+  `grade`. Loss mask = review status `review` or `relearning` and `t >= 1`.
+- Also return `review_id` per cell (`-1` where empty), to join `R_true` from
+  `hidden/truth.csv`.
+
+**1000-agent fit script**, new file `ml/ml_1000bots/fit_shared.py`:
+
+```
+python fit_shared.py <data_dir> <out_dir> --target {pass,true}
+```
+
+- Imports `tempo_ml.fsrs.model` and `tempo_ml.fsrs.train.fit`. Install the
+  300 package once with `pip install -e ../ml_300bots/ml_engine[train]` and
+  add `scipy` to `ml/ml_1000bots/requirements.txt`.
+- Trains on the train agents of `split.csv` only. `--target pass` is A1c
+  (`y = grade > 1`, `bce`); `--target true` is B1 (`R_true`, `mse`).
+- Start from the default FSRS-6 weights, L-BFGS-B within the FSRS bounds,
+  `maxiter=300`, `eps=1e-6` (the settings of `train.py`).
+- Writes `fitted_<target>.csv` (columns `w0..w20`, like `fitted_global.csv`)
+  and `fit_<target>.txt` with the optimizer result and the metrics of task 3
+  on val agents, computed with `tempo_sim.evaluate.replay` so the numbers
+  are comparable with A1.
+
+Checks before the real runs:
+
+- **Recovery test.** Generate `configs/recovery_test.json` (300 agents, one
+  shared weight vector) and fit it with `--target true`. Proposed bar (not
+  yet agreed): the identifiable weights (all except w0, w1, w3, w19; see
+  `fit_global.py`) come back within 10% of `hidden/agents.csv`, and
+  `rmse_vs_truth` on val is below 0.005. If not, the trainer or the
+  alignment of `R_true` is wrong; stop and report.
+- **Same model.** On 100 random cards, `tempo_ml.fsrs.model.predict` and
+  `tempo_sim.evaluate.replay` give the same predictions to 1e-9 for the same
+  weights.
+- **Unit test.** With `target == predict(w)` the `mse` objective is 0 at `w`.
+
+Expected run time: about 5 minutes per fit on a laptop (the 300-client
+general fit took 279 s on 62,053 reviews).
+
+### Task 5: generate data
+
+- 1000: new config `ml/ml_1000bots/configs/tempo_v2.json` = `tempo_v1.json`
+  plus the backend catalog. Run
+  `python generate.py --out data/tempo_v2 --config configs/tempo_v2.json`,
+  and the control set as `experiments/shift_benchmark.py --control` does
+  (seed 2000).
+- 300: `python -m tempo_ml.synthetic_data.generate --out experiments/fsrs-synthetic-v2/data --seed 20261111`
+  and `--out experiments/fsrs-synthetic-v2/holdout_data --seed 20261112 --clients-per-archetype 20`.
+- Copy each `MANIFEST.txt` / `manifest.json` into the run folder.
+- Done when: the data folders are git-ignored and the run folders hold the
+  manifests.
+
+### Task 6: train and evaluate
+
+| Arm | Command (from the variant folder) |
+|---|---|
+| A1 | `python fit_global.py data/tempo_v2 runs/<date>-cleaned-catalog/binary` |
+| A1c | `python fit_shared.py data/tempo_v2 runs/<date>-cleaned-catalog/shared --target pass` |
+| B1 | `python fit_shared.py data/tempo_v2 runs/<date>-cleaned-catalog/shared --target true` |
+| A2 | `python -m tempo_ml.fsrs.train --data experiments/fsrs-synthetic-v2/data --out experiments/fsrs-synthetic-v2/results-binary --seed 7 --target pass --no-personalise` |
+| B2 | same with `--out .../results-true-recall --target true` |
+
+Then score every arm and the baselines on the second evaluation set: the
+1000 control agents with `experiments/shift_benchmark.py --control`, the 300
+hold-out clients with `python -m tempo_ml.fsrs.benchmark`. Both must report
+the task 3 metrics. `train.py` always runs its personalisation step; add a
+`--no-personalise` flag and use it for A2 and B2, since per-player tuning is
+not part of these arms.
+
+### Task 7: record
+
+- One `SUMMARY.md` per run folder: question, kind, baseline, commands,
+  environment (Python and package versions, OS, CPU), source commit, data
+  hashes, a results table per evaluation set with every task 3 metric for
+  every arm and baseline, attempts and failures, caveats.
+- Update [FSRS training](fsrs-training.md) "Training and results" with the
+  new numbers. Keep the old tables, labelled as historical results on the
+  old catalog.
+- Add a worklog entry. Delete this plan's line in `docs/open/OPEN.md` when
+  every task is done.
+- Do not change `backend/fitted_global.csv` until the team answers the
+  first [open question](#open-questions).
 
 ## Experiment protocol
 
