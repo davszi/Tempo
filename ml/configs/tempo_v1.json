@@ -1,4 +1,0 @@
-{
-  "_comment": "Final dataset v1: team-spec clients (3 archetypes), real openings, 1000 agents. Generate once into data/tempo_v1 and do not change it; any model change means a new version.",
-  "n_agents": 1000
-}
