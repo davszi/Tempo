@@ -4,7 +4,7 @@ This walkthrough connects the [system architecture](../system-architecture/syste
 
 ## 1. Prepare the opening catalog and weights
 
-The supplied Lichess catalog contains 3,865 opening lines across 140 families. The import converts the PGN moves to UCI and stores them in `opening_lines`, together with names, ECO codes, and the two side classifications. The local demo uses `demo/tempo_demo.sqlite` and loads the supplied 21 FSRS parameters from `demo/fitted_global.csv` at startup.
+The supplied Lichess catalog contains 3,865 opening lines across 140 families. The import converts the PGN moves to UCI and stores them in `opening_lines`, together with names, ECO codes, and the two side classifications. The local demo uses `backend/tempo_demo.sqlite` and loads the supplied 21 FSRS parameters from `backend/fitted_global.csv` at startup.
 
 ## 2. Learn, repeat, and schedule
 
@@ -18,12 +18,12 @@ The supplied Lichess catalog contains 3,865 opening lines across 140 families. T
 From the repository root in PowerShell:
 
 ```powershell
-.\run-demo.cmd
-.\run-demo.cmd --side black --grade Again
+.\backend\run-demo.cmd
+.\backend\run-demo.cmd --side black --grade Again
 ```
 
-The first command simulates a clean Both-side review. The second simulates a wrong move and retry. Both print a fresh player ID, grade, stability, and next review time in UTC. Open `demo/tempo_demo.sqlite` in DB Browser for SQLite and filter `practice_events` and `player_lines` by that player ID. The browser frontend is planned. The runnable demo uses PowerShell and the Python backend.
+The first command simulates a clean Both-side review. The second simulates a wrong move and retry. Both print a fresh player ID, grade, stability, and next review time in UTC. Open `backend/tempo_demo.sqlite` in DB Browser for SQLite and filter `practice_events` and `player_lines` by that player ID. The terminal demo runs independently of the browser frontend.
 
 ## 4. Generate offline training data
 
-The [synthetic clients](../synthetic-clients/record.md) use the opening catalog to simulate recall and timing. The demo dataset in `demo/synthetic_reviews.csv` contains 50,400 sessions from 30 agents on 140 representative opening lines. The generator reads the catalog without adding synthetic practice events to SQLite. The supplied fitted weights came from a separate training run. The local app consumes the weights CSV, while model fitting runs offline.
+The [synthetic clients](../synthetic-clients/record.md) use the opening catalog to simulate recall and timing. The demo dataset in `backend/synthetic_reviews.csv` contains 50,400 sessions from 30 agents on 140 representative opening lines. The generator reads the catalog without adding synthetic practice events to SQLite. The supplied fitted weights came from a separate training run. The local app consumes the weights CSV, while model fitting runs offline.
