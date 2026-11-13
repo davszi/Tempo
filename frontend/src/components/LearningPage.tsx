@@ -47,11 +47,18 @@ export function LearningPage() {
     }
   }
 
-  if (session) return <PracticeSession initial={session} learning
-    onRestart={() => open(session.line_id)}
-    onComplete={() => setCatalog((previous) => previous.map((line) =>
-      line.line_id === session.line_id ? { ...line, learned: true } : line))}
-    onExit={() => setSession(undefined)} />;
+  if (session) {
+    const currentLine = catalog.find((line) => line.line_id === session.line_id);
+    const familyLines = currentLine ? catalog.filter((line) => line.opening_family === currentLine.opening_family &&
+      (side === "white" || line.moves_uci.includes(" "))) : undefined;
+    return <PracticeSession key={session.session_id} initial={session} learning
+      currentLine={currentLine} familyLines={familyLines}
+      onChooseVariation={async (lineId) => setSession(await open(lineId))}
+      onRestart={() => open(session.line_id)}
+      onComplete={() => setCatalog((previous) => previous.map((line) =>
+        line.line_id === session.line_id ? { ...line, learned: true } : line))}
+      onExit={() => setSession(undefined)} />;
+  }
 
   return <div className="page learning-page">
     <header className="learning-page-heading"><p className="eyebrow">LEARNING MODE</p>

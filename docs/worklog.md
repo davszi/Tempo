@@ -2,6 +2,10 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## Learning mode: opening variations panel and drag-and-drop moves
+
+On 2026-11-13, on the shared frontend branch `feature/frontend-learning`, the guided Learning session gained a Variations panel beside the board. It lists the lines of the same opening family from the catalog: first the lines that continue the current line, with the moves each one adds, then the other variations in opening-tree order. Learned lines are marked, the shortest unlearned continuation is marked as the suggested next line, and choosing any line starts a Learning session for it with the same side; the completion card offers the suggestion as "Learn next". Pieces can now also be dragged with a mouse or finger and dropped on the destination square; clicking a piece and then a square still works, and only the side to move can be picked up. The grouping logic lives in `frontend/src/lib/variations.ts`. Checks: `npm test` passed 7 tests (4 new for the variation grouping and move numbering), `npm run build` passed, and a browser check at 1440 by 900 against the local backend dragged e2-e4 in Alekhine Defense, clicked e4-e5, switched to the Four Pawns Attack from the panel, and saw a dragged wrong move answered with "Try again". The commit hash is assigned by this entry's landing commit.
+
 ## Integrate the browser frontend and fitted FSRS runtime
 
 Combined Zeel's `frontend/` and `backend/` layout with the simulator, opening library, and first training run already on main. Moved the existing SQLite seed byte for byte and used the training run's fitted CSV at `backend/fitted_global.csv`. Excluded installed dependencies and build output. Main advanced to `ce8c46f` during integration. Its database added 78 practice events and six progress rows without changing the catalog or schema. Kept the original tracked seed from `4ef8d43` to exclude those added demo records. Moved the product to-do details into their own record to satisfy strict documentation lint.
