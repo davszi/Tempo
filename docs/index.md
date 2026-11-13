@@ -10,6 +10,7 @@ each action.
 - [Frontend dashboard](topics/frontend/frontend.md): scope, design source, component ownership and validation.
 - [TEMPO end-to-end flow](topics/whole-flow/whole-flow.md) connects the catalog, practice, scheduling, and offline data.
 - [TEMPO database schema](topics/database-schema/database-schema.md) describes opening lines, practice events, and player progress.
+- [Opening catalog structure](topics/opening-catalog/opening-catalog.md): accepted, not yet implemented changes to opening families and lines, with their rationale.
 - [TEMPO system architecture](topics/system-architecture/system-architecture.md) covers component data flow, practice modes, and review scheduling.
 - [Starter topic record](topics/guide/guide.md): architecture, ownership and adoption acceptance.
 - [Visual guide source](topics/guide/index.md): the registered human-facing authoring example.

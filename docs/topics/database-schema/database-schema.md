@@ -4,6 +4,8 @@ TEMPO uses four SQLite tables for opening families, opening lines, practice hist
 
 Opening lines are sourced from the [Lichess chess-openings dataset](https://huggingface.co/datasets/Lichess/chess-openings).
 
+This record describes the schema as implemented. Accepted changes to the opening tables that have not landed yet are in [opening catalog structure](../opening-catalog/opening-catalog.md).
+
 ## opening_families (3 fields)
 
 | Field | What it stores |

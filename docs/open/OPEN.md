@@ -3,6 +3,7 @@
 Routes only. The linked owner holds the checklist, rationale and evidence.
 
 - Starter adoption: [guide acceptance checklist](../topics/guide/guide.md#acceptance-checklist) owns configuration replacement, kit initialization and integration review.
+- Opening catalog restructure (family sides, merged gambits, line tree, learnable subvariations) awaits team confirmation and implementation: [opening catalog structure](../topics/opening-catalog/opening-catalog.md#open-questions).
 - Side labels of the opening library await team confirmation: [opening library open questions](../topics/opening-library/opening-library.md#open-questions).
 - Recall per line, extra dataset columns and ML engine start-up proposals await team decisions: [FSRS training open questions](../topics/fsrs-training/fsrs-training.md#open-questions).
 - Retraining both FSRS-6 variants on the cleaned catalog, with true-recall arms, a days metric and dataset removal: [retraining plan](../topics/fsrs-training/retraining-plan.md).

@@ -128,3 +128,10 @@ Run on 2026-11-11 with Python 3.13.3 and python-chess 1.11.2:
   - Benko Gambit Declined.
 - Whether the app uses `family_side` alone or with `side_in_games`, as in
   the suggested filter above.
+
+A catalog design review on 2026-11-13 proposed answers to these questions,
+pending team confirmation: Queen's Gambit white, Benko Gambit black, Four
+Knights Game white, Accepted/Declined merged into their gambit, and
+`family_side` alone, with `side_in_games` removed from the backend catalog.
+[Opening catalog structure](../opening-catalog/opening-catalog.md#decisions)
+owns those decisions and their rationale.
