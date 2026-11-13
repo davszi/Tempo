@@ -41,6 +41,9 @@ class PracticeController:
     def list_lines(self):
         return self.store.list_lines()
 
+    def learning_catalog(self, player_id):
+        return self.store.learning_catalog(player_id)
+
     def start_learning(self, player_id, line_id, side):
         with self.lock:
             return self._open_line(player_id, line_id, "learning", side)
@@ -110,6 +113,7 @@ class PracticeController:
             "side": session.side,
             "available_sides": PracticeController._available_sides(session),
             "move_index": index,
+            "total_plies": len(session.moves),
             "played_moves": list(session.moves[:index]),
             "hint": session.moves[index] if session.mode == "learning" and not complete else None,
         }

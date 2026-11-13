@@ -135,7 +135,7 @@ Conclusions, scoped to these synthetic clients:
   construction and the results are optimistic. Real players are not FSRS-6.
 - The fitted weights describe synthetic clients. They show that the method
   works and must not ship as real-player weights; retrain on real data.
-  `demo/fitted_global.csv`, read by the presentation demo, is a byte-identical
+  `backend/fitted_global.csv`, read by the web and terminal demos, is a byte-identical
   copy of these weights (checked 2026-11-12).
 - The size of the gain depends on how far the synthetic population sits from
   the defaults, which is set by the archetype C values.

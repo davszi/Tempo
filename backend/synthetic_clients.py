@@ -12,7 +12,7 @@ from random import Random
 from sqlite3 import connect
 from tempfile import NamedTemporaryFile
 
-from ..ml_engine import MLEngine
+from .ml_engine import MLEngine
 
 
 CSV_FIELDS = (
