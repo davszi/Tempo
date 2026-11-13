@@ -34,7 +34,7 @@ Open [Tempo](http://127.0.0.1:5173/). Install dependencies once, then start both
 
 From the repository root, run `.\backend\run-demo.cmd` in PowerShell. To demonstrate a wrong move and retry, run `.\backend\run-demo.cmd --side black --grade Again`. The demo prints the grade, stability, next review time in UTC, and player ID. Use that ID to find records in `practice_events` and `player_lines` in `backend/tempo_demo.sqlite`.
 
-The tracked SQLite seed contains 3,865 Lichess lines across 140 opening families. The app loads the 21 fitted FSRS weights from `backend/fitted_global.csv`. The presentation telemetry in `backend/synthetic_reviews.csv` is separate from the training dataset in `ml/data/tempo_v1/`.
+The tracked SQLite seed contains 2,719 Lichess lines across 91 opening families. Each line reaches at least White's fourth move. The app loads the 21 fitted FSRS weights from `backend/fitted_global.csv`. The presentation telemetry in `backend/synthetic_reviews.csv` is separate from the training dataset in `ml/data/tempo_v1/`.
 
 The browser app and terminal demo write practice history to the database. To keep the tracked seed pristine, copy it to a scratch location and pass the copy with `--database`.
 

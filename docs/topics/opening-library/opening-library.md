@@ -28,8 +28,13 @@ checked against other opening references.
 
 `python ml/ml_1000bots/openings/classify.py` writes
 `ml/ml_1000bots/openings/lichess_openings_classified.csv` (sha256
-`2d9c59dcea685032e79218df25ade2b017d8b2111e0957440ff9e57fd9f5e69b`). The
-column meanings are documented at the top of `classify.py`. In short:
+`f6c311b266b211132ca76d32ebb7e63f3879416fa52a808fa45c67552b6e0114`).
+The classifier keeps `white_moves >= 4` (at least seven plies) and removes
+1,146 lines from the source. The output and `backend/tempo_demo.sqlite`
+each contain 2,719 lines across 91 opening families. The original TSV and
+the existing `tempo_v1` training dataset are unchanged.
+
+The column meanings are documented at the top of `classify.py`. In short:
 
 - **Hierarchy**: ECO letter (A–E) → family (name before `:`, 140 families
   after folding `", with …"` suffixes into a `family_qualifier` column) →
@@ -37,7 +42,7 @@ column meanings are documented at the top of `classify.py`. In short:
 - **Length**: `plies`, `white_moves`, `black_moves`, `last_mover`.
 - **Side**: `base_opening`, `family_side`, and the game evidence columns
   `side_in_games`, `side_ratio`, `n_games`.
-- `name` and `pgn` are unchanged from Lichess. 688 names occur with more than
+- `name` and `pgn` are unchanged from Lichess. In the source TSV, 688 names occur with more than
   one move order (transpositions); no move sequence occurs twice. A name is
   therefore not a unique line key.
 

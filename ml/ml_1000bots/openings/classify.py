@@ -3,7 +3,7 @@
     python openings/classify.py
 
 Reads  openings/lichess_openings.tsv          (eco, name, pgn; Lichess, CC0)
-Writes openings/lichess_openings_classified.csv
+Writes openings/lichess_openings_classified.csv with at least four White moves per line.
 
 Columns
   eco, eco_letter, eco_group   ECO code, its volume letter and what the volume mainly
@@ -142,6 +142,8 @@ def main():
     assert not missing, f"base openings without a side: {missing}"
     assert not unused, f"side given for unknown base openings: {unused}"
     assert len(out) == len(df)
+
+    out = out.loc[out.white_moves >= 4].copy()
 
     ev_path = os.path.join(HERE, "family_side_evidence.csv")
     if os.path.exists(ev_path):
