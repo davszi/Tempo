@@ -1,0 +1,80 @@
+{
+  "generator": "tempo_ml.synthetic_data.generate",
+  "config": {
+    "seed": 20261111,
+    "clients_per_archetype": 100,
+    "horizon_days": 180,
+    "repertoire_size": [
+      15,
+      40
+    ],
+    "families_per_client": [
+      2,
+      6
+    ],
+    "min_moves": 2,
+    "new_lines_per_day": [
+      1,
+      3
+    ],
+    "daily_review_budget": [
+      8,
+      30
+    ],
+    "active_day_prob": [
+      0.5,
+      0.95
+    ],
+    "interval_noise_sigma": 0.35,
+    "max_interval_days": 365.0,
+    "trait_std": {
+      "baseline_ms": 25.0,
+      "mu": 0.15,
+      "sigma": 0.05,
+      "beta": 0.2,
+      "alpha": 0.04,
+      "C": 0.05
+    }
+  },
+  "stability_model": {
+    "initial_days": 1.0,
+    "growth": 1.5,
+    "spacing_gain": 2.0,
+    "lapse_factor": 0.3,
+    "min_days": 1.0
+  },
+  "max_attempts_per_move": 5,
+  "counts": {
+    "sessions": 119517,
+    "learning_mode": 8129,
+    "repeating_mode": 111388,
+    "clients": 300,
+    "review_status": {
+      "new": 8129,
+      "relearning": 38753,
+      "review": 72635
+    },
+    "grade": {
+      "1": 38824,
+      "2": 2390,
+      "3": 53262,
+      "4": 25041
+    }
+  },
+  "inputs": {
+    "opening_lines.csv": "a8ffd012b3ef536c05ffa42cf67c63e756c3f8724a846093dc11cce118f3f96d"
+  },
+  "outputs": {
+    "clients.csv": "fea9e44a2b15ca92c9817ba3e4d0a3b72734fc82cc15d612dc3ee3e227de1b10",
+    "ground_truth.csv": "a81e94a2a44395ffb2222488483ed66d9dd58e1b91d0f1d3cfcd34360ee2d9c6",
+    "repertoires.csv": "3fdd277f918fa3cf64b7e814c4c37d2b5366404cd6993573c7776f6238e2b360",
+    "sessions.csv": "a89d3e8edc4187e234fa77c2ca0e1dc1923a82c8b7fc7c941c2f4df64a4ec09e"
+  },
+  "environment": {
+    "python": "3.13.18",
+    "numpy": "2.5.3",
+    "platform": "Linux-6.18.44-fc-v378-x86_64-with-glibc2.39"
+  },
+  "source_commit": null,
+  "seconds": 4.9
+}
