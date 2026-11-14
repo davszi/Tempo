@@ -233,8 +233,10 @@ CREATE INDEX opening_lines_parent ON opening_lines (parent_line_id);
 | `frontend/src/lib/learning.ts` | `distinguishingMoves` labels same-name lines from the move where they first differ, for example "7…Be6 8.f3" (decision 5) |
 | `frontend/src/components/LearningPage.tsx`, `frontend/src/lib/practiceApi.ts` | The Learning list shows learnable lines only, with their distinguishing moves |
 
-Not changed: `ml/ml_1000bots/openings/` and `ml/ml_300bots/` read their own
-CSV files, not the database, and keep `side_in_games` there. The opening
+Not changed: `ml/ml_1000bots/openings/` reads its own CSV files, not the
+database, and keeps `side_in_games` there. The 300-client generator
+(`ml/tempo_ml/catalog.py`, formerly under `ml/ml_300bots/`) reads the
+database and, since the `ml/` restructure, uses only `family_side`. The opening
 library's `family_side_evidence.csv` remains the source of the game evidence.
 `backend/synthetic_clients.py` reads the new tables unchanged; with
 `--one-line-per-family` it now draws from 82 families instead of 91.

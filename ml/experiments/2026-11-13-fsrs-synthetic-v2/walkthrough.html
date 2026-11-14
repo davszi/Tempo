@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TEMPO Retraining</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#ffffff; --alt:#f5f5f7; --ink:#1d1d1f; --muted:#6e6e73; --line:#d2d2d7;
+  --accent:#0071e3; --amber:#c76b00; --green:#248a3d; --red:#d70015; --gray:#86868b;
+  --f:"Inter",-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#000000;--alt:#161617;--ink:#f5f5f7;--muted:#a1a1a6;--line:#424245;--accent:#2997ff;--amber:#ff9f0a;--green:#30d158;--red:#ff453a;--gray:#98989d;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#000000;--alt:#161617;--ink:#f5f5f7;--muted:#a1a1a6;--line:#424245;--accent:#2997ff;--amber:#ff9f0a;--green:#30d158;--red:#ff453a;--gray:#98989d;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f);font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.chapter{padding-block:clamp(64px,10vw,120px)}
+.chapter.alt{background:var(--alt)}
+.inner{max-width:980px;margin:0 auto;padding-left:max(22px,env(safe-area-inset-left,0px));padding-right:max(22px,env(safe-area-inset-right,0px))}
+.eyebrow{font-size:15px;font-weight:600;color:var(--accent);margin-bottom:10px}
+h1{font-size:clamp(40px,7vw,80px);line-height:1.05;letter-spacing:-.025em;font-weight:700;margin:0;text-wrap:balance}
+h2{font-size:clamp(32px,5vw,56px);line-height:1.08;letter-spacing:-.02em;font-weight:700;margin:0;text-wrap:balance}
+.lead{font-size:clamp(19px,2.2vw,24px);line-height:1.4;color:var(--muted);max-width:30em;margin:18px 0 0;font-weight:500}
+.lead b{color:var(--ink);font-weight:600}
+.big{font-size:clamp(44px,7vw,72px);font-weight:700;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.stat .big{font-size:clamp(34px,5vw,52px)}
+.stat .lbl{color:var(--muted);font-size:15px;margin-top:6px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:28px;margin-top:48px}
+.stage{margin-top:44px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.cards>*{min-width:0}
+.card{background:var(--bg);border-radius:20px;padding:26px 24px}
+.chapter:not(.alt) .card{background:var(--alt)}
+.card h3{font-size:21px;margin:0 0 6px;letter-spacing:-.01em}
+.card p{margin:0;color:var(--muted);font-size:16px}
+.tag{display:inline-block;font-size:13px;font-weight:600;border-radius:980px;padding:3px 10px;margin-bottom:12px}
+.tag.ok{background:color-mix(in srgb,var(--green) 15%,transparent);color:var(--green)}
+.tag.bad{background:color-mix(in srgb,var(--red) 13%,transparent);color:var(--red)}
+.tag.info{background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent)}
+.btn{font:inherit;font-size:17px;font-weight:500;border:0;border-radius:980px;padding:12px 24px;background:var(--accent);color:#fff;cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.row{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+.ctl{display:grid;grid-template-columns:150px 1fr 70px;gap:14px;align-items:center;margin-top:10px;font-size:15px;color:var(--muted)}
+.ctl b{color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+svg text{fill:var(--muted);font-family:var(--f);font-size:13px}
+svg .ink{fill:var(--ink)}
+details.more{margin-top:36px;border-top:1px solid var(--line)}
+details.more summary{cursor:pointer;list-style:none;font-size:17px;color:var(--accent);padding:16px 0;font-weight:500}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::after{content:" ＋";}
+details.more[open] summary::after{content:" −";}
+.more-body{font-size:15px;line-height:1.6;color:var(--ink);padding-bottom:12px}
+.more-body p{max-width:44em;margin:8px 0}
+.more-body h4{font-size:16px;margin:22px 0 6px}
+.formula{font-family:var(--mono);font-size:15px;background:var(--alt);border-radius:12px;padding:12px 16px;overflow-x:auto;white-space:nowrap;margin:10px 0}
+.chapter.alt .formula{background:var(--bg)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:500;white-space:nowrap}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.tot td{font-weight:600}
+.dots{display:grid;grid-template-columns:repeat(24,1fr);gap:6px;max-width:560px}
+.dots i{aspect-ratio:1;border-radius:50%;background:var(--accent)}
+.dots i.v{background:var(--gray);opacity:.2}
+.dots i.t{background:var(--gray);opacity:.55}
+.dots.h i{background:var(--green)}
+.moves{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+.mv{width:58px;height:58px;border-radius:16px;display:grid;place-items:center;font-size:24px;font-weight:600;background:var(--bg)}
+.chapter:not(.alt) .mv{background:var(--alt)}
+.mv.ok{color:var(--green)}.mv.bad{color:var(--red)}
+.label{border-radius:20px;padding:22px 24px;background:var(--bg)}
+.chapter:not(.alt) .label{background:var(--alt)}
+.label .v{font-size:44px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.verdict{list-style:none;padding:0;margin:0;display:grid;gap:14px;font-size:19px}
+.verdict li{display:flex;gap:14px;align-items:baseline}
+.verdict .ic{flex:none;width:26px;text-align:center}
+.verdict small{display:block;color:var(--muted);font-size:15px}
+.flow{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center}
+.flow .arrow{font-size:32px;color:var(--muted)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line)}
+.top .inner{display:flex;align-items:center;justify-content:space-between;height:48px}
+.top b{font-size:16px;letter-spacing:-.01em}
+.top nav{display:flex;gap:16px;font-size:13px}
+.top nav a{color:var(--muted);text-decoration:none}
+.legend{display:flex;flex-wrap:wrap;gap:18px;color:var(--muted);font-size:14px;margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:baseline}
+footer{color:var(--muted);font-size:13px;padding-block:40px}
+@media (max-width:640px){.flow{grid-template-columns:1fr}.flow .arrow{transform:rotate(90deg);justify-self:center}.ctl{grid-template-columns:110px 1fr 56px}.top nav{display:none}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<div class="top"><div class="inner"><b>TEMPO · 300-player retraining</b><nav><a href="#fix">Setup</a><a href="#arms">Two runs</a><a href="#scores">Scores</a><a href="#days">Days</a><a href="#v1">vs v1</a><a href="#open">Open</a></nav></div></div>
+
+<!-- HERO -->
+<section class="chapter"><div class="inner">
+  <div class="eyebrow">TEMPO · Retraining on the cleaned catalog · 2026-11-13</div>
+  <h1>Same players.<br>New openings.<br>Two ways to learn.</h1>
+  <p class="lead">The opening catalog lost its short lines, so the 300-player model was retrained on it. Once on pass/fail, once on the hidden truth, to see what better labels would buy.</p>
+  <div class="stats">
+    <div class="stat"><div class="big">2,719</div><div class="lbl">opening lines, from the backend</div></div>
+    <div class="stat"><div class="big">300</div><div class="lbl">virtual players, plus 60 brand new</div></div>
+    <div class="stat"><div class="big">101,090</div><div class="lbl">tested reviews</div></div>
+    <div class="stat"><div class="big">2</div><div class="lbl">training runs: A2 and B2</div></div>
+  </div>
+</div></section>
+
+<!-- 1 FIX -->
+<section class="chapter alt" id="fix"><div class="inner">
+  <div class="eyebrow">Step one</div>
+  <h2>First, fix the foundations.</h2>
+  <p class="lead">The 300-player code could not even start: it looked for an opening file that no longer exists. Now it reads the <b>one catalog the app uses</b>.</p>
+  <div class="stage flow">
+    <div class="card"><span class="tag bad">Before</span><h3>openings/opening_lines.csv</h3><p>Missing from the repository. 2 of 34 tests failed. Old 3,865-line list, short lines included.</p></div>
+    <div class="arrow">→</div>
+    <div class="card"><span class="tag ok">Now</span><h3>backend/tempo_demo.sqlite</h3><p>The cleaned catalog: 2,719 lines in 91 families, each with at least four White moves. 42 of 42 tests pass.</p></div>
+  </div>
+  <div class="stage cards">
+    <div class="card"><span class="tag info">Data</span><h3>Old data out of Git</h3><p>The 8 CSVs of the old run (about 42 MB) are untracked. Their hashes stay; the files stay in Git history.</p></div>
+    <div class="card"><span class="tag info">Metrics</span><h3>Three new scores</h3><p>Error against the true chance, calibration gap, and the error in days.</p></div>
+    <div class="card"><span class="tag info">Trainer</span><h3>One switch: <code>--target</code></h3><p><code>pass</code> learns from pass/fail, <code>true</code> from the hidden truth. Everything else identical.</p></div>
+  </div>
+  <details class="more"><summary>Learn more: every file that changed</summary><div class="more-body" id="moreFix"></div></details>
+</div></section>
+
+<!-- 2 PLAYERS -->
+<section class="chapter" id="players"><div class="inner">
+  <div class="eyebrow">Step two</div>
+  <h2>These players forget<br>move by move.</h2>
+  <p class="lead">Each move has its own chance of being remembered. A session only passes if <b>every</b> move is right, so long lines are much harder than they look.</p>
+  <div class="stage">
+    <svg id="curve" viewBox="0 0 900 320" width="100%" role="img" aria-label="per-move recall versus clean-session chance"></svg>
+    <div class="ctl"><span>Days since review</span><input id="tDays" type="range" min="0" max="30" value="8" aria-label="days since review"><b id="tDaysV"></b></div>
+    <div class="ctl"><span>Moves in the line</span><input id="mMoves" type="range" min="1" max="16" value="8" aria-label="moves in the line"><b id="mMovesV"></b></div>
+    <div class="legend"><span><i style="background:var(--gray)"></i>one move remembered</span><span><i style="background:var(--accent)"></i>whole line right (a pass)</span><span><i style="background:var(--green)"></i>day the pass chance drops to 90%</span></div>
+    <p class="legend" id="curveNote"></p>
+  </div>
+  <details class="more"><summary>Learn more</summary><div class="more-body" id="moreCurve"></div></details>
+</div></section>
+
+<!-- 3 ARMS -->
+<section class="chapter alt" id="arms"><div class="inner">
+  <div class="eyebrow">Step three</div>
+  <h2>Two runs. One difference:<br>what they learn from.</h2>
+  <p class="lead">A2 sees what a real app would see: <b>passed or failed</b>. B2 is allowed to peek at the answer key: <b>the true chance</b>. Real players never give us that, so B2 only tells us how much better labels could help.</p>
+  <div class="stage">
+    <div class="row"><button class="btn" id="qGo" type="button">Play a session</button><span style="color:var(--muted)">An 8-move line, reviewed 6 days later</span></div>
+    <div class="moves" id="qMoves"></div>
+    <div class="stage cards" style="margin-top:24px">
+      <div class="label"><span class="tag" style="background:color-mix(in srgb,var(--amber) 15%,transparent);color:var(--amber)">A2 learns from</span><div class="v" id="labA"></div><p style="color:var(--muted)" id="labAn"></p></div>
+      <div class="label"><span class="tag ok">B2 learns from</span><div class="v" id="labB"></div><p style="color:var(--muted)">the hidden true chance of a pass, the same every time you play</p></div>
+    </div>
+  </div>
+  <details class="more"><summary>Learn more: losses, optimizer and how the runs went</summary><div class="more-body" id="moreArms"></div></details>
+</div></section>
+
+<!-- 4 DATA -->
+<section class="chapter" id="data"><div class="inner">
+  <div class="eyebrow">Step four</div>
+  <h2>210 to learn from.<br>120 to test on.</h2>
+  <p class="lead">60 test players never appear in training. Then <b>60 brand-new players</b>, generated separately, check that the result carries over.</p>
+  <div class="stage">
+    <div class="dots" id="dots" aria-hidden="true"></div>
+    <div class="dots h" id="dotsH" aria-hidden="true" style="margin-top:18px"></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>210 training</span><span><i style="background:var(--gray);opacity:.2"></i>30 validation (unused here)</span><span><i style="background:var(--gray);opacity:.55"></i>60 test</span><span><i style="background:var(--green)"></i>60 brand new</span><span>each dot = 5 players</span></div>
+  </div>
+  <details class="more"><summary>Learn more</summary><div class="more-body" id="moreData"></div></details>
+</div></section>
+
+<!-- 5 DIALS -->
+<section class="chapter alt" id="dials"><div class="inner">
+  <div class="eyebrow">Step five</div>
+  <h2>Training turns 21 dials.</h2>
+  <p class="lead">Both runs moved the forgetting dial the same way: <b>these players forget much faster than the default assumes</b>. B2 pushed it further.</p>
+  <div class="stage"><svg id="cdial" viewBox="0 0 900 170" width="100%" role="img" aria-label="decay parameter"></svg></div>
+  <details class="more"><summary>Learn more: all 21 dials</summary><div class="more-body" id="moreDials"></div></details>
+</div></section>
+
+<!-- 6 SCORES -->
+<section class="chapter" id="scores"><div class="inner">
+  <div class="eyebrow">Step six</div>
+  <h2>Training halves the error.</h2>
+  <p class="lead">On the 60 test players, how far is each predicted chance from the true chance?</p>
+  <div class="stage"><svg id="errBars" viewBox="0 0 900 250" width="100%" role="img" aria-label="error against the true chance"></svg>
+    <p class="legend"><b style="color:var(--ink)">pp</b> = percentage points: if the true chance is 70% and the model says 84%, it is 14 pp off. <b style="color:var(--ink)">Constant 58%</b> = a "model" that learns nothing and always says 58%, the share of sessions that pass in training. Any useful model must beat it.</p></div>
+  <div class="stage cards" id="metricCards"></div>
+  <details class="more"><summary>Learn more: every score, test and brand-new players</summary><div class="more-body" id="moreScores"></div></details>
+</div></section>
+
+<!-- 7 LABELS -->
+<section class="chapter alt" id="labels"><div class="inner">
+  <div class="eyebrow">Step seven</div>
+  <h2>The answer key<br>barely helps.</h2>
+  <p class="lead">B2, trained on the truth, is only <b>0.3 points</b> closer than A2. Pass/fail was never the problem.</p>
+  <div class="stage"><svg id="ruler" viewBox="0 0 900 190" width="100%" role="img" aria-label="ruler"></svg></div>
+  <div class="stage cards">
+    <div class="card"><h3>Where the last 14 points come from</h3><p>One set of FSRS dials for everyone treats a line as one card. These players remember move by move, each with their own forgetting speed. No label can fix that mismatch.</p></div>
+    <div class="card"><h3>What it means</h3><p>Collecting richer signals than pass/fail would not close the gap. A model closer to how players forget, or per-player dials, might.</p></div>
+  </div>
+</div></section>
+
+<!-- 8 DAYS -->
+<section class="chapter" id="days"><div class="inner">
+  <div class="eyebrow">Step eight</div>
+  <h2>In days,<br>it reviews early.</h2>
+  <p class="lead">After every session: predicted days until the pass chance drops to 90%, minus the true days. Below zero means <b>too early</b>.</p>
+  <div class="stats" style="margin-top:28px">
+    <div class="stat"><div class="big">−0.14 d</div><div class="lbl">A2, typical error (B2: −0.10 d)</div></div>
+    <div class="stat"><div class="big">82%</div><div class="lbl">of A2's reviews come early</div></div>
+    <div class="stat"><div class="big">−47 d</div><div class="lbl">on lines that really last 30+ days</div></div>
+  </div>
+  <div class="stage"><svg id="daysBars" viewBox="0 0 900 330" width="100%" role="img" aria-label="relative error in days by line length"></svg>
+    <div class="legend"><span><i style="background:var(--gray)"></i>Defaults</span><span><i style="background:var(--amber)"></i>A2 pass/fail</span><span><i style="background:var(--green)"></i>B2 true chance</span></div></div>
+  <p class="lead" style="font-size:19px">Early is the safe side: no extra forgetting. But strong lines would be reviewed far more often than needed.</p>
+  <details class="more"><summary>Learn more: why most true times are under a day</summary><div class="more-body" id="moreDays"></div></details>
+</div></section>
+
+<!-- 9 VS V1 -->
+<section class="chapter alt" id="v1"><div class="inner">
+  <div class="eyebrow">Conclusion</div>
+  <h2>Against the old<br>300-player dials.</h2>
+  <p class="lead">The previous run (v1) trained its dials on the old catalog, short lines included. We took those dials unchanged and scored them on <b>the same 60 new test players</b> as A2 and B2.</p>
+  <div class="stage"><svg id="v1Bars" viewBox="0 0 900 250" width="100%" role="img" aria-label="error against the true chance, v1 versus new runs"></svg>
+    <div class="legend"><span><i style="background:var(--gray)"></i>Defaults</span><span><i style="background:var(--accent)"></i>v1, old dials</span><span><i style="background:var(--amber)"></i>A2 pass/fail</span><span><i style="background:var(--green)"></i>B2 true chance</span></div></div>
+  <div class="stage" id="v1Table"></div>
+  <div class="stage cards">
+    <div class="card"><span class="tag info">Close race</span><h3>v1 guesses a bit closer</h3><p>The old dials are 1 point closer to the true chance (13.1 vs 14.1 pp) and slightly better at spotting which line you'll forget. The catalog change did not break them.</p></div>
+    <div class="card"><span class="tag ok">A2 wins</span><h3>A2 is more honest</h3><p>When A2 says 70%, it is closer to 70% (gap 2.6 vs 4.1 points), and it schedules slightly less early overall (−0.14 vs −0.17 days).</p></div>
+    <div class="card"><span class="tag bad">Found a flaw</span><h3>A2 stopped too soon</h3><p>Even on A2's <i>own</i> training players, the v1 dials score better on A2's goal (0.553 vs 0.560). The optimizer started at the defaults and stopped at a worse spot. It didn't learn less; it got stuck.</p></div>
+  </div>
+  <p class="lead" style="font-size:19px"><b>Bottom line:</b> new and old dials are about equally good, within 1 point. The cheap next step is to rerun A2 starting from the v1 dials and keep whichever is better on validation players. That would be a new, recorded attempt; it was not run.</p>
+  <details class="more"><summary>Learn more: brand-new players and v1's own numbers</summary><div class="more-body" id="moreV1"></div></details>
+</div></section>
+
+<!-- 10 OPEN -->
+<section class="chapter" id="open"><div class="inner">
+  <div class="eyebrow">Before you push</div>
+  <h2>What to know.</h2>
+  <ul class="verdict stage">
+    <li><span class="ic">◦</span><span>B2 stopped at the 300-step limit<small>The optimizer had not met its convergence test. The plan treats a higher limit as a new attempt, so it was not changed after seeing results.</small></span></li>
+    <li><span class="ic">◦</span><span>Families are now picked at random<small>The backend catalog has no popularity column, so v1's own reported numbers are not comparable with v2's. The conclusion therefore scores the v1 dials on the new players instead.</small></span></li>
+    <li><span class="ic">◦</span><span>Dials compensate each other<small>A2 and B2 differ a lot in w8, w10 and w12 yet predict almost the same. Four dials sit on their limits.</small></span></li>
+    <li><span class="ic">◦</span><span>The 1000-player runs are not done<small>A1, A1c and B1 are still open in the plan. Nothing is committed or pushed yet.</small></span></li>
+  </ul>
+</div></section>
+
+<footer><div class="inner">Sources: ml/experiments/2026-11-13-fsrs-synthetic-v2/results (binary, true-recall, holdout_benchmark.json, v1_comparison.json, benchmark-data.md) · plan: docs/topics/fsrs-training/retraining-plan.md · 2026-11-13</div></footer>
+
+<script>
+const R = {
+  test: {
+    constant: {ll:0.6798, brier:0.2433, bins:0.0001, auc:0.5000, rmse:0.2700, mae:0.2302, mean:0.5815},
+    default:  {ll:0.7231, brier:0.2458, bins:0.1919, auc:0.7009, rmse:0.2769, mae:0.2187, mean:0.7687},
+    a2:       {ll:0.5620, brier:0.1894, bins:0.0261, auc:0.7742, rmse:0.1406, mae:0.1063, mean:0.5864},
+    b2:       {ll:0.5603, brier:0.1888, bins:0.0213, auc:0.7752, rmse:0.1382, mae:0.1039, mean:0.5854},
+    obs: 0.5816, n: 20503
+  },
+  hold: {
+    constant: {ll:0.6808, brier:0.2438, bins:0.0029, auc:0.5000, rmse:0.2661, mae:0.2272, mean:0.5815},
+    default:  {ll:0.7349, brier:0.2509, bins:0.1952, auc:0.6919, rmse:0.2773, mae:0.2202, mean:0.7692},
+    a2:       {ll:0.5697, brier:0.1926, bins:0.0307, auc:0.7681, rmse:0.1376, mae:0.1054, mean:0.5843},
+    b2:       {ll:0.5677, brier:0.1918, bins:0.0264, auc:0.7694, rmse:0.1351, mae:0.1030, mean:0.5831},
+    obs: 0.5786, n: 20269
+  },
+  arch: [["Balanced",0.585,0.2604,0.1178,0.1154],["Blitzer",0.537,0.3140,0.1716,0.1688],["Diligent",0.633,0.2451,0.1216,0.1198]],
+  days: {
+    all:  {default:[0.003,1.116,0.0104,0.498], a2:[-0.135,0.237,-0.4917,0.820], b2:[-0.101,0.216,-0.3897,0.766]},
+    bands: [["Under 7 days",21185,[0.078,0.2256],[-0.101,-0.4641],[-0.073,-0.3435]],
+            ["7–30 days",2975,[-3.433,-0.2952],[-5.243,-0.4604],[-4.838,-0.4260]],
+            ["30+ days",2603,[-38.574,-0.6785],[-47.039,-0.7404],[-44.971,-0.7204]],
+            ["Right after learning",1633,[2.131,12.1765],[-0.107,-0.6909],[-0.095,-0.6070]]],
+    holdAll: {default:0.001, a2:-0.137, b2:-0.106}
+  },
+  w: {
+    def: [0.212,1.2931,2.3065,8.2956,6.4133,0.8334,3.0194,0.001,1.8722,0.1666,0.796,1.4835,0.0614,0.2629,1.6483,0.6014,1.8729,0.5425,0.0912,0.0658,0.1542],
+    a2:  [0.212,0.1351,0.048,7.4763,6.8056,2.1968,2.3577,0.1095,0.7786,0.0,0.3279,0.1305,0.25,0.9,2.3393,1.0,1.0,0.6606,0.1648,0.3825,0.5095],
+    b2:  [0.212,0.122,0.061,7.448,6.3984,2.3158,2.2488,0.0019,4.4999,0.0,0.0087,0.1426,0.001,0.9,2.3898,1.0,1.0,0.5939,0.1386,0.4206,0.7148]
+  }
+};
+const $ = s => document.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, a = {}, p) { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; }
+function tx(p, x, y, s, a = {}) { const t = el("text", { x, y, ...a }, p); t.textContent = s; return t; }
+const pct = (x, d = 1) => (100 * x).toFixed(d) + "%";
+const pp = x => (100 * x).toFixed(1) + " pp";
+const tbl = (head, rows, num = []) => `<div class="scroll"><table><thead><tr>${head.map((h, i) => `<th class="${num.includes(i) ? "n" : ""}">${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr class="${r.cls || ""}">${r.map((v, i) => `<td class="${num.includes(i) ? "n" : ""}">${v}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+
+/* memory model of the 300-player simulator */
+const S0 = 10, C0 = 0.5;
+const F = C => Math.pow(0.9, -1 / C) - 1;
+const Rm = (t, S, C) => Math.pow(1 + F(C) * t / S, -C);
+const t90 = (S, M, C) => S / F(C) * (Math.pow(Math.pow(0.9, 1 / M), -1 / C) - 1);
+
+/* 2 curve */
+function drawCurve() {
+  const t = +$("#tDays").value, M = +$("#mMoves").value, svg = $("#curve"); svg.innerHTML = "";
+  $("#tDaysV").textContent = t + " d"; $("#mMovesV").textContent = M;
+  const L = 10, Rr = 740, Tp = 20, B = 290, x = d => L + (Rr - L) * d / 30, y = r => B - (B - Tp) * r;
+  el("line", { x1: L, x2: Rr, y1: B, y2: B, stroke: css("--line") }, svg);
+  for (const r of [.5, .9, 1]) { el("line", { x1: L, x2: Rr, y1: y(r), y2: y(r), stroke: css("--line"), "stroke-dasharray": "2 6" }, svg); tx(svg, L, y(r) - 6, (r * 100) + "%"); }
+  tx(svg, Rr, B + 22, "days", { "text-anchor": "end" }); tx(svg, L, B + 22, "0");
+  let d1 = "", d2 = "";
+  for (let k = 0; k <= 300; k++) { const dd = k / 10; d1 += (k ? "L" : "M") + x(dd) + "," + y(Rm(dd, S0, C0)); d2 += (k ? "L" : "M") + x(dd) + "," + y(Math.pow(Rm(dd, S0, C0), M)); }
+  el("path", { d: d1, fill: "none", stroke: css("--gray"), "stroke-width": 3, "stroke-linecap": "round" }, svg);
+  el("path", { d: d2, fill: "none", stroke: css("--accent"), "stroke-width": 4, "stroke-linecap": "round" }, svg);
+  const tt = t90(S0, M, C0);
+  if (tt <= 30) { el("line", { x1: x(tt), x2: x(tt), y1: y(0.9), y2: B, stroke: css("--green"), "stroke-width": 2, "stroke-dasharray": "4 4" }, svg); el("circle", { cx: x(tt), cy: y(0.9), r: 6, fill: css("--green") }, svg); }
+  el("line", { x1: x(t), x2: x(t), y1: Tp, y2: B, stroke: css("--ink"), "stroke-width": 1.5 }, svg);
+  const r1 = Rm(t, S0, C0), r2 = Math.pow(r1, M);
+  el("circle", { cx: x(t), cy: y(r1), r: 7, fill: css("--gray") }, svg);
+  el("circle", { cx: x(t), cy: y(r2), r: 7, fill: css("--accent") }, svg);
+  tx(svg, 770, 80, pct(r1, 0), { class: "ink", "font-size": 30, "font-weight": 700 }); tx(svg, 770, 102, "one move");
+  tx(svg, 770, 160, pct(r2, 0), { class: "ink", "font-size": 30, "font-weight": 700 }); tx(svg, 770, 182, "pass");
+  tx(svg, 770, 240, tt.toFixed(tt < 1 ? 2 : 1) + " d", { class: "ink", "font-size": 30, "font-weight": 700 }); tx(svg, 770, 262, "to 90% pass");
+  $("#curveNote").textContent = `A single move stays at 90% for 10 days here. With ${M} move${M > 1 ? "s" : ""} the whole line drops to a 90% pass chance after only ${tt.toFixed(tt < 1 ? 2 : 1)} days.`;
+}
+$("#tDays").addEventListener("input", drawCurve); $("#mMoves").addEventListener("input", drawCurve);
+
+/* 3 session */
+function play() {
+  const M = 8, r = Rm(6, S0, C0), pClean = Math.pow(r, M);
+  const c = Array.from({ length: M }, () => Math.random() < r);
+  const ok = c.every(Boolean);
+  $("#qMoves").innerHTML = c.map(v => `<div class="mv ${v ? "ok" : "bad"}">${v ? "✓" : "✗"}</div>`).join("");
+  $("#labA").textContent = ok ? "1" : "0";
+  $("#labA").style.color = ok ? css("--green") : css("--red");
+  $("#labAn").textContent = ok ? "passed: every move right" : "failed: at least one wrong move";
+  $("#labB").textContent = pct(pClean, 0);
+}
+$("#qGo").addEventListener("click", play);
+
+/* 4 dots: each dot = 5 players */
+$("#dots").innerHTML = Array.from({ length: 60 }, (_, i) => `<i class="${i >= 48 ? "t" : i >= 42 ? "v" : ""}"></i>`).join("");
+$("#dotsH").innerHTML = Array.from({ length: 12 }, () => "<i></i>").join("");
+
+/* 5 dial */
+function drawDial() {
+  const svg = $("#cdial"); svg.innerHTML = ""; const L = 40, Rr = 860, y = 80, x = v => L + (Rr - L) * v / 0.8;
+  el("line", { x1: L, x2: Rr, y1: y, y2: y, stroke: css("--line"), "stroke-width": 8, "stroke-linecap": "round" }, svg);
+  el("line", { x1: x(0.1542), x2: x(0.7148), y1: y, y2: y, stroke: css("--accent"), "stroke-width": 8, "stroke-linecap": "round", opacity: .35 }, svg);
+  [[0.1542, "Default", "--gray", -26], [0.5095, "A2", "--amber", -26], [0.7148, "B2", "--green", 52]]
+    .forEach(([v, n, c, dy]) => { el("circle", { cx: x(v), cy: y, r: 12, fill: css(c) }, svg); tx(svg, x(v), y + dy, `${n} ${v.toFixed(2)}`, { "text-anchor": "middle", class: "ink", "font-size": 18, "font-weight": 600 }); });
+  tx(svg, L, 160, "← forgets slowly"); tx(svg, Rr, 160, "forgets fast →", { "text-anchor": "end" });
+}
+
+/* 6 error bars + cards */
+function drawErr() {
+  const svg = $("#errBars"); svg.innerHTML = ""; const L = 190, Rr = 780, max = 0.3, x = v => L + (Rr - L) * v / max;
+  const rows = [["Constant 58%", R.test.constant.rmse, "--gray", .5], ["Defaults", R.test.default.rmse, "--gray", 1], ["A2 pass/fail", R.test.a2.rmse, "--amber", 1], ["B2 true chance", R.test.b2.rmse, "--green", 1]];
+  rows.forEach(([n, v, c, o], i) => { const y = 20 + i * 56;
+    tx(svg, 0, y + 24, n, { class: "ink", "font-size": 17, "font-weight": 600 });
+    el("rect", { x: L, y, width: x(v) - L, height: 34, rx: 8, fill: css(c), opacity: o }, svg);
+    tx(svg, x(v) + 12, y + 24, pp(v), { class: "ink", "font-size": 17, "font-weight": 600 }); });
+}
+function drawCards() {
+  const d = R.test.default, a = R.test.a2;
+  const card = (title, sub, from, to, note, up) => `<div class="card"><h3>${title}</h3><p>${sub}</p>
+    <div class="row" style="margin-top:20px;gap:10px;align-items:baseline"><span style="font-size:22px;color:var(--muted);font-weight:600">${from}</span><span style="color:var(--muted)">→</span><span class="big" style="font-size:44px;color:${css(up ? "--accent" : "--ink")}">${to}</span></div>
+    <p style="margin-top:8px;font-size:14px">${note}</p></div>`;
+  $("#metricCards").innerHTML =
+    card("Is the percentage honest?", "Of the sessions called 70%, did 70% pass?", (100 * d.bins).toFixed(1), (100 * a.bins).toFixed(1), "calibration gap, points · lower is better", true) +
+    card("Can it tell who will fail?", "Does it rank the likely failures first?", d.auc.toFixed(2), a.auc.toFixed(2), "AUC · higher is better", true) +
+    card("How optimistic is it?", "Average predicted pass chance; 58% really pass.", pct(d.mean, 0), pct(a.mean, 0), "defaults expect 77%, A2 expects 59%", true);
+}
+
+/* 7 ruler on truth error */
+function drawRuler() {
+  const svg = $("#ruler"); svg.innerHTML = ""; const L = 60, Rr = 840, y = 95, lo = 0.28, x = v => L + (Rr - L) * (lo - v) / lo;
+  el("line", { x1: L, x2: Rr, y1: y, y2: y, stroke: css("--line"), "stroke-width": 8, "stroke-linecap": "round" }, svg);
+  [[R.test.default.rmse, "Defaults", "--gray", -30], [R.test.a2.rmse, "A2", "--amber", -30], [R.test.b2.rmse, "B2", "--green", 46], [0, "Perfect", "--accent", 46]]
+    .forEach(([v, n, c, dy]) => { el("circle", { cx: x(v), cy: y, r: 11, fill: css(c) }, svg); tx(svg, x(v), y + dy, n, { "text-anchor": "middle", class: "ink", "font-size": 17, "font-weight": 600 }); tx(svg, x(v), y + dy + 20, pp(v), { "text-anchor": "middle" }); });
+  tx(svg, L, 180, "error against the true chance, test players");
+}
+
+/* 8 days bars (median relative error) */
+function drawDays() {
+  const svg = $("#daysBars"); svg.innerHTML = ""; const mid = 650, half = 230, x = v => mid + half * Math.max(-1, Math.min(1, v / 0.8));
+  el("line", { x1: mid, x2: mid, y1: 0, y2: 300, stroke: css("--muted") }, svg);
+  tx(svg, mid - 8, 320, "← too early", { "text-anchor": "end" }); tx(svg, mid + 8, 320, "too late →");
+  const cols = ["--gray", "--amber", "--green"];
+  R.days.bands.slice(0, 3).forEach(([n, cnt, ...m], i) => { const y0 = 10 + i * 98;
+    tx(svg, 0, y0 + 30, n, { class: "ink", "font-size": 17, "font-weight": 600 }); tx(svg, 0, y0 + 50, cnt.toLocaleString() + " sessions");
+    m.forEach(([d, rel], k) => { const y = y0 + k * 26, xv = x(rel);
+      el("rect", { x: Math.min(mid, xv), y, width: Math.abs(xv - mid), height: 20, rx: 5, fill: css(cols[k]) }, svg);
+      tx(svg, rel < 0 ? xv - 8 : xv + 8, y + 15, `${rel > 0 ? "+" : ""}${Math.round(rel * 100)}%  (${d > 0 ? "+" : ""}${Math.abs(d) < 1 ? d.toFixed(2) : d.toFixed(1)} d)`, { "text-anchor": rel < 0 ? "end" : "start", class: "ink" }); }); });
+}
+
+/* learn-more panels */
+function drawMore() {
+  $("#moreFix").innerHTML = tbl(["File", "What changed"], [
+    ["ml/tempo_ml/catalog.py", "reads the catalog from the backend SQLite (lines joined with families), read-only"],
+    ["ml/tempo_ml/simulator/ (generate.py, practice.py)", "uses that catalog; families drawn at random; catalog hash in the manifest"],
+    ["ml/tempo_ml/fsrs/model.py", "new predict_states: the model's stability after every session"],
+    ["ml/tempo_ml/fsrs/train.py", "--target pass|true, --no-personalise"],
+    ["ml/tempo_ml/evaluate/metrics.py, days.py", "truth error, calibration gap, days metric"],
+    ["ml/tests/test_simulator.py, test_metrics.py", "tiny SQLite catalog for tests; 7 new tests"],
+    ["ml/.gitignore, ml/data/", "generated data stays local and ignored; the old v1 run and its page removed (kept in Git history at 09f8a22)"],
+    ["ml/experiments/2026-11-13-fsrs-synthetic-v2/", "SUMMARY, results (binary, true-recall), dataset manifest, code diff, hold-out and v1 scripts, this page"],
+    ["docs: FSRS training record, retraining plan, worklog", "status and history updated"]]) +
+    `<p>Paths as of the restructure into <code>ml/</code>; the run itself used the earlier layout <code>ml/ml_300bots/ml_engine/</code>, recorded in the experiment's code.diff.</p>` +
+    `<p>Tests before: 32 pass, 2 fail (missing catalog). After: 42 pass. Environment: Python 3.13.5, numpy 2.5.4, scipy 1.18.1, pandas 3.1.1, Windows 11.</p>`;
+  $("#moreCurve").innerHTML = `<p>Each move's chance of being remembered follows the forgetting curve; a pass needs all M moves:</p>
+    <div class="formula">R(t) = (1 + F·t/S)<sup>−C</sup>,  F = 0.9<sup>−1/C</sup> − 1,  pass chance = R(t)<sup>M</sup></div>
+    <p>S is the memory strength in days and C the forgetting speed of that player. The picture uses S = 10 and C = 0.5. Solving R(t)<sup>M</sup> = 0.9 gives the true days to 90% used in step eight:</p>
+    <div class="formula">t₉₀ = S / F · ((0.9<sup>1/M</sup>)<sup>−1/C</sup> − 1)</div>
+    <p>For one move this is exactly S. FSRS, by contrast, treats the whole line as one card with one curve.</p>`;
+  $("#moreArms").innerHTML = `<h4>A2 · pass/fail with log-loss</h4><div class="formula">loss = −mean[ y·ln p + (1−y)·ln(1−p) ],  y = 1 if the session passed</div>
+    <h4>B2 · true chance with MSE</h4><div class="formula">loss = mean[ (p − p<sub>true</sub>)² ],  p<sub>true</sub> = R<sup>M</sup> from the hidden memory</div>
+    <p>Both start from the default dials and use the same optimizer (L-BFGS-B within the FSRS limits, at most 300 steps), the same 210 players and the same reviews: learning sessions and same-day reviews are left out.</p>` +
+    tbl(["Run", "Steps", "Time", "Finished because", "Final loss"], [["A2", "90", "183 s", "converged", "0.5602 (log-loss)"], ["B2", "300", "418 s", "hit the step limit", "0.0177 (MSE)"]], [1, 2]) +
+    `<p>The two runs ran at the same time on a laptop. B2's limit was not raised after seeing results; a longer run would be a new, recorded attempt.</p>`;
+  $("#moreData").innerHTML = tbl(["Group", "Players", "Sessions", "Tested reviews", "Pass rate"], [
+    ["Training", "210", "", "71,751", "58.1%"], ["Validation (unused)", "30", "", "8,836", ""], ["Test", "60", "", "20,503", "58.2%"],
+    Object.assign(["All 300", "300", "131,981", "101,090", ""], { cls: "tot" }), ["Brand new (seed 20261112)", "60", "26,444", "20,269", "57.9%"]], [1, 2, 3, 4]) +
+    `<p>Players were split per type (balanced, blitzer, diligent) with seed 7. A "tested review" is a review at least one day after the previous one; learning sessions test nothing, because the arrow shows the move.</p>`;
+  const role = ["S₀ Again","S₀ Hard","S₀ Good","S₀ Easy","D₀","D₀ / grade","ΔD / grade","D reversion","S growth","S saturation","R effect","lapse S","lapse D","lapse S exp","lapse R","Hard ×","Easy ×","same-day 1","same-day 2","same-day 3","decay C"];
+  $("#moreDials").innerHTML = tbl(["Dial", "Role", "Default", "A2", "B2"], R.w.def.map((d, i) => ["w" + i, role[i], d.toFixed(4), R.w.a2[i].toFixed(4), R.w.b2[i].toFixed(4)]), [2, 3, 4]) +
+    `<p>w9 (0), w13 (0.9), w15 and w16 (1.0) sit on their limits in both runs. A2 and B2 differ strongly in w8, w10 and w12 while predicting almost the same: the dials trade off against each other.</p>`;
+  const row = (n, m) => [n, m.ll.toFixed(3), m.brier.toFixed(3), pp(m.bins), m.auc.toFixed(3), pp(m.rmse), pp(m.mae), pct(m.mean)];
+  const head = ["", "Log-loss", "Brier", "Calibration", "AUC", "Error vs truth", "Mean abs.", "Mean prediction"];
+  $("#moreScores").innerHTML = `<h4>Test players (60, ${R.test.n.toLocaleString()} reviews, ${pct(R.test.obs)} pass)</h4>` +
+    tbl(head, [row("Constant 58.1%", R.test.constant), row("Defaults", R.test.default), row("A2", R.test.a2), row("B2", R.test.b2)], [1, 2, 3, 4, 5, 6, 7]) +
+    `<h4>Brand-new players (60, ${R.hold.n.toLocaleString()} reviews, ${pct(R.hold.obs)} pass)</h4>` +
+    tbl(head, [row("Constant 58.1%", R.hold.constant), row("Defaults", R.hold.default), row("A2", R.hold.a2), row("B2", R.hold.b2)], [1, 2, 3, 4, 5, 6, 7]) +
+    `<h4>By player type (test, error vs truth)</h4>` +
+    tbl(["Type", "Pass rate", "Defaults", "A2", "B2"], R.arch.map(([n, o, d, a, b]) => [n, pct(o), pp(d), pp(a), pp(b)]), [1, 2, 3, 4]) +
+    `<p>Log-loss and Brier compare the prediction with pass/fail; "error vs truth" compares it with the hidden true chance (root of the mean squared gap). Calibration groups predictions into 20 bins and compares each bin's average prediction with its real pass rate.</p>`;
+  const dr = (n, v) => [n, (v[0] > 0 ? "+" : "") + v[0].toFixed(2) + " d", v[1].toFixed(2) + " d", (v[2] > 0 ? "+" : "") + Math.round(v[2] * 100) + "%", pct(v[3], 0)];
+  $("#moreDays").innerHTML = `<p>The typical true time to a 90% pass chance is only <b>0.57 days</b>: a long line needs every move right, so its pass chance falls below 90% quickly (see step two). Only 2,603 of 26,763 test sessions have a true time of 30 days or more, and 486 lie beyond the 180 simulated days, where the data cannot check anything.</p>` +
+    tbl(["All test sessions", "Median error", "Typical size", "Relative", "Too early"], [dr("Defaults", R.days.all.default), dr("A2", R.days.all.a2), dr("B2", R.days.all.b2)], [1, 2, 3, 4]) +
+    tbl(["By true length", "Sessions", "Defaults", "A2", "B2"], R.days.bands.map(([n, c, ...m]) => [n, c.toLocaleString(), ...m.map(([d, r]) => `${d > 0 ? "+" : ""}${Math.abs(d) < 1 ? d.toFixed(2) : d.toFixed(1)} d`)]), [1, 2, 3, 4]) +
+    `<p>The defaults look perfect on the overall median (+0.00 d) only because they are late on short lines and early on long ones, which cancels out. Brand-new players give the same picture: defaults +0.00 d, A2 −0.14 d, B2 −0.11 d.</p>
+    <p>Why can a model be well calibrated yet early in days? The scores look at the curve around 58%, where the reviews happen. The days metric looks at 90%, a part of the curve the data barely covers.</p>`;
+}
+
+/* 9 v1 comparison (same 60 test players; v1_comparison.json) */
+const V1 = {
+  rows: [ // name, defaults, v1, A2, B2, better: "lo"|"hi"|"days"
+    ["Distance from the true chance", "27.7 pp", "13.1 pp", "14.1 pp", "13.8 pp", 2],
+    ["Honesty gap (calibration)", "19.2 pp", "4.1 pp", "2.6 pp", "2.1 pp", 4],
+    ["Spots the line you'll forget (AUC)", "0.70", "0.785", "0.774", "0.775", 2],
+    ["Average prediction (real: 58%)", "77%", "60%", "59%", "58%", 4],
+    ["Typical scheduling error", "+0.00 d", "−0.17 d", "−0.14 d", "−0.10 d", 0],
+    ["Reviews scheduled too early", "50%", "86%", "82%", "77%", 0],
+    ["Lines that really last 30+ days", "−38.6 d", "−40.9 d", "−47.0 d", "−45.0 d", 1]
+  ],
+  rmse: { test: [0.2769, 0.1306, 0.1406, 0.1382], hold: [0.2773, 0.1316, 0.1376, 0.1351] }
+};
+function drawV1() {
+  const svg = $("#v1Bars"); svg.innerHTML = ""; const L = 190, Rr = 780, max = 0.3, x = v => L + (Rr - L) * v / max;
+  [["Defaults", "--gray"], ["v1, old dials", "--accent"], ["A2 pass/fail", "--amber"], ["B2 true chance", "--green"]].forEach(([n, c], i) => { const y = 20 + i * 56, v = V1.rmse.test[i];
+    tx(svg, 0, y + 24, n, { class: "ink", "font-size": 17, "font-weight": 600 });
+    el("rect", { x: L, y, width: x(v) - L, height: 34, rx: 8, fill: css(c) }, svg);
+    tx(svg, x(v) + 12, y + 24, pp(v), { class: "ink", "font-size": 17, "font-weight": 600 }); });
+  tx(svg, 0, 245, "distance from the true chance, 60 test players · lower is better");
+  $("#v1Table").innerHTML = tbl(["Same 60 new players", "Defaults", "v1 (old)", "A2 (new)", "B2 (new)"],
+    V1.rows.map(r => [r[0], ...r.slice(1, 5).map((v, i) => i + 1 === r[5] ? `<b style="color:var(--accent)">${v}</b>` : v)]), [1, 2, 3, 4]) +
+    `<p class="legend">Blue = best in that row. "d" = days; below zero means the review comes too early. The two day rows have no winner marked: the defaults look perfect there only because their late short lines and early long lines cancel out (step eight). Among the trained dials, B2 is least early, then A2, then v1.</p>`;
+  $("#moreV1").innerHTML = `<h4>Brand-new players (60, seed 20261112)</h4>` +
+    tbl(["", "Defaults", "v1", "A2", "B2"], [["Distance from the true chance", ...V1.rmse.hold.map(pp)], ["Honesty gap", "19.5 pp", "4.6 pp", "3.1 pp", "2.6 pp"], ["AUC", "0.692", "0.778", "0.768", "0.769"], ["Typical scheduling error", "+0.00 d", "−0.17 d", "−0.14 d", "−0.11 d"]], [1, 2, 3, 4]) +
+    `<h4>Why "stopped too soon"</h4><p>A2's goal is the log-loss on its 210 training players. A2's own dials reach 0.5602 there; the v1 dials, never trained on these players, reach 0.5532. A better point existed and the optimizer didn't find it: it starts at the default dials and stops when steps stop helping, which can be a local dip.</p>
+    <h4>v1 on its own old players</h4><p>v1's report (old catalog, popular families more often, 61% pass): log-loss 0.540, AUC 0.788, mean absolute gap to the truth 10.4 pp. Those players differ, so those numbers can't be put next to v2's. That's why this chapter rescores the v1 dials on the new players.</p>`;
+}
+
+function drawAll() { drawCurve(); drawDial(); drawErr(); drawCards(); drawRuler(); drawDays(); drawV1(); drawMore(); }
+drawAll(); play();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
+</script>
+</body>
+</html>

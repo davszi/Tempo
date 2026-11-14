@@ -2,9 +2,11 @@
 
 ## Scope
 
-This record owns the implemented synthetic-client simulator in `ml/ml_1000bots/`,
-the dataset it produced (`tempo_v1`), how FSRS-6 weights are trained and
-evaluated on it, and the results. The client model and the dataset schema
+This record owns the two implemented synthetic-client simulators, how FSRS-6
+weights are trained and evaluated on them, and the results: the 1,000-client
+simulator in `ml/ml_1000bots/` with its dataset `tempo_v1`, and the 300-client
+simulator in the package `ml/tempo_ml/` (see
+[300-client simulator and package](#300-client-simulator-and-package)). The client model and the dataset schema
 are specified by the team in the
 [synthetic clients record](../synthetic-clients/record.md) and the
 [review dataset record](../review-dataset/record.md); this record only
@@ -131,6 +133,43 @@ Conclusions, scoped to these synthetic clients:
    logged as grade 3) or w19 (no same-day reviews); w17 and w18 only weakly.
    Single weights such as w7, w12 and w18 can be far from the truth while
    predictions stay good, because weights compensate each other.
+
+## 300-client simulator and package
+
+Code: `ml/tempo_ml/` (install and run: `ml/README.md`). Its hidden memory
+differs from FSRS: per-line stability is multiplied after a clean session and
+cut after a lapse (`simulator/memory/multiplicative.py`), each move is
+recalled on its own, and a session passes only when every move is right.
+Clients learn 1–3 new lines a day and are tested 3 minutes later. The
+generator reads the catalog from `backend/tempo_demo.sqlite`; a line is
+offered to the side of its family.
+
+Current run: [FSRS-6 on the cleaned catalog, pass/fail vs true recall
+(2026-11-13)](../../../ml/experiments/2026-11-13-fsrs-synthetic-v2/SUMMARY.md),
+arms A2 and B2 of the [retraining plan](retraining-plan.md). It holds two
+trained weight sets:
+
+| Weights | Trained on | Loss | File |
+|---|---|---|---|
+| A2 | pass/fail of each session | log-loss | `results/binary/fsrs6_general_parameters.json` |
+| B2 | hidden true chance of a clean session | MSE | `results/true-recall/fsrs6_general_parameters.json` |
+
+Conclusions, scoped to these synthetic clients (60 test clients; 60 hold-out
+clients agree):
+
+1. Training halves the error against the true chance: defaults 27.7 pp,
+   A2 14.1 pp, B2 13.8 pp. Calibration (RMSE(bins)) goes from 19.2 to 2.6 pp.
+2. Training on the true chance adds 0.3 pp over pass/fail, so pass/fail, the
+   target available for real players, is enough.
+3. In days to a 90% pass chance, A2 and B2 schedule a median 0.14 and
+   0.10 days early, and 45–47 days early on lines whose true time is 30 days
+   or more.
+4. The earlier v1 weights, trained on the old catalog, score 13.1 pp on the
+   same clients and a lower training loss than A2 on A2's own fit clients:
+   A2's fit, started at the defaults, stopped in a worse local optimum.
+
+Not accepted by the team: which weights the app ships; `backend/fitted_global.csv`
+still holds the `ml_1000bots` first-run weights.
 
 ## Limits
 

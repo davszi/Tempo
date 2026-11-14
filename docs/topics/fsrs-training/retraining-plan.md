@@ -7,8 +7,35 @@ retraining both training variants on the cleaned opening catalog, two new
 experiment arms that train against the true recall, a new accuracy metric in
 days, and removing datasets from the variant folders.
 
-Status: planned on 2026-11-13, not started. Nothing below has been run except
-the [motivation probe](#motivation-probe-2026-11-13).
+Status (2026-11-13): the `ml_300bots` part is done: tasks 1–7 for that
+variant, arms A2 and B2, results in
+[`2026-11-13-fsrs-synthetic-v2`](../../../ml/experiments/2026-11-13-fsrs-synthetic-v2/SUMMARY.md).
+The `ml_1000bots` part (A1, A1c, B1, its dataset removal and catalog reader)
+has not started. Later the same day the whole `fsrs-synthetic-v1` run (data,
+results, README) and its page `ml/ml_300bots/fsrs_results.html` were removed
+at the team's request, instead of keeping its results as history; both are
+retrievable at commit `09f8a22`.
+
+Layout change (2026-11-13, after the run): the `ml_300bots` package moved
+from `ml/ml_300bots/ml_engine/src/tempo_ml/` to `ml/tempo_ml/`, and
+`ml/ml_300bots/` no longer exists. Paths below that name `ml_300bots` describe
+the layout the tasks were written and run in. Where things are now:
+
+| Was (`ml/ml_300bots/ml_engine/…`) | Now (`ml/…`) |
+|---|---|
+| `src/tempo_ml/openings.py` | `tempo_ml/catalog.py` (reads `family_side` only; `side_in_games` is gone) |
+| `src/tempo_ml/synthetic_clients/traits.py`, `client.py` | `tempo_ml/simulator/clients.py` |
+| `src/tempo_ml/synthetic_clients/latency.py`, per-move attempts in `client.py` | `tempo_ml/simulator/recall.py` |
+| `src/tempo_ml/synthetic_clients/memory.py` | `tempo_ml/simulator/memory/multiplicative.py` |
+| `src/tempo_ml/review_dataset/` (grading, schema) | `tempo_ml/simulator/grading.py` |
+| `src/tempo_ml/synthetic_data/generate.py` | practice policy in `tempo_ml/simulator/practice.py`, writing in `tempo_ml/simulator/generate.py` (now also `--config`) |
+| `src/tempo_ml/fsrs/data.py`, `model.py` | `tempo_ml/fsrs/model.py` |
+| metrics and days metric in `src/tempo_ml/fsrs/train.py` | `tempo_ml/evaluate/metrics.py`, `tempo_ml/evaluate/days.py` |
+| `src/tempo_ml/fsrs/benchmark.py` | `experiments/2026-11-13-fsrs-synthetic-v2/holdout_benchmark.py` |
+| `tests/` | `tests/test_simulator.py`, `test_memory_models.py`, `test_trainers.py`, `test_metrics.py` |
+| `experiments/fsrs-synthetic-v2/` (data in `data/`, `holdout_data/`) | `experiments/2026-11-13-fsrs-synthetic-v2/` (data in `data/fsrs-synthetic-v2/train/`, `holdout/`; settings in `configs/multiplicative-memory*.json`) |
+
+The 1000-client variant `ml/ml_1000bots/` is unchanged and not yet moved into this layout.
 
 Terms used here:
 

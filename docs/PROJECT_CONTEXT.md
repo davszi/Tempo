@@ -175,7 +175,12 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 - `docs/topics/guide/index.md`: human-facing visual authoring guide.
 - `docs/topics/fsrs-training/fsrs-training.md`: synthetic-client simulator, FSRS training method and results.
 - `docs/topics/opening-library/opening-library.md`: opening library and side classification.
-- `ml/ml_1000bots/`: synthetic-client simulator and FSRS training code; install and run commands in `ml/ml_1000bots/README.md`.
+- `ml/README.md`, `ml/pyproject.toml`: install and run commands for the `tempo_ml` package.
+- `ml/tempo_ml/`: catalog reader (`catalog.py`), FSRS-6 model and trainer (`fsrs/`), the 300-client simulator (`simulator/`: clients, memory models, recall, practice, grading, generate) and metrics (`evaluate/`); tests in `ml/tests/`.
+- `ml/configs/`: generator settings for `tempo_ml` datasets.
+- `ml/experiments/`: one dated folder per `tempo_ml` run; `SUMMARY.md` is its record, `results/` its weights and metrics, `dataset_MANIFEST.txt` where its data lives.
+- `ml/data/`: generated datasets of `tempo_ml` runs, ignored by Git.
+- `ml/ml_1000bots/`: 1,000-client synthetic simulator and FSRS training code; install and run commands in `ml/ml_1000bots/README.md`.
 - `ml/ml_1000bots/openings/`: opening library files and the scripts that classify them.
 - `ml/ml_1000bots/data/tempo_v1/`: dataset of the first training run; other generated datasets in `ml/ml_1000bots/data/` are ignored by Git.
 - `ml/ml_1000bots/runs/`: one folder per training run with its parameters, results and raw outputs.

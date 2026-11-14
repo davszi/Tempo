@@ -1,0 +1,5 @@
+# Generated datasets stay local; each experiment's dataset_MANIFEST.txt records
+# where they live, how to regenerate them and the SHA-256 of every file.
+/data/
+# Created by `pip install -e .`
+*.egg-info/

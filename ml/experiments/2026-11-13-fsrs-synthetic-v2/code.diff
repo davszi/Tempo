@@ -1,0 +1,866 @@
+diff --git a/ml/ml_300bots/ml_engine/src/tempo_ml/fsrs/benchmark.py b/ml/ml_300bots/ml_engine/src/tempo_ml/fsrs/benchmark.py
+index bca69e7..5062780 100644
+--- a/ml/ml_300bots/ml_engine/src/tempo_ml/fsrs/benchmark.py
++++ b/ml/ml_300bots/ml_engine/src/tempo_ml/fsrs/benchmark.py
+@@ -1,10 +1,13 @@
+ """Benchmark FSRS-6 weights on a separate dataset of new synthetic clients.
+ 
+-    python -m tempo_ml.fsrs.benchmark --data <new dataset dir> --weights <fsrs6_general_parameters.json> --out <metrics.json>
++    python -m tempo_ml.fsrs.benchmark --data <new dataset dir> \
++        --weights <name>=<fsrs6_general_parameters.json> [<name>=<file> ...] \
++        --base-rate <rate> --out <metrics.json>
+ 
+ No fitting: every client in ``--data`` is scored with the FSRS-6 default
+-weights and with the given trained weights. A constant guess equal to the
+-success rate stored in the weights file's training data is included as a floor.
++weights and with each set of given weights, with every metric of
++``train.score`` (days included). A constant guess equal to ``--base-rate``
++(the training clients' success rate) is included as a floor.
+ """
+ 
+ from __future__ import annotations
+@@ -17,50 +20,55 @@ import numpy as np
+ import pandas as pd
+ 
+ from .data import load_cards
+-from .model import DEFAULT_PARAMETERS, predict
+-from .train import metrics
++from .model import DEFAULT_PARAMETERS
++from .train import Truth, metrics, score
++
++
++def _named(item: str) -> tuple[str, Path]:
++    name, _, path = item.partition("=")
++    if not path:
++        raise argparse.ArgumentTypeError(f"expected <name>=<file>, got {item!r}")
++    return name, Path(path)
+ 
+ 
+ def main(argv: list[str] | None = None) -> None:
+     ap = argparse.ArgumentParser(description="Score FSRS-6 weights on new clients")
+     ap.add_argument("--data", type=Path, required=True)
+-    ap.add_argument("--weights", type=Path, required=True)
++    ap.add_argument("--weights", type=_named, nargs="+", required=True, help="<name>=<parameters json>")
+     ap.add_argument("--base-rate", type=float, required=True,
+                     help="success rate of the training clients, for the constant guess")
+     ap.add_argument("--out", type=Path, required=True)
+     a = ap.parse_args(argv)
+ 
+     cards = load_cards(a.data / "sessions.csv")
+-    truth_all = pd.read_csv(a.data / "ground_truth.csv", usecols=["p_clean"])["p_clean"].to_numpy()
++    truth = Truth(a.data)
++    horizon = float(json.loads((a.data / "manifest.json").read_text())["config"]["horizon_days"])
+     clients = pd.read_csv(a.data / "clients.csv")
+     archetype = dict(zip(clients["agent_name"], clients["archetype"]))
+-    w_trained = np.array(json.loads(a.weights.read_text())["parameters"])
++    models = {"fsrs6_default": DEFAULT_PARAMETERS}
++    for name, path in a.weights:
++        models[name] = np.array(json.loads(path.read_text())["parameters"])
+ 
+     m = cards.loss_mask
+-    y, truth = cards.y[m], truth_all[cards.row[m]]
+-    p_def = predict(DEFAULT_PARAMETERS, cards.t, cards.g, cards.valid)
+-    p_tr = predict(w_trained, cards.t, cards.g, cards.valid)
++    y = cards.y[m]
+     out = {
+         "clients": int(len(clients)),
+-        "overall": {
+-            "constant_guess": metrics(np.full(len(y), a.base_rate), y, truth),
+-            "fsrs6_default": metrics(p_def[m], y, truth),
+-            "fsrs6_trained": metrics(p_tr[m], y, truth),
+-        },
++        "weights": {name: str(path) for name, path in a.weights},
++        "overall": {"constant_guess": metrics(np.full(len(y), a.base_rate), y, truth.p_clean[cards.row[m]]),
++                    **{k: score(w, cards, truth, horizon) for k, w in models.items()}},
+         "by_archetype": {},
+     }
+     arch = np.array([archetype[x] for x in cards.agent])
+     for name in sorted(set(arch)):
+-        mm = m & (arch == name)[:, None]
+-        yy, tt = cards.y[mm], truth_all[cards.row[mm]]
+-        out["by_archetype"][name] = {
+-            "fsrs6_default": metrics(p_def[mm], yy, tt),
+-            "fsrs6_trained": metrics(p_tr[mm], yy, tt),
+-        }
++        sub = cards.subset(arch == name)
++        out["by_archetype"][name] = {k: score(w, sub, truth, horizon) for k, w in models.items()}
+     a.out.parent.mkdir(parents=True, exist_ok=True)
+     a.out.write_text(json.dumps(out, indent=2) + "\n")
+     for k, v in out["overall"].items():
+-        print(f"{k:16s} " + "  ".join(f"{x}={v[x]:.4f}" for x in ("log_loss", "brier", "auc", "mae_vs_true_p_clean", "mean_predicted")))
++        line = "  ".join(f"{x}={v[x]:.4f}" for x in ("log_loss", "brier", "rmse_bins", "auc", "rmse_vs_truth", "mean_predicted"))
++        if "days" in v:
++            line += f"  days_median_error={v['days']['median_error']:+.3f}"
++        print(f"{k:16s} {line}")
+     print(f"reviews={len(y)} observed_success={y.mean():.4f}")
+ 
+ 
+diff --git a/ml/ml_300bots/ml_engine/src/tempo_ml/fsrs/model.py b/ml/ml_300bots/ml_engine/src/tempo_ml/fsrs/model.py
+index dd31c88..168c5fb 100644
+--- a/ml/ml_300bots/ml_engine/src/tempo_ml/fsrs/model.py
++++ b/ml/ml_300bots/ml_engine/src/tempo_ml/fsrs/model.py
+@@ -78,6 +78,38 @@ def next_stability(w, d, s, r, g):
+     return np.maximum(out, STABILITY_MIN)
+ 
+ 
++def predict_states(w: np.ndarray, t: np.ndarray, g: np.ndarray, valid: np.ndarray):
++    """Like :func:`predict`, and also the stability after every review.
++
++    Returns:
++        (r, s_after): both (cards, steps). ``r`` is :func:`predict`'s output;
++        ``s_after[:, k]`` is the stability in days once review k is applied
++        (step 0 included), NaN at invalid positions. FSRS-6 predicts 90%
++        recall exactly ``s_after`` days after the review.
++    """
++    w = np.asarray(w, dtype=float)
++    g = np.where(valid, g, 3).astype(int)
++    n, steps = t.shape
++    out = np.full((n, steps), np.nan)
++    s_after = np.full((n, steps), np.nan)
++    s = initial_stability(w, g[:, 0])
++    d = initial_difficulty(w, g[:, 0])
++    s_after[:, 0] = np.where(valid[:, 0], s, np.nan)
++    for k in range(1, steps):
++        v = valid[:, k]
++        if not v.any():
++            break
++        tk, gk = t[:, k], g[:, k]
++        r = forgetting_curve(w, tk, s)
++        out[:, k] = np.where(v, r, np.nan)
++        s_new = np.where(tk < 1.0, short_term_stability(w, s, gk), next_stability(w, d, s, r, gk))
++        d_new = next_difficulty(w, d, gk)
++        s = np.where(v, s_new, s)
++        d = np.where(v, d_new, d)
++        s_after[:, k] = np.where(v, s, np.nan)
++    return out, s_after
++
++
+ def predict(w: np.ndarray, t: np.ndarray, g: np.ndarray, valid: np.ndarray) -> np.ndarray:
+     """Predicted retrievability before every review.
+ 
+diff --git a/ml/ml_300bots/ml_engine/src/tempo_ml/fsrs/train.py b/ml/ml_300bots/ml_engine/src/tempo_ml/fsrs/train.py
+index 0c81c43..e670818 100644
+--- a/ml/ml_300bots/ml_engine/src/tempo_ml/fsrs/train.py
++++ b/ml/ml_300bots/ml_engine/src/tempo_ml/fsrs/train.py
+@@ -1,27 +1,33 @@
+ """Fit FSRS-6 on a synthetic session dataset, evaluate, and personalise.
+ 
+     python -m tempo_ml.fsrs.train --data <generated dir> --out <dir> [--seed N]
++        [--target {pass,true}] [--no-personalise]
+ 
+-Protocol (fixed in the experiment README before running):
++Protocol:
+ 
+ 1. Split clients by archetype into fit (70 %), validation (10 %) and test (20 %).
+-2. General model: start from FSRS-6 defaults, minimise mean binary cross-entropy
+-   of predicted R vs session success on the fit clients (L-BFGS-B within the
+-   py-fsrs parameter bounds, finite-difference gradients).
++2. General model: start from FSRS-6 defaults and minimise, on the fit clients,
++   either (``--target pass``, default) the mean binary cross-entropy of
++   predicted R against session success, or (``--target true``) the mean
++   squared error of predicted R against the hidden true chance of a clean
++   session ``p_clean`` (L-BFGS-B within the py-fsrs parameter bounds,
++   finite-difference gradients). ``--target true`` reads ``ground_truth.csv``
++   for the fit clients: it is a diagnostic that real players cannot support.
+ 3. Evaluate on test clients against two baselines: FSRS-6 default parameters,
+    and a constant predictor equal to the fit clients' success rate. Metrics:
+-   log loss, Brier score, AUC, and mean absolute error against the generator's
+-   hidden true clean-session probability p_clean = R_move ** M.
+-4. Personalisation: for each client, the first 60 % of its tested reviews
+-   (in time order) fine-tune the general parameters with an L2 pull toward
+-   them; the last 40 % evaluate. The pull strength is chosen on validation
+-   clients only, then applied to test clients.
++   log loss, Brier score, RMSE(bins), AUC, RMSE and MAE against ``p_clean``,
++   and the error in days (see :func:`days_metrics`).
++4. Personalisation (skipped with ``--no-personalise``): for each client, the
++   first 60 % of its tested reviews (in time order) fine-tune the general
++   parameters with an L2 pull toward them; the last 40 % evaluate. The pull
++   strength is chosen on validation clients only, then applied to test clients.
+ """
+ 
+ from __future__ import annotations
+ 
+ import argparse
+ import json
++import platform
+ import time
+ from pathlib import Path
+ 
+@@ -30,11 +36,13 @@ import pandas as pd
+ from scipy.optimize import minimize
+ 
+ from .data import Cards, load_cards
+-from .model import DEFAULT_PARAMETERS, LOWER_BOUNDS, UPPER_BOUNDS, predict
++from .model import DEFAULT_PARAMETERS, LOWER_BOUNDS, UPPER_BOUNDS, predict, predict_states
+ 
+ EPS = 1e-6
+ SPAN = UPPER_BOUNDS - LOWER_BOUNDS
+ LAMBDA_GRID = (0.01, 0.1, 1.0, 10.0)
++TARGET_RETENTION = 0.9
++TRUTH_COLUMNS = ["agent_name", "mode", "num_moves", "p_clean", "stability_after"]
+ 
+ 
+ def bce(p: np.ndarray, y: np.ndarray) -> np.ndarray:
+@@ -42,17 +50,26 @@ def bce(p: np.ndarray, y: np.ndarray) -> np.ndarray:
+     return -(y * np.log(p) + (1 - y) * np.log(1 - p))
+ 
+ 
+-def objective(w, cards: Cards, mask: np.ndarray, prior=None, lam: float = 0.0) -> float:
++def objective(w, cards: Cards, mask: np.ndarray, target: np.ndarray | None = None,
++              loss: str = "bce", prior=None, lam: float = 0.0) -> float:
++    """Mean loss of predicted R against ``target`` (default: pass/fail ``cards.y``)."""
++    target = cards.y if target is None else target
+     p = predict(w, cards.t, cards.g, cards.valid)
+-    loss = float(bce(p[mask], cards.y[mask]).mean())
++    if loss == "bce":
++        value = float(bce(p[mask], target[mask]).mean())
++    elif loss == "mse":
++        value = float(np.mean((p[mask] - target[mask]) ** 2))
++    else:
++        raise ValueError(f"unknown loss {loss!r}")
+     if prior is not None and lam > 0:
+-        loss += lam * float(np.mean(((w - prior) / SPAN) ** 2))
+-    return loss
++        value += lam * float(np.mean(((w - prior) / SPAN) ** 2))
++    return value
+ 
+ 
+-def fit(w0, cards: Cards, mask: np.ndarray, prior=None, lam: float = 0.0, maxiter: int = 300):
++def fit(w0, cards: Cards, mask: np.ndarray, target: np.ndarray | None = None, loss: str = "bce",
++        prior=None, lam: float = 0.0, maxiter: int = 300):
+     res = minimize(
+-        objective, np.clip(w0, LOWER_BOUNDS, UPPER_BOUNDS), args=(cards, mask, prior, lam),
++        objective, np.clip(w0, LOWER_BOUNDS, UPPER_BOUNDS), args=(cards, mask, target, loss, prior, lam),
+         method="L-BFGS-B", bounds=list(zip(LOWER_BOUNDS, UPPER_BOUNDS)),
+         options={"maxiter": maxiter, "eps": 1e-6},
+     )
+@@ -72,17 +89,103 @@ def auc(p: np.ndarray, y: np.ndarray) -> float:
+     return float((ranks[pos].sum() - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg))
+ 
+ 
++def rmse_bins(p: np.ndarray, y: np.ndarray, n_bins: int = 20) -> float:
++    """Calibration: weighted RMSE between mean prediction and observed rate per bin
++    (same definition as ml_1000bots ``tempo_sim/evaluate.py``)."""
++    p = np.clip(p, EPS, 1 - EPS)
++    b = np.minimum((p * n_bins).astype(int), n_bins - 1)
++    num = den = 0.0
++    for k in np.unique(b):
++        s = b == k
++        num += s.sum() * (y[s].mean() - p[s].mean()) ** 2
++        den += s.sum()
++    return float(np.sqrt(num / den))
++
++
+ def metrics(p: np.ndarray, y: np.ndarray, truth: np.ndarray | None = None) -> dict:
++    """Scores of predictions ``p`` against outcomes ``y`` (and the true chance ``truth``)."""
+     out = {
+         "reviews": int(len(y)),
+         "log_loss": float(bce(p, y).mean()),
+         "brier": float(np.mean((p - y) ** 2)),
++        "rmse_bins": rmse_bins(p, y),
+         "auc": auc(p, y),
+         "mean_predicted": float(p.mean()),
+         "observed_success": float(y.mean()),
+     }
+     if truth is not None:
+-        out["mae_vs_true_p_clean"] = float(np.mean(np.abs(p - truth)))
++        out["rmse_vs_truth"] = float(np.sqrt(np.mean((p - truth) ** 2)))
++        out["mae_vs_truth"] = float(np.mean(np.abs(p - truth)))
++    return out
++
++
++def true_days(stability, num_moves, C, retention: float = TARGET_RETENTION):
++    """Days until the true chance of a clean session drops to ``retention``.
++
++    The hidden memory is per move, R(t) = (1 + F t / S) ** -C with
++    F = 0.9 ** (-1 / C) - 1, and a clean session needs all M moves, so the
++    chance is R(t) ** M. Solving R(t) ** M = retention gives
++    t = S / F * ((retention ** (1 / M)) ** (-1 / C) - 1). For M = 1 and
++    retention 0.9 this is S.
++    """
++    stability, num_moves, C = (np.asarray(x, dtype=float) for x in (stability, num_moves, C))
++    F = 0.9 ** (-1.0 / C) - 1.0
++    r_move = retention ** (1.0 / num_moves)
++    return stability / F * (r_move ** (-1.0 / C) - 1.0)
++
++
++def days_metrics(d_pred: np.ndarray, d_true: np.ndarray, after_learning: np.ndarray,
++                 horizon_days: float) -> dict:
++    """Error in days, predicted minus true days to 90 % (negative = review too early)."""
++    e = d_pred - d_true
++
++    def block(sel: np.ndarray) -> dict:
++        if not sel.any():
++            return {"sessions": 0}
++        return {"sessions": int(sel.sum()),
++                "median_error": float(np.median(e[sel])),
++                "median_abs_error": float(np.median(np.abs(e[sel]))),
++                "median_rel_error": float(np.median(e[sel] / d_true[sel]))}
++
++    out = block(np.ones_like(e, bool))
++    out.update({
++        "share_too_early": float(np.mean(e < 0)),
++        "mean_error": float(e.mean()),
++        "n_beyond_horizon": int((d_true > horizon_days).sum()),
++        "median_true_days": float(np.median(d_true)),
++        "median_pred_days": float(np.median(d_pred)),
++        "bands": {"lt7": block(d_true < 7), "7to30": block((d_true >= 7) & (d_true < 30)),
++                  "ge30": block(d_true >= 30)},
++        "session_type": {"after_learning": block(after_learning), "after_review": block(~after_learning)},
++    })
++    return out
++
++
++class Truth:
++    """Hidden per-session truth, aligned with ``sessions.csv`` rows. Evaluation, and B arms' fit clients only."""
++
++    def __init__(self, data_dir: Path):
++        gt = pd.read_csv(data_dir / "ground_truth.csv", usecols=TRUTH_COLUMNS)
++        clients = pd.read_csv(data_dir / "clients.csv")
++        c_by_agent = dict(zip(clients["agent_name"], clients["C"]))
++        self.p_clean = gt["p_clean"].to_numpy(float)
++        self.d_true = true_days(gt["stability_after"].to_numpy(float), gt["num_moves"].to_numpy(float),
++                                gt["agent_name"].map(c_by_agent).to_numpy(float))
++        self.learning = (gt["mode"] == "learning").to_numpy()
++
++    def grid(self, cards: Cards, values: np.ndarray) -> np.ndarray:
++        """Per-row values laid out like the cards' (cards, steps) arrays; NaN where empty."""
++        return np.where(cards.row >= 0, values[np.maximum(cards.row, 0)], np.nan)
++
++
++def score(w, cards: Cards, truth: Truth, horizon_days: float) -> dict:
++    """All metrics of weights ``w`` on ``cards``: tested reviews, plus days over every session."""
++    p, s_after = predict_states(w, cards.t, cards.g, cards.valid)
++    m = cards.loss_mask
++    out = metrics(p[m], cards.y[m], truth.p_clean[cards.row[m]])
++    v = cards.valid
++    rows = cards.row[v]
++    out["days"] = days_metrics(s_after[v], truth.d_true[rows], truth.learning[rows], horizon_days)
+     return out
+ 
+ 
+@@ -143,13 +246,18 @@ def main(argv: list[str] | None = None) -> None:
+     ap.add_argument("--data", type=Path, required=True, help="directory written by the generator")
+     ap.add_argument("--out", type=Path, required=True)
+     ap.add_argument("--seed", type=int, default=7)
++    ap.add_argument("--target", choices=("pass", "true"), default="pass",
++                    help="pass: log-loss on pass/fail; true: MSE on the hidden p_clean (diagnostic)")
++    ap.add_argument("--no-personalise", action="store_true", help="skip the per-client fine-tuning step")
+     a = ap.parse_args(argv)
+     a.out.mkdir(parents=True, exist_ok=True)
+     started = time.time()
+     log = lambda msg: print(f"[{time.time() - started:7.1f}s] {msg}", flush=True)
+ 
+     cards = load_cards(a.data / "sessions.csv")
+-    truth_all = pd.read_csv(a.data / "ground_truth.csv", usecols=["p_clean"])["p_clean"].to_numpy()
++    truth = Truth(a.data)
++    gen_manifest = json.loads((a.data / "manifest.json").read_text())
++    horizon = float(gen_manifest["config"]["horizon_days"])
+     clients = pd.read_csv(a.data / "clients.csv")
+     archetype = dict(zip(clients["agent_name"], clients["archetype"]))
+     parts = split_clients(clients, a.seed)
+@@ -162,73 +270,81 @@ def main(argv: list[str] | None = None) -> None:
+     val_cards = cards.subset(in_part["validation"])
+ 
+     # ---- general model
+-    log("fitting general FSRS-6 parameters on fit clients ...")
+-    w_gen, info = fit(DEFAULT_PARAMETERS, fit_cards, fit_cards.loss_mask)
++    if a.target == "pass":
++        target, loss = None, "bce"
++    else:  # hidden truth, fit clients only (fit_cards holds no other client)
++        target, loss = truth.grid(fit_cards, truth.p_clean), "mse"
++    log(f"fitting general FSRS-6 parameters on fit clients (target={a.target}, loss={loss}) ...")
++    w_gen, info = fit(DEFAULT_PARAMETERS, fit_cards, fit_cards.loss_mask, target=target, loss=loss)
+     log(f"done: {info}")
+ 
+     # ---- evaluation on test clients
+     m = test_cards.loss_mask
+     y = test_cards.y[m]
+-    truth = truth_all[test_cards.row[m]]
+     base_rate = float(fit_cards.y[fit_cards.loss_mask].mean())
+-    p_def = predict(DEFAULT_PARAMETERS, test_cards.t, test_cards.g, test_cards.valid)
+-    p_gen = predict(w_gen, test_cards.t, test_cards.g, test_cards.valid)
+     results = {
++        "target": a.target,
++        "loss": loss,
+         "test": {
+-            "constant_base_rate": metrics(np.full(len(y), base_rate), y, truth),
+-            "fsrs6_default": metrics(p_def[m], y, truth),
+-            "fsrs6_trained": metrics(p_gen[m], y, truth),
++            "constant_base_rate": metrics(np.full(len(y), base_rate), y, truth.p_clean[test_cards.row[m]]),
++            "fsrs6_default": score(DEFAULT_PARAMETERS, test_cards, truth, horizon),
++            "fsrs6_trained": score(w_gen, test_cards, truth, horizon),
+         },
+         "test_by_archetype": {},
+-        "fit": {"fsrs6_trained": metrics(predict(w_gen, fit_cards.t, fit_cards.g, fit_cards.valid)[fit_cards.loss_mask],
+-                                         fit_cards.y[fit_cards.loss_mask])},
++        "fit": {"fsrs6_trained": score(w_gen, fit_cards, truth, horizon)},
+         "optimizer": info,
++        "base_rate": base_rate,
+     }
+     arch_card = np.array([archetype[x] for x in test_cards.agent])
+     for arch in sorted(set(arch_card)):
+-        mm = m & (arch_card == arch)[:, None]
+-        yy, tt = test_cards.y[mm], truth_all[test_cards.row[mm]]
++        sub = test_cards.subset(arch_card == arch)
+         results["test_by_archetype"][arch] = {
+-            "fsrs6_default": metrics(p_def[mm], yy, tt),
+-            "fsrs6_trained": metrics(p_gen[mm], yy, tt),
++            "fsrs6_default": score(DEFAULT_PARAMETERS, sub, truth, horizon),
++            "fsrs6_trained": score(w_gen, sub, truth, horizon),
+         }
+     log("test: " + json.dumps({k: round(v["log_loss"], 4) for k, v in results["test"].items()}))
+ 
+     # ---- personalisation: choose lambda on validation clients
+-    lam_scores = {}
+-    for lam in LAMBDA_GRID:
+-        pg, pp, late, _ = personalise(val_cards, w_gen, lam)
+-        lam_scores[lam] = {"general": float(bce(pg[late], val_cards.y[late]).mean()),
+-                           "personal": float(bce(pp[late], val_cards.y[late]).mean())}
+-        log(f"validation lambda={lam}: {lam_scores[lam]}")
+-    best_lam = min(LAMBDA_GRID, key=lambda l: lam_scores[l]["personal"])
+-    use_personal = lam_scores[best_lam]["personal"] < lam_scores[best_lam]["general"]
+-
+-    pg, pp, late, per_agent = personalise(test_cards, w_gen, best_lam)
+-    yl, tl = test_cards.y[late], truth_all[test_cards.row[late]]
+-    results["personalisation"] = {
+-        "lambda_grid_validation": {str(k): v for k, v in lam_scores.items()},
+-        "chosen_lambda": best_lam,
+-        "validation_says_personalise": use_personal,
+-        "test_late_reviews": {
+-            "fsrs6_default": metrics(predict(DEFAULT_PARAMETERS, test_cards.t, test_cards.g, test_cards.valid)[late], yl, tl),
+-            "fsrs6_general": metrics(pg[late], yl, tl),
+-            "fsrs6_personalised": metrics(pp[late], yl, tl),
+-        },
+-        "clients_improved": int((per_agent.late_log_loss_personal < per_agent.late_log_loss_general).sum()),
+-        "clients": int(len(per_agent)),
+-    }
+-    per_agent["archetype"] = per_agent.agent_name.map(archetype)
+-    per_agent.to_csv(a.out / "personalisation_test_clients.csv", index=False)
+-    log("personalisation (test, late reviews): " + json.dumps(
+-        {k: round(v["log_loss"], 4) for k, v in results["personalisation"]["test_late_reviews"].items()}))
++    if a.no_personalise:
++        results["personalisation"] = "skipped (--no-personalise)"
++    else:
++        lam_scores = {}
++        for lam in LAMBDA_GRID:
++            pg, pp, late, _ = personalise(val_cards, w_gen, lam)
++            lam_scores[lam] = {"general": float(bce(pg[late], val_cards.y[late]).mean()),
++                               "personal": float(bce(pp[late], val_cards.y[late]).mean())}
++            log(f"validation lambda={lam}: {lam_scores[lam]}")
++        best_lam = min(LAMBDA_GRID, key=lambda l: lam_scores[l]["personal"])
++        use_personal = lam_scores[best_lam]["personal"] < lam_scores[best_lam]["general"]
++
++        pg, pp, late, per_agent = personalise(test_cards, w_gen, best_lam)
++        yl, tl = test_cards.y[late], truth.p_clean[test_cards.row[late]]
++        results["personalisation"] = {
++            "lambda_grid_validation": {str(k): v for k, v in lam_scores.items()},
++            "chosen_lambda": best_lam,
++            "validation_says_personalise": use_personal,
++            "test_late_reviews": {
++                "fsrs6_default": metrics(predict(DEFAULT_PARAMETERS, test_cards.t, test_cards.g, test_cards.valid)[late], yl, tl),
++                "fsrs6_general": metrics(pg[late], yl, tl),
++                "fsrs6_personalised": metrics(pp[late], yl, tl),
++            },
++            "clients_improved": int((per_agent.late_log_loss_personal < per_agent.late_log_loss_general).sum()),
++            "clients": int(len(per_agent)),
++        }
++        per_agent["archetype"] = per_agent.agent_name.map(archetype)
++        per_agent.to_csv(a.out / "personalisation_test_clients.csv", index=False)
++        log("personalisation (test, late reviews): " + json.dumps(
++            {k: round(v["log_loss"], 4) for k, v in results["personalisation"]["test_late_reviews"].items()}))
+ 
+-    params = {"model": "FSRS-6", "parameters": [round(float(x), 6) for x in w_gen],
++    params = {"model": "FSRS-6", "target": a.target, "loss": loss,
++              "parameters": [round(float(x), 6) for x in w_gen],
+               "default_parameters": DEFAULT_PARAMETERS.tolist(),
+               "trained_on": {"data": str(a.data), "clients": len(parts["fit"]),
+-                             "reviews": int(fit_cards.loss_mask.sum())}}
++                             "reviews": int(fit_cards.loss_mask.sum()), "base_rate": base_rate}}
+     (a.out / "fsrs6_general_parameters.json").write_text(json.dumps(params, indent=2) + "\n")
+     results["split"] = {k: sorted(v) for k, v in parts.items()}
++    results["environment"] = {"python": platform.python_version(), "numpy": np.__version__,
++                              "pandas": pd.__version__, "platform": platform.platform()}
+     results["seconds"] = round(time.time() - started, 1)
+     (a.out / "metrics.json").write_text(json.dumps(results, indent=2) + "\n")
+     log(f"wrote {a.out}")
+diff --git a/ml/ml_300bots/ml_engine/src/tempo_ml/openings.py b/ml/ml_300bots/ml_engine/src/tempo_ml/openings.py
+index 3ddf46d..e669714 100644
+--- a/ml/ml_300bots/ml_engine/src/tempo_ml/openings.py
++++ b/ml/ml_300bots/ml_engine/src/tempo_ml/openings.py
+@@ -1,18 +1,20 @@
+-"""Load the TEMPO opening library (``openings/opening_lines.csv``).
++"""Load the TEMPO opening catalog from the backend SQLite database.
++
++The catalog is the tables ``opening_lines`` and ``opening_families`` in
++``backend/tempo_demo.sqlite``. The database is opened read-only.
+ 
+ Each row is one line (variation). A player learns a line from one side; the
+ number of repertoire moves M they must recall is ``white_moves`` or
+-``black_moves`` for that side.
++``black_moves`` for that side, derived from the line's UCI moves.
+ 
+-Which side a line belongs to follows the library README's suggested filter:
+-a line is offered to a player of ``side`` when ``family_side == side`` or
+-``side_in_games`` is ``side`` or ``"both"``. ``family_side == "both"`` counts
+-for both sides.
++Which side a line belongs to follows the library's filter: a line is offered
++to a player of ``side`` when ``family_side == side`` or ``side_in_games`` is
++``side`` or ``"both"``. ``family_side == "both"`` counts for both sides.
+ """
+ 
+ from __future__ import annotations
+ 
+-import csv
++import sqlite3
+ from dataclasses import dataclass
+ from pathlib import Path
+ 
+@@ -20,25 +22,31 @@ from .synthetic_clients.client import Line
+ 
+ SIDES = ("white", "black")
+ 
+-# ml_engine/src/tempo_ml/openings.py -> repository root is parents[3]
+-DEFAULT_LINES_CSV = Path(__file__).resolve().parents[3] / "openings" / "opening_lines.csv"
++# ml/ml_300bots/ml_engine/src/tempo_ml/openings.py -> repository root is parents[5]
++DEFAULT_CATALOG_DB = Path(__file__).resolve().parents[5] / "backend" / "tempo_demo.sqlite"
++
++CATALOG_QUERY = """
++SELECT l.line_id, l.name, l.eco, l.moves_uci, l.side_in_games,
++       f.name AS family, f.family_side
++FROM opening_lines AS l JOIN opening_families AS f USING (family_id)
++ORDER BY l.line_id
++"""
+ 
+ 
+ @dataclass(frozen=True)
+ class OpeningLine:
+-    """One row of the opening library."""
++    """One line of the opening catalog."""
+ 
+-    line_id: str
++    line_id: str  # backend opening_lines.line_id
+     eco: str
+     family: str
+     name: str
+-    pgn: str
++    moves_uci: str
+     plies: int
+     white_moves: int
+     black_moves: int
+     family_side: str
+     side_in_games: str
+-    family_games: int  # n_games of the family in the Lichess evidence (0 if unknown)
+ 
+     def playable_by(self, side: str) -> bool:
+         if side not in SIDES:
+@@ -56,25 +64,29 @@ class OpeningLine:
+         return Line(opening_name=self.name, num_moves=self.moves_for(side), line_id=self.line_id)
+ 
+ 
+-def load_opening_lines(path: str | Path = DEFAULT_LINES_CSV) -> list[OpeningLine]:
+-    """Read the library CSV. ``line_id`` is ``<eco>-<row number>`` (row 1 = first line)."""
++def load_opening_lines(db: str | Path = DEFAULT_CATALOG_DB) -> list[OpeningLine]:
++    """Read every line of the catalog, ordered by ``line_id``."""
++    uri = Path(db).resolve().as_uri() + "?mode=ro"
++    con = sqlite3.connect(uri, uri=True)
++    try:
++        rows = con.execute(CATALOG_QUERY).fetchall()
++    finally:
++        con.close()
+     lines: list[OpeningLine] = []
+-    with Path(path).open(encoding="utf-8-sig", newline="") as handle:
+-        for i, row in enumerate(csv.DictReader(handle), start=1):
+-            n_games = row.get("n_games") or ""
+-            lines.append(
+-                OpeningLine(
+-                    line_id=f"{row['eco']}-{i:04d}",
+-                    eco=row["eco"],
+-                    family=row["family"],
+-                    name=row["name"],
+-                    pgn=row["pgn"],
+-                    plies=int(row["plies"]),
+-                    white_moves=int(row["white_moves"]),
+-                    black_moves=int(row["black_moves"]),
+-                    family_side=row["family_side"],
+-                    side_in_games=row.get("side_in_games") or "",
+-                    family_games=int(float(n_games)) if n_games else 0,
+-                )
++    for line_id, name, eco, moves_uci, side_in_games, family, family_side in rows:
++        plies = len(moves_uci.split())
++        lines.append(
++            OpeningLine(
++                line_id=str(line_id),
++                eco=eco,
++                family=family,
++                name=name,
++                moves_uci=moves_uci,
++                plies=plies,
++                white_moves=(plies + 1) // 2,
++                black_moves=plies // 2,
++                family_side=family_side or "",
++                side_in_games=side_in_games or "",
+             )
++        )
+     return lines
+diff --git a/ml/ml_300bots/ml_engine/src/tempo_ml/synthetic_data/generate.py b/ml/ml_300bots/ml_engine/src/tempo_ml/synthetic_data/generate.py
+index 7aa21c8..c644aa5 100644
+--- a/ml/ml_300bots/ml_engine/src/tempo_ml/synthetic_data/generate.py
++++ b/ml/ml_300bots/ml_engine/src/tempo_ml/synthetic_data/generate.py
+@@ -3,7 +3,7 @@
+     python -m tempo_ml.synthetic_data.generate --out <dir> [--seed N] [--clients-per-archetype N]
+ 
+ Each client gets a side (white or black) and a repertoire of real lines from
+-the opening library, then practises for ``horizon_days`` days under a
++the opening catalog in ``backend/tempo_demo.sqlite``, then practises for ``horizon_days`` days under a
+ *data-collection practice policy* (below). The policy only decides when and
+ which line is practised; what happens in a session comes from the client model
+ (docs/topics/synthetic-clients/record.md).
+@@ -46,7 +46,7 @@ from pathlib import Path
+ 
+ import numpy as np
+ 
+-from ..openings import DEFAULT_LINES_CSV, SIDES, OpeningLine, load_opening_lines
++from ..openings import DEFAULT_CATALOG_DB, SIDES, OpeningLine, load_opening_lines
+ from ..review_dataset import CSV_COLUMNS, SessionRecord
+ from ..synthetic_clients import ARCHETYPES, SessionOutcome, SyntheticClient, TraitDistribution
+ 
+@@ -96,14 +96,18 @@ class ClientPlan:
+ def _pick_repertoire(
+     lines: list[OpeningLine], side: str, cfg: GenerationConfig, rng: np.random.Generator
+ ) -> list[OpeningLine]:
+-    """A few families (weighted by popularity in real games), then lines from them."""
++    """A few families, then lines from them.
++
++    Families are drawn uniformly: the backend catalog has no family
++    popularity (the old library's ``n_games``); see the retraining plan's
++    open questions.
++    """
+     eligible = [l for l in lines if l.playable_by(side) and l.moves_for(side) >= cfg.min_moves]
+     by_family: dict[str, list[OpeningLine]] = {}
+     for l in eligible:
+         by_family.setdefault(l.family, []).append(l)
+     families = sorted(by_family)
+-    weights = np.array([by_family[f][0].family_games + 1.0 for f in families])
+-    order = rng.choice(len(families), size=len(families), replace=False, p=weights / weights.sum())
++    order = rng.permutation(len(families))
+ 
+     size = int(rng.integers(cfg.repertoire_size[0], cfg.repertoire_size[1] + 1))
+     n_fam = int(rng.integers(cfg.families_per_client[0], cfg.families_per_client[1] + 1))
+@@ -223,10 +227,23 @@ def _git_commit(start: Path) -> str | None:
+         return None
+ 
+ 
+-def generate(out_dir: Path, cfg: GenerationConfig, lines_csv: Path = DEFAULT_LINES_CSV) -> dict:
++def _catalog_sha256(lines: list[OpeningLine]) -> str:
++    """Hash of the catalog content the generator used.
++
++    The SQLite file itself also holds practice history, so its bytes change
++    whenever the demo is used; this hashes only the lines.
++    """
++    h = hashlib.sha256()
++    for l in lines:
++        h.update("\x1f".join((l.line_id, l.eco, l.family, l.name, l.moves_uci,
++                              l.family_side, l.side_in_games)).encode() + b"\n")
++    return h.hexdigest()
++
++
++def generate(out_dir: Path, cfg: GenerationConfig, catalog_db: Path = DEFAULT_CATALOG_DB) -> dict:
+     out_dir.mkdir(parents=True, exist_ok=True)
+     started = time.time()
+-    lines = load_opening_lines(lines_csv)
++    lines = load_opening_lines(catalog_db)
+     plans = build_plans(lines, cfg)
+     sched_seq = np.random.SeedSequence([cfg.seed, 1]).spawn(len(plans))
+ 
+@@ -290,7 +307,8 @@ def generate(out_dir: Path, cfg: GenerationConfig, lines_csv: Path = DEFAULT_LIN
+         "counts": {**counts, "clients": len(plans),
+                    "review_status": dict(sorted(status_counts.items())),
+                    "grade": {str(k): v for k, v in sorted(grade_counts.items())}},
+-        "inputs": {"opening_lines.csv": _sha256(Path(lines_csv))},
++        "inputs": {"opening_catalog": {"db": str(catalog_db), "lines": len(lines),
++                                       "content_sha256": _catalog_sha256(lines)}},
+         "outputs": {p.name: _sha256(p) for p in sorted(out_dir.glob("*.csv"))},
+         "environment": {"python": platform.python_version(), "numpy": np.__version__,
+                         "platform": platform.platform()},
+@@ -307,11 +325,12 @@ def main(argv: list[str] | None = None) -> None:
+     ap.add_argument("--seed", type=int, default=GenerationConfig.seed)
+     ap.add_argument("--clients-per-archetype", type=int, default=GenerationConfig.clients_per_archetype)
+     ap.add_argument("--horizon-days", type=int, default=GenerationConfig.horizon_days)
+-    ap.add_argument("--lines", type=Path, default=DEFAULT_LINES_CSV)
++    ap.add_argument("--catalog", type=Path, default=DEFAULT_CATALOG_DB,
++                    help="SQLite database holding the opening catalog")
+     a = ap.parse_args(argv)
+     cfg = GenerationConfig(seed=a.seed, clients_per_archetype=a.clients_per_archetype,
+                            horizon_days=a.horizon_days)
+-    m = generate(a.out, cfg, a.lines)
++    m = generate(a.out, cfg, a.catalog)
+     print(json.dumps(m["counts"], indent=2))
+     print(f"wrote {a.out} in {m['seconds']} s")
+ 
+diff --git a/ml/ml_300bots/ml_engine/tests/test_generation.py b/ml/ml_300bots/ml_engine/tests/test_generation.py
+index 3ef7adf..677e27c 100644
+--- a/ml/ml_300bots/ml_engine/tests/test_generation.py
++++ b/ml/ml_300bots/ml_engine/tests/test_generation.py
+@@ -2,26 +2,66 @@
+ 
+ import csv
+ import json
++import sqlite3
+ 
+-from tempo_ml.openings import load_opening_lines
++import pytest
++
++from tempo_ml.openings import DEFAULT_CATALOG_DB, load_opening_lines
+ from tempo_ml.review_dataset import CSV_COLUMNS
+ from tempo_ml.synthetic_data import GenerationConfig, generate
+ 
++MOVES = "e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 c2c3 g8f6 d2d4"
++
++
++@pytest.fixture
++def tiny_catalog(tmp_path):
++    """A catalog with the backend schema: 3 families, 12 lines."""
++    db = tmp_path / "catalog.sqlite"
++    con = sqlite3.connect(db)
++    con.executescript("""
++        CREATE TABLE opening_families (family_id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE,
++                                       family_side TEXT);
++        CREATE TABLE opening_lines (line_id INTEGER PRIMARY KEY, family_id INTEGER NOT NULL,
++                                    name TEXT NOT NULL, eco TEXT NOT NULL,
++                                    moves_uci TEXT NOT NULL UNIQUE, side_in_games TEXT);
++    """)
++    con.executemany("INSERT INTO opening_families VALUES (?, ?, ?)",
++                    [(1, "Italian Game", "white"), (2, "Sicilian Defense", "black"), (3, "Queen's Pawn", "both")])
++    rows = []
++    for i in range(12):
++        plies = 7 + i % 3
++        moves = " ".join(MOVES.split()[:plies - 1] + [f"x{i}"])  # unique move strings
++        rows.append((100 + i, 1 + i % 3, f"Line {i}", "C50", moves, None))
++    con.executemany("INSERT INTO opening_lines VALUES (?, ?, ?, ?, ?, ?)", rows)
++    con.commit()
++    con.close()
++    return db
++
++
++def test_tiny_catalog_fields(tiny_catalog):
++    lines = load_opening_lines(tiny_catalog)
++    assert len(lines) == 12
++    first = lines[0]
++    assert first.line_id == "100" and first.family == "Italian Game" and first.family_side == "white"
++    assert (first.plies, first.white_moves, first.black_moves) == (7, 4, 3)
++    assert first.as_line("black").num_moves == first.black_moves
++    assert lines[2].playable_by("white") and lines[2].playable_by("black")  # family side "both"
++
+ 
+-def test_library_loads_with_unique_ids():
++def test_backend_catalog_loads():
++    if not DEFAULT_CATALOG_DB.exists():
++        pytest.skip("backend catalog not present")
+     lines = load_opening_lines()
+-    assert len(lines) == 3865
+-    assert len({l.line_id for l in lines}) == len(lines)
+-    sic = next(l for l in lines if l.name.startswith("Sicilian Defense"))
+-    assert sic.playable_by("black")
+-    assert sic.as_line("black").num_moves == sic.black_moves
++    assert len({l.line_id for l in lines}) == len(lines) > 0
++    assert min(l.white_moves for l in lines) >= 4  # cleaned catalog: at least four White moves
+ 
+ 
+-def test_generate_tiny_dataset(tmp_path):
++def test_generate_tiny_dataset(tmp_path, tiny_catalog):
+     cfg = GenerationConfig(seed=3, clients_per_archetype=2, horizon_days=20)
+-    m = generate(tmp_path, cfg)
++    m = generate(tmp_path / "out", cfg, tiny_catalog)
+     assert m["counts"]["clients"] == 6
+-    with open(tmp_path / "sessions.csv") as f:
++    assert m["inputs"]["opening_catalog"]["lines"] == 12
++    with open(tmp_path / "out" / "sessions.csv") as f:
+         rows = list(csv.DictReader(f))
+     assert tuple(rows[0]) == CSV_COLUMNS
+     assert len(rows) == m["counts"]["sessions"]
+@@ -31,6 +71,6 @@ def test_generate_tiny_dataset(tmp_path):
+         first.setdefault((r["agent_name"], r["opening_name"]), r["review_status"])
+     assert set(first.values()) == {"new"}
+     # reproducible
+-    m2 = generate(tmp_path / "again", cfg)
++    m2 = generate(tmp_path / "again", cfg, tiny_catalog)
+     assert m2["outputs"]["sessions.csv"] == m["outputs"]["sessions.csv"]
+     json.dumps(m)
+diff --git a/ml/ml_300bots/ml_engine/tests/test_metrics.py b/ml/ml_300bots/ml_engine/tests/test_metrics.py
+new file mode 100644
+index 0000000..4336d3f
+--- /dev/null
++++ b/ml/ml_300bots/ml_engine/tests/test_metrics.py
+@@ -0,0 +1,71 @@
++"""Truth metrics, days metric and the target/loss options of the trainer."""
++
++import numpy as np
++import pytest
++
++from tempo_ml.fsrs import model as M
++from tempo_ml.fsrs.data import Cards
++from tempo_ml.fsrs.train import days_metrics, metrics, objective, rmse_bins, true_days
++
++
++def test_true_days_one_move_equals_stability():
++    for C in (0.2, 0.5, 0.8):
++        assert true_days(12.5, 1, C) == pytest.approx(12.5)
++
++
++def test_true_days_solves_clean_session_chance():
++    S, M_, C = 20.0, 6, 0.45
++    t = true_days(S, M_, C)
++    F = 0.9 ** (-1 / C) - 1
++    assert ((1 + F * t / S) ** (-C)) ** M_ == pytest.approx(0.9)
++
++
++def test_fsrs_reaches_90_percent_at_stability():
++    w = M.DEFAULT_PARAMETERS
++    for s in (0.5, 3.0, 40.0):
++        assert float(M.forgetting_curve(w, np.array(s), np.array(s))) == pytest.approx(0.9)
++
++
++def test_predict_states_matches_predict():
++    rng = np.random.default_rng(0)
++    n, steps = 50, 8
++    t = rng.uniform(0, 15, (n, steps)); t[:, 0] = 0
++    g = rng.integers(1, 5, (n, steps))
++    valid = np.ones((n, steps), bool); valid[:10, 5:] = False
++    r, s_after = M.predict_states(M.DEFAULT_PARAMETERS, t, g, valid)
++    assert np.allclose(r, M.predict(M.DEFAULT_PARAMETERS, t, g, valid), equal_nan=True)
++    assert np.isnan(s_after[:10, 5:]).all() and not np.isnan(s_after[10:]).any()
++    assert np.allclose(s_after[:, 0], M.initial_stability(M.DEFAULT_PARAMETERS, g[:, 0]))
++
++
++def test_days_metrics_zero_for_perfect_and_sign():
++    d = np.array([1.0, 5.0, 40.0])
++    learn = np.array([True, False, False])
++    perfect = days_metrics(d, d, learn, 180)
++    assert perfect["median_abs_error"] == 0 and perfect["mean_error"] == 0
++    early = days_metrics(d - 1, d, learn, 180)
++    assert early["median_error"] == -1 and early["share_too_early"] == 1.0
++    assert early["bands"]["ge30"]["sessions"] == 1
++
++
++def test_truth_metrics_zero_when_prediction_is_truth():
++    p = np.array([0.2, 0.7, 0.9])
++    m = metrics(p, np.array([0.0, 1.0, 1.0]), truth=p)
++    assert m["rmse_vs_truth"] == 0 and m["mae_vs_truth"] == 0
++    assert rmse_bins(np.full(4, 0.75), np.array([1.0, 1.0, 1.0, 0.0])) == pytest.approx(0.0)
++
++
++def test_mse_objective_is_zero_at_the_generating_weights():
++    rng = np.random.default_rng(2)
++    n, steps = 40, 6
++    t = rng.uniform(1, 10, (n, steps)); t[:, 0] = 0
++    g = rng.integers(1, 5, (n, steps))
++    valid = np.ones((n, steps), bool)
++    mask = np.c_[np.zeros((n, 1), bool), valid[:, 1:]]
++    c = Cards(agent=np.array(["x"] * n), t=t, g=g, valid=valid, y=(g > 1).astype(float),
++              loss_mask=mask, row=np.zeros((n, steps), int))
++    w = M.DEFAULT_PARAMETERS
++    target = M.predict(w, t, g, valid)
++    assert objective(w, c, mask, target=target, loss="mse") == pytest.approx(0.0)
++    w2 = w.copy(); w2[20] = 0.4
++    assert objective(w2, c, mask, target=target, loss="mse") > 0

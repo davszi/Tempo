@@ -1,0 +1,5 @@
+[    0.2s] 8090 cards, 101090 tested reviews; fit: 210 clients / 71751 reviews, validation: 30 clients / 8836 reviews, test: 60 clients / 20503 reviews
+[    0.2s] fitting general FSRS-6 parameters on fit clients (target=true, loss=mse) ...
+[  417.7s] done: {'loss': 0.01770489929096904, 'iterations': 300, 'evaluations': 8118, 'converged': False, 'message': 'STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT'}
+[  417.9s] test: {"constant_base_rate": 0.6798, "fsrs6_default": 0.7231, "fsrs6_trained": 0.5603}
+[  418.0s] wrote experiments\fsrs-synthetic-v2\results-true-recall
