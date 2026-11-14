@@ -43,7 +43,7 @@ dropped from the schema, the demo database, `Store.add_line` and the catalog
 queries.
 
 **Why:** the column is a per-family measurement from
-`ml/ml_1000bots/openings/side_evidence.py` copied onto every line of the
+`ml/ml_1000bots/openings/side_evidence.py` (removed 2026-11-14, at `825e9d8`) copied onto every line of the
 family, so it never described individual lines. It only adds a hint that
 the other side also plays a family. TEMPO does not need that hint, because the
 player chooses the session side. In the demo database, 1,973 of 2,719 lines

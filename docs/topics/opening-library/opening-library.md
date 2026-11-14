@@ -8,7 +8,10 @@ synthetic clients study, how each line is classified, and how the side
 simulator that uses the library is described in
 [FSRS training on synthetic clients](../fsrs-training/fsrs-training.md).
 
-Status: implemented in `ml/ml_1000bots/openings/`. The side labels are a proposal
+Status: implemented in `ml/ml_1000bots/openings/` until 2026-11-14, when that
+folder was removed; its files and scripts are retrievable at commit `825e9d8`.
+The app's catalog is `backend/tempo_demo.sqlite`
+([opening catalog structure](../opening-catalog/opening-catalog.md)). The side labels are a proposal
 from the ML work; the team has not accepted them yet (see
 [open questions](#open-questions)).
 
@@ -28,7 +31,7 @@ checked against other opening references.
 
 `python ml/ml_1000bots/openings/classify.py` writes
 `ml/ml_1000bots/openings/lichess_openings_classified.csv` (sha256
-`f6c311b266b211132ca76d32ebb7e63f3879416fa52a808fa45c67552b6e0114`).
+`c0e7abf9b5eb39d5f20f5ef213887cd3280e8ed2ccf39beee4f4c7f9b2591d28`, the committed file and the output of `classify.py`; the value `f6c311…` recorded at commit `5cbe0a6` does not match the committed bytes).
 The classifier keeps `white_moves >= 4` (at least seven plies) and removes
 1,146 lines from the source. The output and `backend/tempo_demo.sqlite`
 each contain 2,719 lines across 91 opening families. The original TSV and

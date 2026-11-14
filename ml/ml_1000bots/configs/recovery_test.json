@@ -1,9 +1,0 @@
-{
-  "_comment": "Identifiability test: every agent shares ONE known weight vector (slow-learner memory, balanced behaviour, no per-agent noise). A global fit on this data must recover hidden/agents.csv w0..w20; if it cannot, the optimizer (or the data) is broken.",
-  "n_agents": 300,
-  "weight_noise": 0.0,
-  "trait_jitter": 0.0,
-  "archetypes": {
-    "slow_learner": {"weight": 1.0, "init_stability_mult": 0.6, "growth_shift": -0.4, "C": 0.2005}
-  }
-}

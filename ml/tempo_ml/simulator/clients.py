@@ -256,6 +256,18 @@ class SyntheticClient:
         )
 
         s_before = mem.stability
+        if getattr(self.stability_model, "graded", False):
+            # Graded memory (memory/fsrs.py): the update needs this session's grade,
+            # computed as in _finish (no random draws, so the streams are unchanged).
+            grade = calculate_session_grade(blunder_count=0, total_time_ms=sum(m.time_ms for m in moves),
+                                            num_moves=line.num_moves, baseline_ms=self.traits.baseline_ms)
+            if s_before is None:
+                s_after, d_after = self.stability_model.start(grade)
+            else:
+                s_after, d_after = self.stability_model.update(s_before, mem.difficulty, t_days, R, grade)
+            outcome = self._finish(line, mem, day, status, "learning", t_days, R, moves, s_before, s_after)
+            mem.difficulty = d_after
+            return outcome
         s_after = (
             self.stability_model.initial()
             if s_before is None
@@ -284,6 +296,16 @@ class SyntheticClient:
         blundered = any(not m.first_attempt_correct for m in moves)
 
         s_before = mem.stability
+        if getattr(self.stability_model, "graded", False):
+            grade = calculate_session_grade(
+                blunder_count=sum(1 for m in moves if not m.first_attempt_correct),
+                total_time_ms=sum(m.time_ms for m in moves),
+                num_moves=line.num_moves, baseline_ms=self.traits.baseline_ms)
+            s_after, d_after = self.stability_model.update(s_before, mem.difficulty, t_days, R, grade)
+            outcome = self._finish(line, mem, day, status, "repeating", t_days, R, moves, s_before, s_after)
+            mem.difficulty = d_after
+            mem.last_review_lapsed = blundered
+            return outcome
         s_after = (
             self.stability_model.after_lapse(s_before, R)
             if blundered

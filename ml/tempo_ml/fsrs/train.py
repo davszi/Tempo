@@ -59,11 +59,20 @@ def objective(w, cards: Cards, mask: np.ndarray, target: np.ndarray | None = Non
 
 
 def fit(w0, cards: Cards, mask: np.ndarray, target: np.ndarray | None = None, loss: str = "bce",
-        prior=None, lam: float = 0.0, maxiter: int = 300):
+        prior=None, lam: float = 0.0, maxiter: int = 300,
+        ftol: float | None = None, gtol: float | None = None):
+    """L-BFGS-B within the FSRS-6 bounds. ``ftol``/``gtol`` optionally tighten
+    scipy's stopping tolerances (defaults otherwise): an MSE loss is about 1e-7
+    near its optimum, and with the defaults a fit can stop early."""
+    options = {"maxiter": maxiter, "eps": 1e-6}
+    if ftol is not None:
+        options["ftol"] = ftol
+    if gtol is not None:
+        options["gtol"] = gtol
     res = minimize(
         objective, np.clip(w0, LOWER_BOUNDS, UPPER_BOUNDS), args=(cards, mask, target, loss, prior, lam),
         method="L-BFGS-B", bounds=list(zip(LOWER_BOUNDS, UPPER_BOUNDS)),
-        options={"maxiter": maxiter, "eps": 1e-6},
+        options=options,
     )
     return res.x, {"loss": float(res.fun), "iterations": int(res.nit), "evaluations": int(res.nfev),
                    "converged": bool(res.success), "message": str(res.message)}

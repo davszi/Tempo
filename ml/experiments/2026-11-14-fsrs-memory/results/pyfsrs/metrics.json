@@ -1,0 +1,256 @@
+{
+  "arm": "A1",
+  "trainer": "py-fsrs Optimizer (default settings)",
+  "clock": "calendar days",
+  "test": {
+    "constant_base_rate": {
+      "reviews": 44560,
+      "log_loss": 0.6661135169618257,
+      "brier": 0.23660393801558252,
+      "rmse_bins": 0.00667317743716711,
+      "auc": 0.5,
+      "mean_predicted": 0.3907396047262156,
+      "observed_success": 0.3840664272890485,
+      "rmse_vs_truth": 0.20122642596777562,
+      "mae_vs_truth": 0.16460841133128212
+    },
+    "fsrs6_default": {
+      "reviews": 44560,
+      "log_loss": 0.830657067917293,
+      "brier": 0.3032239790815949,
+      "rmse_bins": 0.2989495118794883,
+      "auc": 0.6689460633359361,
+      "mean_predicted": 0.6771492225334298,
+      "observed_success": 0.3840664272890485,
+      "rmse_vs_truth": 0.3245932561948443,
+      "mae_vs_truth": 0.2908782435219949,
+      "days": {
+        "sessions": 57800,
+        "median_error": 0.005837075014381021,
+        "median_abs_error": 0.12641132436434327,
+        "median_rel_error": 0.03335134085034895,
+        "share_too_early": 0.4925432525951557,
+        "mean_error": 5.364928435579956,
+        "n_beyond_horizon": 35,
+        "median_true_days": 0.18459160317576237,
+        "median_pred_days": 0.1921121272521633,
+        "bands": {
+          "lt7": {
+            "sessions": 55973,
+            "median_error": -0.006216977949630179,
+            "median_abs_error": 0.12216182981207521,
+            "median_rel_error": -0.0350890655039535
+          },
+          "7to30": {
+            "sessions": 1154,
+            "median_error": 54.1839936273021,
+            "median_abs_error": 54.1839936273021,
+            "median_rel_error": 3.9756080762754107
+          },
+          "ge30": {
+            "sessions": 673,
+            "median_error": 236.4153449066169,
+            "median_abs_error": 236.4153449066169,
+            "median_rel_error": 3.5437834479328307
+          }
+        },
+        "session_type": {
+          "after_learning": {
+            "sessions": 1584,
+            "median_error": 1.9101436959906488,
+            "median_abs_error": 1.9101436959906488,
+            "median_rel_error": 4.683314993442323
+          },
+          "after_review": {
+            "sessions": 56216,
+            "median_error": -0.0046281723683588225,
+            "median_abs_error": 0.12265445150275942,
+            "median_rel_error": -0.027749756402754875
+          }
+        }
+      }
+    },
+    "fsrs6_trained": {
+      "reviews": 44560,
+      "log_loss": 0.7135326034772831,
+      "brier": 0.2578762911094907,
+      "rmse_bins": 0.18054185726667438,
+      "auc": 0.6177278706812228,
+      "mean_predicted": 0.548116652735746,
+      "observed_success": 0.3840664272890485,
+      "rmse_vs_truth": 0.24656411557055763,
+      "mae_vs_truth": 0.19580700211423013,
+      "days": {
+        "sessions": 57800,
+        "median_error": -0.01273016067525412,
+        "median_abs_error": 0.12650343906733613,
+        "median_rel_error": -0.07633340909655123,
+        "share_too_early": 0.5346712802768167,
+        "mean_error": -0.35659781344108843,
+        "n_beyond_horizon": 35,
+        "median_true_days": 0.18459160317576237,
+        "median_pred_days": 0.22328049159307167,
+        "bands": {
+          "lt7": {
+            "sessions": 55973,
+            "median_error": -0.009212208126418,
+            "median_abs_error": 0.119365694028379,
+            "median_rel_error": -0.05736603080532128
+          },
+          "7to30": {
+            "sessions": 1154,
+            "median_error": -5.543770257685279,
+            "median_abs_error": 6.061466629169874,
+            "median_rel_error": -0.47418194689315074
+          },
+          "ge30": {
+            "sessions": 673,
+            "median_error": -18.002371419799545,
+            "median_abs_error": 21.91017423052191,
+            "median_rel_error": -0.3306577129806388
+          }
+        },
+        "session_type": {
+          "after_learning": {
+            "sessions": 1584,
+            "median_error": -0.37914190942406134,
+            "median_abs_error": 0.40786540249408876,
+            "median_rel_error": -0.9973694034380081
+          },
+          "after_review": {
+            "sessions": 56216,
+            "median_error": -0.008948940186485066,
+            "median_abs_error": 0.1201055652152285,
+            "median_rel_error": -0.053542751239549685
+          }
+        }
+      }
+    },
+    "fsrs6_default_calendar": {
+      "reviews": 44560,
+      "log_loss": 0.9003346814054033,
+      "brier": 0.33229440579112474,
+      "rmse_bins": 0.34423772902496674,
+      "auc": 0.669598723379697,
+      "mean_predicted": 0.7233723126197455,
+      "observed_success": 0.3840664272890485,
+      "rmse_vs_truth": 0.3659515943597468,
+      "mae_vs_truth": 0.33537419520182643,
+      "days": {
+        "sessions": 57800,
+        "median_error": 0.12122035382601272,
+        "median_abs_error": 0.15093524869265948,
+        "median_rel_error": 0.6778651733083566,
+        "share_too_early": 0.3567128027681661,
+        "mean_error": 5.501200703350734,
+        "n_beyond_horizon": 35,
+        "median_true_days": 0.18459160317576237,
+        "median_pred_days": 0.30708893920509406,
+        "bands": {
+          "lt7": {
+            "sessions": 55973,
+            "median_error": 0.10468793663114168,
+            "median_abs_error": 0.14040819324655074,
+            "median_rel_error": 0.5946120520501716
+          },
+          "7to30": {
+            "sessions": 1154,
+            "median_error": 54.187371761595955,
+            "median_abs_error": 54.187371761595955,
+            "median_rel_error": 4.0386035845527966
+          },
+          "ge30": {
+            "sessions": 673,
+            "median_error": 236.2451262676018,
+            "median_abs_error": 236.2451262676018,
+            "median_rel_error": 3.552031064103718
+          }
+        },
+        "session_type": {
+          "after_learning": {
+            "sessions": 1584,
+            "median_error": 1.9101436959906488,
+            "median_abs_error": 1.9101436959906488,
+            "median_rel_error": 4.683314993442323
+          },
+          "after_review": {
+            "sessions": 56216,
+            "median_error": 0.10704001450883896,
+            "median_abs_error": 0.14166087642116415,
+            "median_rel_error": 0.6048679548470661
+          }
+        }
+      }
+    },
+    "fsrs6_trained_calendar": {
+      "reviews": 44560,
+      "log_loss": 0.612706314299233,
+      "brier": 0.21208768478755494,
+      "rmse_bins": 0.027549525868890853,
+      "auc": 0.6874454180155143,
+      "mean_predicted": 0.40745464059917424,
+      "observed_success": 0.3840664272890485,
+      "rmse_vs_truth": 0.1288187662430694,
+      "mae_vs_truth": 0.10350629594478399,
+      "days": {
+        "sessions": 57800,
+        "median_error": -0.09228528835544329,
+        "median_abs_error": 0.10048813466994083,
+        "median_rel_error": -0.5833887511798612,
+        "share_too_early": 0.902993079584775,
+        "mean_error": -0.5265884328000647,
+        "n_beyond_horizon": 35,
+        "median_true_days": 0.18459160317576237,
+        "median_pred_days": 0.08186707462200668,
+        "bands": {
+          "lt7": {
+            "sessions": 55973,
+            "median_error": -0.09030772991990302,
+            "median_abs_error": 0.0973673621582378,
+            "median_rel_error": -0.5866561068595306
+          },
+          "7to30": {
+            "sessions": 1154,
+            "median_error": -5.71379661443206,
+            "median_abs_error": 6.167278775658323,
+            "median_rel_error": -0.478465002223203
+          },
+          "ge30": {
+            "sessions": 673,
+            "median_error": -18.206729203526066,
+            "median_abs_error": 21.929457346215493,
+            "median_rel_error": -0.3289047085299228
+          }
+        },
+        "session_type": {
+          "after_learning": {
+            "sessions": 1584,
+            "median_error": -0.37914190942406134,
+            "median_abs_error": 0.40786540249408876,
+            "median_rel_error": -0.9973694034380081
+          },
+          "after_review": {
+            "sessions": 56216,
+            "median_error": -0.09012184797781844,
+            "median_abs_error": 0.09784751754916507,
+            "median_rel_error": -0.5757787363097127
+          }
+        }
+      }
+    }
+  },
+  "base_rate": 0.39073960472621555,
+  "trained_on": {
+    "clients": 210,
+    "sessions": 197303,
+    "reviews": 149972
+  },
+  "seconds_fit": 219.2,
+  "environment": {
+    "python": "3.13.3",
+    "numpy": "2.5.4",
+    "pandas": "3.1.1",
+    "fsrs": "6.3.2",
+    "platform": "macOS-15.5-arm64-arm-64bit-Mach-O"
+  }
+}

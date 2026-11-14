@@ -129,6 +129,13 @@ def generate(out_dir: Path, cfg: GenerationConfig, catalog_db: Path = DEFAULT_CA
                         "repertoire_size": len(p.repertoire), "p_active": round(p.p_active, 4),
                         "review_budget": p.review_budget})
 
+    if cfg.memory == "fsrs":  # each client's hidden FSRS-6 weights (truth, evaluation only)
+        with (out_dir / "memory_weights.csv").open("w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["agent_name", *[f"w{i}" for i in range(21)]])
+            for p in plans:
+                w.writerow([p.client.name, *[round(x, 6) for x in p.client.stability_model.weights]])
+
     with (out_dir / "repertoires.csv").open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["agent_name", "line_id", "opening_name", "family", "num_moves"])
@@ -139,7 +146,9 @@ def generate(out_dir: Path, cfg: GenerationConfig, catalog_db: Path = DEFAULT_CA
     manifest = {
         "generator": "tempo_ml.simulator.generate",
         "config": asdict(cfg),
-        "stability_model": asdict(plans[0].client.stability_model),
+        "stability_model": (asdict(plans[0].client.stability_model) if cfg.memory != "fsrs" else
+                            {"model": "fsrs", "min_days": plans[0].client.stability_model.min_days,
+                             "weight_noise": cfg.fsrs_weight_noise, "weights": "memory_weights.csv"}),
         "max_attempts_per_move": plans[0].client.max_attempts_per_move,
         "counts": {**counts, "clients": len(plans),
                    "review_status": dict(sorted(status_counts.items())),

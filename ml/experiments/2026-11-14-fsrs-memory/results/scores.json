@@ -1,0 +1,1163 @@
+{
+  "weights": {
+    "default": [
+      0.212,
+      1.2931,
+      2.3065,
+      8.2956,
+      6.4133,
+      0.8334,
+      3.0194,
+      0.001,
+      1.8722,
+      0.1666,
+      0.796,
+      1.4835,
+      0.0614,
+      0.2629,
+      1.6483,
+      0.6014,
+      1.8729,
+      0.5425,
+      0.0912,
+      0.0658,
+      0.1542
+    ],
+    "A1": [
+      0.212,
+      0.001,
+      0.001,
+      2.614377,
+      3.866559,
+      0.675902,
+      3.547702,
+      0.001,
+      0.63177,
+      4e-06,
+      0.316615,
+      1.097282,
+      0.001073,
+      0.158033,
+      2.737866,
+      1.0,
+      2.048235,
+      0.350087,
+      0.284801,
+      0.777205,
+      0.498578
+    ],
+    "A1c": [
+      0.212,
+      0.104089,
+      0.2508,
+      6.508772,
+      4.559871,
+      0.807923,
+      2.983211,
+      0.001,
+      0.830645,
+      0.169048,
+      0.314894,
+      3.858768,
+      0.001,
+      0.040398,
+      2.363151,
+      1.0,
+      1.908753,
+      0.134446,
+      0.0,
+      0.072667,
+      0.590598
+    ],
+    "B1": [
+      0.212,
+      0.129752,
+      0.233716,
+      10.090955,
+      6.99305,
+      0.971637,
+      3.243139,
+      0.001,
+      0.0,
+      0.062049,
+      0.808319,
+      2.007529,
+      0.001,
+      0.065253,
+      2.643956,
+      1.0,
+      1.605782,
+      0.146295,
+      0.0004,
+      0.077238,
+      0.563215
+    ]
+  },
+  "base_rate": 0.39073960472621555,
+  "sets": {
+    "test": {
+      "clients": 60,
+      "reviews": 44560,
+      "exact": {
+        "constant_base_rate": {
+          "reviews": 44560,
+          "log_loss": 0.6661135169618257,
+          "brier": 0.23660393801558252,
+          "rmse_bins": 0.00667317743716711,
+          "auc": 0.5,
+          "mean_predicted": 0.3907396047262156,
+          "observed_success": 0.3840664272890485,
+          "rmse_vs_truth": 0.20122642596777562,
+          "mae_vs_truth": 0.16460841133128212
+        },
+        "default": {
+          "reviews": 44560,
+          "log_loss": 0.830657067917293,
+          "brier": 0.3032239790815949,
+          "rmse_bins": 0.2989495118794883,
+          "auc": 0.6689460633359361,
+          "mean_predicted": 0.6771492225334298,
+          "observed_success": 0.3840664272890485,
+          "rmse_vs_truth": 0.3245932561948443,
+          "mae_vs_truth": 0.2908782435219949,
+          "days": {
+            "sessions": 57800,
+            "median_error": 0.005837075014381021,
+            "median_abs_error": 0.12641132436434327,
+            "median_rel_error": 0.03335134085034895,
+            "share_too_early": 0.4925432525951557,
+            "mean_error": 5.364928435579956,
+            "n_beyond_horizon": 35,
+            "median_true_days": 0.18459160317576237,
+            "median_pred_days": 0.1921121272521633,
+            "bands": {
+              "lt7": {
+                "sessions": 55973,
+                "median_error": -0.006216977949630179,
+                "median_abs_error": 0.12216182981207521,
+                "median_rel_error": -0.0350890655039535
+              },
+              "7to30": {
+                "sessions": 1154,
+                "median_error": 54.1839936273021,
+                "median_abs_error": 54.1839936273021,
+                "median_rel_error": 3.9756080762754107
+              },
+              "ge30": {
+                "sessions": 673,
+                "median_error": 236.4153449066169,
+                "median_abs_error": 236.4153449066169,
+                "median_rel_error": 3.5437834479328307
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1584,
+                "median_error": 1.9101436959906488,
+                "median_abs_error": 1.9101436959906488,
+                "median_rel_error": 4.683314993442323
+              },
+              "after_review": {
+                "sessions": 56216,
+                "median_error": -0.0046281723683588225,
+                "median_abs_error": 0.12265445150275942,
+                "median_rel_error": -0.027749756402754875
+              }
+            }
+          }
+        },
+        "A1": {
+          "reviews": 44560,
+          "log_loss": 0.7135327081325444,
+          "brier": 0.25787633758488104,
+          "rmse_bins": 0.18054196233369896,
+          "auc": 0.6177278642943147,
+          "mean_predicted": 0.5481167863635646,
+          "observed_success": 0.3840664272890485,
+          "rmse_vs_truth": 0.24656420765575085,
+          "mae_vs_truth": 0.19580710034807441,
+          "days": {
+            "sessions": 57800,
+            "median_error": -0.012730003544244223,
+            "median_abs_error": 0.1265032839394369,
+            "median_rel_error": -0.07633185255854087,
+            "share_too_early": 0.5346712802768167,
+            "mean_error": -0.35659807362760476,
+            "n_beyond_horizon": 35,
+            "median_true_days": 0.18459160317576237,
+            "median_pred_days": 0.2232807463593664,
+            "bands": {
+              "lt7": {
+                "sessions": 55973,
+                "median_error": -0.009212008448945791,
+                "median_abs_error": 0.11936595267634985,
+                "median_rel_error": -0.057364472887984276
+              },
+              "7to30": {
+                "sessions": 1154,
+                "median_error": -5.5437811567894615,
+                "median_abs_error": 6.06147517561187,
+                "median_rel_error": -0.474182723670648
+              },
+              "ge30": {
+                "sessions": 673,
+                "median_error": -18.00240135007445,
+                "median_abs_error": 21.91018391582844,
+                "median_rel_error": -0.33065839121797036
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1584,
+                "median_error": -0.37914190942406134,
+                "median_abs_error": 0.40786540249408876,
+                "median_rel_error": -0.9973694034380081
+              },
+              "after_review": {
+                "sessions": 56216,
+                "median_error": -0.008948708768917728,
+                "median_abs_error": 0.12010539624363445,
+                "median_rel_error": -0.05354154366958315
+              }
+            }
+          }
+        },
+        "A1c": {
+          "reviews": 44560,
+          "log_loss": 0.608367215348366,
+          "brier": 0.21023374134298292,
+          "rmse_bins": 0.022773605293901683,
+          "auc": 0.6920335418102461,
+          "mean_predicted": 0.38915820347630653,
+          "observed_success": 0.3840664272890485,
+          "rmse_vs_truth": 0.12225142290792203,
+          "mae_vs_truth": 0.09831146952575007,
+          "days": {
+            "sessions": 57800,
+            "median_error": -0.08902701511472029,
+            "median_abs_error": 0.097117242513796,
+            "median_rel_error": -0.5416066723439502,
+            "share_too_early": 0.8926470588235295,
+            "mean_error": -0.5449641876974736,
+            "n_beyond_horizon": 35,
+            "median_true_days": 0.18459160317576237,
+            "median_pred_days": 0.08944409202683544,
+            "bands": {
+              "lt7": {
+                "sessions": 55973,
+                "median_error": -0.08729237545689182,
+                "median_abs_error": 0.09425254737723898,
+                "median_rel_error": -0.5469937313820821
+              },
+              "7to30": {
+                "sessions": 1154,
+                "median_error": -4.144466020323728,
+                "median_abs_error": 4.903875485245033,
+                "median_rel_error": -0.3276650939729635
+              },
+              "ge30": {
+                "sessions": 673,
+                "median_error": -20.961612205778906,
+                "median_abs_error": 21.577462785051182,
+                "median_rel_error": -0.3924695531871075
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1584,
+                "median_error": -0.1339265220204255,
+                "median_abs_error": 0.16893127129501054,
+                "median_rel_error": -0.3640394913353652
+              },
+              "after_review": {
+                "sessions": 56216,
+                "median_error": -0.08853772074625417,
+                "median_abs_error": 0.09628892031791066,
+                "median_rel_error": -0.5475895908155333
+              }
+            }
+          }
+        },
+        "B1": {
+          "reviews": 44560,
+          "log_loss": 0.6091479757638225,
+          "brier": 0.210441831133182,
+          "rmse_bins": 0.02491869473866986,
+          "auc": 0.6914978484082007,
+          "mean_predicted": 0.39187445571586516,
+          "observed_success": 0.3840664272890485,
+          "rmse_vs_truth": 0.1226859119163666,
+          "mae_vs_truth": 0.09898498613157622,
+          "days": {
+            "sessions": 57800,
+            "median_error": -0.09112249188425653,
+            "median_abs_error": 0.09930642947298457,
+            "median_rel_error": -0.5561116533545911,
+            "share_too_early": 0.8968339100346021,
+            "mean_error": -0.29960568511788715,
+            "n_beyond_horizon": 35,
+            "median_true_days": 0.18459160317576237,
+            "median_pred_days": 0.08564551803121626,
+            "bands": {
+              "lt7": {
+                "sessions": 55973,
+                "median_error": -0.09012097193483468,
+                "median_abs_error": 0.09644083469461645,
+                "median_rel_error": -0.5625847324900962
+              },
+              "7to30": {
+                "sessions": 1154,
+                "median_error": -2.9667408149881536,
+                "median_abs_error": 5.162370422527905,
+                "median_rel_error": -0.2333463643382756
+              },
+              "ge30": {
+                "sessions": 673,
+                "median_error": -10.758640513179444,
+                "median_abs_error": 17.560313431975448,
+                "median_rel_error": -0.1780740452261123
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1584,
+                "median_error": -0.1483471435577756,
+                "median_abs_error": 0.18555957389911668,
+                "median_rel_error": -0.3942997436207668
+              },
+              "after_review": {
+                "sessions": 56216,
+                "median_error": -0.09035532455744444,
+                "median_abs_error": 0.09827565906555043,
+                "median_rel_error": -0.5616054380048638
+              }
+            }
+          }
+        },
+        "paired": {
+          "A1 vs default": [
+            0.11712435978474856,
+            0.10141986491589897,
+            0.1326207441755259
+          ],
+          "A1c vs default": [
+            0.22228985256892697,
+            0.20992777495061124,
+            0.23481983554444033
+          ],
+          "B1 vs default": [
+            0.22150909215347048,
+            0.20931417301871647,
+            0.23389450059658345
+          ],
+          "B1 vs A1c": [
+            -0.000780760415456494,
+            -0.0011842271197148818,
+            -0.00039671734111155945
+          ],
+          "A1c vs A1": [
+            0.10516549278417842,
+            0.09213227083706904,
+            0.11883400880504175
+          ]
+        }
+      },
+      "calendar": {
+        "constant_base_rate": {
+          "reviews": 44560,
+          "log_loss": 0.6661135169618257,
+          "brier": 0.23660393801558252,
+          "rmse_bins": 0.00667317743716711,
+          "auc": 0.5,
+          "mean_predicted": 0.3907396047262156,
+          "observed_success": 0.3840664272890485,
+          "rmse_vs_truth": 0.20122642596777562,
+          "mae_vs_truth": 0.16460841133128212
+        },
+        "default": {
+          "reviews": 44560,
+          "log_loss": 0.9003346814054033,
+          "brier": 0.33229440579112474,
+          "rmse_bins": 0.34423772902496674,
+          "auc": 0.669598723379697,
+          "mean_predicted": 0.7233723126197455,
+          "observed_success": 0.3840664272890485,
+          "rmse_vs_truth": 0.3659515943597468,
+          "mae_vs_truth": 0.33537419520182643,
+          "days": {
+            "sessions": 57800,
+            "median_error": 0.12122035382601272,
+            "median_abs_error": 0.15093524869265948,
+            "median_rel_error": 0.6778651733083566,
+            "share_too_early": 0.3567128027681661,
+            "mean_error": 5.501200703350734,
+            "n_beyond_horizon": 35,
+            "median_true_days": 0.18459160317576237,
+            "median_pred_days": 0.30708893920509406,
+            "bands": {
+              "lt7": {
+                "sessions": 55973,
+                "median_error": 0.10468793663114168,
+                "median_abs_error": 0.14040819324655074,
+                "median_rel_error": 0.5946120520501716
+              },
+              "7to30": {
+                "sessions": 1154,
+                "median_error": 54.187371761595955,
+                "median_abs_error": 54.187371761595955,
+                "median_rel_error": 4.0386035845527966
+              },
+              "ge30": {
+                "sessions": 673,
+                "median_error": 236.2451262676018,
+                "median_abs_error": 236.2451262676018,
+                "median_rel_error": 3.552031064103718
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1584,
+                "median_error": 1.9101436959906488,
+                "median_abs_error": 1.9101436959906488,
+                "median_rel_error": 4.683314993442323
+              },
+              "after_review": {
+                "sessions": 56216,
+                "median_error": 0.10704001450883896,
+                "median_abs_error": 0.14166087642116415,
+                "median_rel_error": 0.6048679548470661
+              }
+            }
+          }
+        },
+        "A1": {
+          "reviews": 44560,
+          "log_loss": 0.6127063216120662,
+          "brier": 0.21208768798254038,
+          "rmse_bins": 0.027549504940052573,
+          "auc": 0.6874451540233123,
+          "mean_predicted": 0.407454634114204,
+          "observed_success": 0.3840664272890485,
+          "rmse_vs_truth": 0.12881877068165257,
+          "mae_vs_truth": 0.10350629441935355,
+          "days": {
+            "sessions": 57800,
+            "median_error": -0.09228516562068854,
+            "median_abs_error": 0.10048812667018686,
+            "median_rel_error": -0.5833880023566728,
+            "share_too_early": 0.902993079584775,
+            "mean_error": -0.5265888783060716,
+            "n_beyond_horizon": 35,
+            "median_true_days": 0.18459160317576237,
+            "median_pred_days": 0.08186722009905056,
+            "bands": {
+              "lt7": {
+                "sessions": 55973,
+                "median_error": -0.09030767096993783,
+                "median_abs_error": 0.0973673167640983,
+                "median_rel_error": -0.5866553092635328
+              },
+              "7to30": {
+                "sessions": 1154,
+                "median_error": -5.7138025416142515,
+                "median_abs_error": 6.16728484222495,
+                "median_rel_error": -0.47846537277033563
+              },
+              "ge30": {
+                "sessions": 673,
+                "median_error": -18.206759076340063,
+                "median_abs_error": 21.92946702791491,
+                "median_rel_error": -0.3289053834498443
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1584,
+                "median_error": -0.37914190942406134,
+                "median_abs_error": 0.40786540249408876,
+                "median_rel_error": -0.9973694034380081
+              },
+              "after_review": {
+                "sessions": 56216,
+                "median_error": -0.09012181508933778,
+                "median_abs_error": 0.09784750863365448,
+                "median_rel_error": -0.5757787861942254
+              }
+            }
+          }
+        },
+        "A1c": {
+          "reviews": 44560,
+          "log_loss": 0.6117013641044909,
+          "brier": 0.21162517171071715,
+          "rmse_bins": 0.024357062521777103,
+          "auc": 0.6862172390041734,
+          "mean_predicted": 0.3926718188495199,
+          "observed_success": 0.3840664272890485,
+          "rmse_vs_truth": 0.12873291341880355,
+          "mae_vs_truth": 0.1030692222711271,
+          "days": {
+            "sessions": 57800,
+            "median_error": -0.0896816103302276,
+            "median_abs_error": 0.09881768249318182,
+            "median_rel_error": -0.5411611228609357,
+            "share_too_early": 0.8829065743944636,
+            "mean_error": -0.5388520763987121,
+            "n_beyond_horizon": 35,
+            "median_true_days": 0.18459160317576237,
+            "median_pred_days": 0.09069163017777249,
+            "bands": {
+              "lt7": {
+                "sessions": 55973,
+                "median_error": -0.08797978034448457,
+                "median_abs_error": 0.0959354289553351,
+                "median_rel_error": -0.5471907873003823
+              },
+              "7to30": {
+                "sessions": 1154,
+                "median_error": -4.112599255381474,
+                "median_abs_error": 4.844015350865691,
+                "median_rel_error": -0.31618705782000733
+              },
+              "ge30": {
+                "sessions": 673,
+                "median_error": -20.8960522110617,
+                "median_abs_error": 21.33340005045867,
+                "median_rel_error": -0.3841510370109393
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1584,
+                "median_error": -0.1339265220204255,
+                "median_abs_error": 0.16893127129501054,
+                "median_rel_error": -0.3640394913353652
+              },
+              "after_review": {
+                "sessions": 56216,
+                "median_error": -0.08911712971747167,
+                "median_abs_error": 0.09788067986666424,
+                "median_rel_error": -0.5477107232954822
+              }
+            }
+          }
+        },
+        "B1": {
+          "reviews": 44560,
+          "log_loss": 0.6120790324352234,
+          "brier": 0.2116887848660895,
+          "rmse_bins": 0.023787885559864694,
+          "auc": 0.685806187178425,
+          "mean_predicted": 0.3927054354571779,
+          "observed_success": 0.3840664272890485,
+          "rmse_vs_truth": 0.12865431355281065,
+          "mae_vs_truth": 0.1032709326514664,
+          "days": {
+            "sessions": 57800,
+            "median_error": -0.09282980932926599,
+            "median_abs_error": 0.10191604038196325,
+            "median_rel_error": -0.5642636775450864,
+            "share_too_early": 0.8901730103806228,
+            "mean_error": -0.2948210684918117,
+            "n_beyond_horizon": 35,
+            "median_true_days": 0.18459160317576237,
+            "median_pred_days": 0.08495075915204804,
+            "bands": {
+              "lt7": {
+                "sessions": 55973,
+                "median_error": -0.09188435482284085,
+                "median_abs_error": 0.09880346441570824,
+                "median_rel_error": -0.5718998092388204
+              },
+              "7to30": {
+                "sessions": 1154,
+                "median_error": -2.904828509751644,
+                "median_abs_error": 5.09612084927357,
+                "median_rel_error": -0.2345775559436848
+              },
+              "ge30": {
+                "sessions": 673,
+                "median_error": -10.638191661239752,
+                "median_abs_error": 17.242245273899627,
+                "median_rel_error": -0.16861925048965995
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1584,
+                "median_error": -0.1483471435577756,
+                "median_abs_error": 0.18555957389911668,
+                "median_rel_error": -0.3942997436207668
+              },
+              "after_review": {
+                "sessions": 56216,
+                "median_error": -0.09209100029073716,
+                "median_abs_error": 0.1007461541087524,
+                "median_rel_error": -0.5707892777496564
+              }
+            }
+          }
+        },
+        "paired": {
+          "A1 vs default": [
+            0.2876283597933371,
+            0.2738445400547219,
+            0.3014184009959409
+          ],
+          "A1c vs default": [
+            0.28863331730091235,
+            0.27480772945705645,
+            0.3024423888887155
+          ],
+          "B1 vs default": [
+            0.28825564897017986,
+            0.2745118001195517,
+            0.30216660783844873
+          ],
+          "B1 vs A1c": [
+            -0.0003776683307324946,
+            -0.0007522305379845054,
+            -3.2021222117216523e-05
+          ],
+          "A1c vs A1": [
+            0.0010049575075752326,
+            -0.0006301481211208483,
+            0.002787331410166556
+          ]
+        }
+      }
+    },
+    "holdout": {
+      "clients": 60,
+      "reviews": 44484,
+      "exact": {
+        "constant_base_rate": {
+          "reviews": 44484,
+          "log_loss": 0.6629000056507045,
+          "brier": 0.23502309133960161,
+          "rmse_bins": 0.013907485312493861,
+          "auc": 0.5,
+          "mean_predicted": 0.39073960472621566,
+          "observed_success": 0.3768321194137218,
+          "rmse_vs_truth": 0.1986181929550917,
+          "mae_vs_truth": 0.1619896401047933
+        },
+        "default": {
+          "reviews": 44484,
+          "log_loss": 0.8329508734609228,
+          "brier": 0.3045706153989094,
+          "rmse_bins": 0.3001129515242789,
+          "auc": 0.6593302339045019,
+          "mean_predicted": 0.670845528129011,
+          "observed_success": 0.3768321194137218,
+          "rmse_vs_truth": 0.32970022960318834,
+          "mae_vs_truth": 0.2959099613683625,
+          "days": {
+            "sessions": 58480,
+            "median_error": -0.00627046331289674,
+            "median_abs_error": 0.11829349201580187,
+            "median_rel_error": -0.03711787576014208,
+            "share_too_early": 0.50906292749658,
+            "mean_error": 5.0385244364760045,
+            "n_beyond_horizon": 40,
+            "median_true_days": 0.17901849961381952,
+            "median_pred_days": 0.1685782533563097,
+            "bands": {
+              "lt7": {
+                "sessions": 56742,
+                "median_error": -0.015787501385406272,
+                "median_abs_error": 0.11436193065567096,
+                "median_rel_error": -0.09773643779584723
+              },
+              "7to30": {
+                "sessions": 1067,
+                "median_error": 54.91923626106069,
+                "median_abs_error": 54.91923626106069,
+                "median_rel_error": 4.0927707848694315
+              },
+              "ge30": {
+                "sessions": 671,
+                "median_error": 229.7262868394314,
+                "median_abs_error": 229.7262868394314,
+                "median_rel_error": 3.5719101110308613
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1526,
+                "median_error": 1.9431732264518395,
+                "median_abs_error": 1.9431732264518395,
+                "median_rel_error": 4.944368249635754
+              },
+              "after_review": {
+                "sessions": 56954,
+                "median_error": -0.014825279594798874,
+                "median_abs_error": 0.11480896442838015,
+                "median_rel_error": -0.09031437840064299
+              }
+            }
+          }
+        },
+        "A1": {
+          "reviews": 44484,
+          "log_loss": 0.7254243329863153,
+          "brier": 0.26327503380751877,
+          "rmse_bins": 0.19517097397815267,
+          "auc": 0.607911108395401,
+          "mean_predicted": 0.5543302882015422,
+          "observed_success": 0.3768321194137218,
+          "rmse_vs_truth": 0.2607387609743822,
+          "mae_vs_truth": 0.2110551291950364,
+          "days": {
+            "sessions": 58480,
+            "median_error": 0.0012163250057642822,
+            "median_abs_error": 0.12403184590701291,
+            "median_rel_error": 0.007511083392539792,
+            "share_too_early": 0.49654582763337896,
+            "mean_error": -0.34743784338074474,
+            "n_beyond_horizon": 40,
+            "median_true_days": 0.17901849961381952,
+            "median_pred_days": 0.2293866311918545,
+            "bands": {
+              "lt7": {
+                "sessions": 56742,
+                "median_error": 0.004551564257691557,
+                "median_abs_error": 0.11730593235488976,
+                "median_rel_error": 0.029538041984243257
+              },
+              "7to30": {
+                "sessions": 1067,
+                "median_error": -5.5588380003128055,
+                "median_abs_error": 6.164047101620308,
+                "median_rel_error": -0.45462147788987445
+              },
+              "ge30": {
+                "sessions": 671,
+                "median_error": -16.22391281382584,
+                "median_abs_error": 22.058538160559245,
+                "median_rel_error": -0.3002922592102501
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1526,
+                "median_error": -0.3510544332282367,
+                "median_abs_error": 0.39893997867536657,
+                "median_rel_error": -0.9971065788415818
+              },
+              "after_review": {
+                "sessions": 56954,
+                "median_error": 0.005144912002620211,
+                "median_abs_error": 0.11811349831296351,
+                "median_rel_error": 0.032233791000650866
+              }
+            }
+          }
+        },
+        "A1c": {
+          "reviews": 44484,
+          "log_loss": 0.6101075460440186,
+          "brier": 0.2109991276727638,
+          "rmse_bins": 0.025682697852696106,
+          "auc": 0.6835478470962493,
+          "mean_predicted": 0.3851841657122969,
+          "observed_success": 0.3768321194137218,
+          "rmse_vs_truth": 0.12283357657626821,
+          "mae_vs_truth": 0.09856474793342464,
+          "days": {
+            "sessions": 58480,
+            "median_error": -0.08247877600438092,
+            "median_abs_error": 0.09054053217407174,
+            "median_rel_error": -0.5359238603697216,
+            "share_too_early": 0.8825581395348837,
+            "mean_error": -0.5371572357291752,
+            "n_beyond_horizon": 40,
+            "median_true_days": 0.17901849961381952,
+            "median_pred_days": 0.08506023370624213,
+            "bands": {
+              "lt7": {
+                "sessions": 56742,
+                "median_error": -0.08122917604961351,
+                "median_abs_error": 0.08828899294494824,
+                "median_rel_error": -0.5410351382025014
+              },
+              "7to30": {
+                "sessions": 1067,
+                "median_error": -3.8555947365769865,
+                "median_abs_error": 4.801362487936633,
+                "median_rel_error": -0.2921895239674689
+              },
+              "ge30": {
+                "sessions": 671,
+                "median_error": -20.16529205600264,
+                "median_abs_error": 20.678945879790714,
+                "median_rel_error": -0.3752029333707611
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1526,
+                "median_error": -0.1046463495830991,
+                "median_abs_error": 0.15792668883769329,
+                "median_rel_error": -0.30588895384867737
+              },
+              "after_review": {
+                "sessions": 56954,
+                "median_error": -0.08226147817792986,
+                "median_abs_error": 0.08992012788705507,
+                "median_rel_error": -0.5420123271987211
+              }
+            }
+          }
+        },
+        "B1": {
+          "reviews": 44484,
+          "log_loss": 0.6106658954097774,
+          "brier": 0.21112633177061438,
+          "rmse_bins": 0.02761395773168749,
+          "auc": 0.6831804966973445,
+          "mean_predicted": 0.3879924378827641,
+          "observed_success": 0.3768321194137218,
+          "rmse_vs_truth": 0.12333681498056775,
+          "mae_vs_truth": 0.09924632761914448,
+          "days": {
+            "sessions": 58480,
+            "median_error": -0.08423439145282494,
+            "median_abs_error": 0.0925781984162217,
+            "median_rel_error": -0.5503097869407875,
+            "share_too_early": 0.8876367989056088,
+            "mean_error": -0.2770888742273253,
+            "n_beyond_horizon": 40,
+            "median_true_days": 0.17901849961381952,
+            "median_pred_days": 0.08146086305203303,
+            "bands": {
+              "lt7": {
+                "sessions": 56742,
+                "median_error": -0.08364343584725017,
+                "median_abs_error": 0.09013559321319836,
+                "median_rel_error": -0.5570565804115839
+              },
+              "7to30": {
+                "sessions": 1067,
+                "median_error": -2.1959622864741224,
+                "median_abs_error": 5.179680902070099,
+                "median_rel_error": -0.18691063115345025
+              },
+              "ge30": {
+                "sessions": 671,
+                "median_error": -9.490878540989922,
+                "median_abs_error": 19.05740994185735,
+                "median_rel_error": -0.15940984536451414
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1526,
+                "median_error": -0.12173034958309911,
+                "median_abs_error": 0.1710714665240022,
+                "median_rel_error": -0.3424717956053731
+              },
+              "after_review": {
+                "sessions": 56954,
+                "median_error": -0.08383414091870588,
+                "median_abs_error": 0.09178221261815347,
+                "median_rel_error": -0.5561019987479101
+              }
+            }
+          }
+        },
+        "paired": {
+          "A1 vs default": [
+            0.10752654047460752,
+            0.09215621776341859,
+            0.12565846477857898
+          ],
+          "A1c vs default": [
+            0.22284332741690416,
+            0.21277080922204403,
+            0.23339024538548858
+          ],
+          "B1 vs default": [
+            0.22228497805114533,
+            0.2123977184250697,
+            0.23283091741286108
+          ],
+          "B1 vs A1c": [
+            -0.0005583493657588257,
+            -0.0009970333371450161,
+            -0.00019166988730094555
+          ],
+          "A1c vs A1": [
+            0.11531678694229663,
+            0.10378007500917126,
+            0.1258272004114806
+          ]
+        }
+      },
+      "calendar": {
+        "constant_base_rate": {
+          "reviews": 44484,
+          "log_loss": 0.6629000056507045,
+          "brier": 0.23502309133960161,
+          "rmse_bins": 0.013907485312493861,
+          "auc": 0.5,
+          "mean_predicted": 0.39073960472621566,
+          "observed_success": 0.3768321194137218,
+          "rmse_vs_truth": 0.1986181929550917,
+          "mae_vs_truth": 0.1619896401047933
+        },
+        "default": {
+          "reviews": 44484,
+          "log_loss": 0.9086133909818632,
+          "brier": 0.3361780089949709,
+          "rmse_bins": 0.34897847129005594,
+          "auc": 0.6593280539430829,
+          "mean_predicted": 0.7211151661788368,
+          "observed_success": 0.3768321194137218,
+          "rmse_vs_truth": 0.3749157826151012,
+          "mae_vs_truth": 0.3447739307242222,
+          "days": {
+            "sessions": 58480,
+            "median_error": 0.11151310190631972,
+            "median_abs_error": 0.1409815200101131,
+            "median_rel_error": 0.6553417782372137,
+            "share_too_early": 0.35860123119015047,
+            "mean_error": 5.175403346030419,
+            "n_beyond_horizon": 40,
+            "median_true_days": 0.17901849961381952,
+            "median_pred_days": 0.28632676783438094,
+            "bands": {
+              "lt7": {
+                "sessions": 56742,
+                "median_error": 0.09647272395129941,
+                "median_abs_error": 0.13217190381726146,
+                "median_rel_error": 0.5798397818279325
+              },
+              "7to30": {
+                "sessions": 1067,
+                "median_error": 54.34646911392203,
+                "median_abs_error": 54.34646911392203,
+                "median_rel_error": 4.132374448712161
+              },
+              "ge30": {
+                "sessions": 671,
+                "median_error": 230.01414422602556,
+                "median_abs_error": 230.01414422602556,
+                "median_rel_error": 3.581875404460651
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1526,
+                "median_error": 1.9431732264518395,
+                "median_abs_error": 1.9431732264518395,
+                "median_rel_error": 4.944368249635754
+              },
+              "after_review": {
+                "sessions": 56954,
+                "median_error": 0.09808479922683318,
+                "median_abs_error": 0.13320267684848147,
+                "median_rel_error": 0.5833646449545971
+              }
+            }
+          }
+        },
+        "A1": {
+          "reviews": 44484,
+          "log_loss": 0.6133024646973392,
+          "brier": 0.21231144356494622,
+          "rmse_bins": 0.028953843541303172,
+          "auc": 0.681691781030911,
+          "mean_predicted": 0.4029131850040559,
+          "observed_success": 0.3768321194137218,
+          "rmse_vs_truth": 0.12890358585001394,
+          "mae_vs_truth": 0.10313384273700614,
+          "days": {
+            "sessions": 58480,
+            "median_error": -0.08659770525043872,
+            "median_abs_error": 0.09369600430105494,
+            "median_rel_error": -0.5777610652922935,
+            "share_too_early": 0.9025136798905609,
+            "mean_error": -0.5248532700808289,
+            "n_beyond_horizon": 40,
+            "median_true_days": 0.17901849961381952,
+            "median_pred_days": 0.07704095409755612,
+            "bands": {
+              "lt7": {
+                "sessions": 56742,
+                "median_error": -0.08522503785558724,
+                "median_abs_error": 0.09118716142890188,
+                "median_rel_error": -0.581238132410292
+              },
+              "7to30": {
+                "sessions": 1067,
+                "median_error": -5.668728282433243,
+                "median_abs_error": 6.3076751344924595,
+                "median_rel_error": -0.4590719242894031
+              },
+              "ge30": {
+                "sessions": 671,
+                "median_error": -16.015658271789803,
+                "median_abs_error": 22.049476530126633,
+                "median_rel_error": -0.30198870612915707
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1526,
+                "median_error": -0.3510544332282367,
+                "median_abs_error": 0.39893997867536657,
+                "median_rel_error": -0.9971065788415818
+              },
+              "after_review": {
+                "sessions": 56954,
+                "median_error": -0.08497417377161828,
+                "median_abs_error": 0.09145382799652371,
+                "median_rel_error": -0.5716677860829993
+              }
+            }
+          }
+        },
+        "A1c": {
+          "reviews": 44484,
+          "log_loss": 0.6144819093748896,
+          "brier": 0.21287166110640704,
+          "rmse_bins": 0.03038135890423315,
+          "auc": 0.6759404854435788,
+          "mean_predicted": 0.3880450030789044,
+          "observed_success": 0.3768321194137218,
+          "rmse_vs_truth": 0.1301213672062527,
+          "mae_vs_truth": 0.10405353522014403,
+          "days": {
+            "sessions": 58480,
+            "median_error": -0.08353405727922697,
+            "median_abs_error": 0.09256881310723036,
+            "median_rel_error": -0.5394548089368132,
+            "share_too_early": 0.8735294117647059,
+            "mean_error": -0.5325546567694981,
+            "n_beyond_horizon": 40,
+            "median_true_days": 0.17901849961381952,
+            "median_pred_days": 0.0852529698224523,
+            "bands": {
+              "lt7": {
+                "sessions": 56742,
+                "median_error": -0.08210403506662885,
+                "median_abs_error": 0.09026588303494812,
+                "median_rel_error": -0.545785428571168
+              },
+              "7to30": {
+                "sessions": 1067,
+                "median_error": -3.794003122283932,
+                "median_abs_error": 4.804630929727249,
+                "median_rel_error": -0.2859037804831153
+              },
+              "ge30": {
+                "sessions": 671,
+                "median_error": -19.901999151673024,
+                "median_abs_error": 20.546430618539432,
+                "median_rel_error": -0.37438008447360255
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1526,
+                "median_error": -0.1046463495830991,
+                "median_abs_error": 0.15792668883769329,
+                "median_rel_error": -0.30588895384867737
+              },
+              "after_review": {
+                "sessions": 56954,
+                "median_error": -0.08324468222934181,
+                "median_abs_error": 0.09195834921183099,
+                "median_rel_error": -0.5466168784095279
+              }
+            }
+          }
+        },
+        "B1": {
+          "reviews": 44484,
+          "log_loss": 0.6145859932543525,
+          "brier": 0.21282989451255385,
+          "rmse_bins": 0.030176475450094793,
+          "auc": 0.6757759446241423,
+          "mean_predicted": 0.3880917288582594,
+          "observed_success": 0.3768321194137218,
+          "rmse_vs_truth": 0.12993449578172594,
+          "mae_vs_truth": 0.10412992318970918,
+          "days": {
+            "sessions": 58480,
+            "median_error": -0.08641335271107893,
+            "median_abs_error": 0.09549667647905169,
+            "median_rel_error": -0.5634834004538183,
+            "share_too_early": 0.8817373461012312,
+            "mean_error": -0.2740454788859431,
+            "n_beyond_horizon": 40,
+            "median_true_days": 0.17901849961381952,
+            "median_pred_days": 0.0798191968699472,
+            "bands": {
+              "lt7": {
+                "sessions": 56742,
+                "median_error": -0.08572728373047034,
+                "median_abs_error": 0.09298408499425981,
+                "median_rel_error": -0.5713810460442879
+              },
+              "7to30": {
+                "sessions": 1067,
+                "median_error": -2.1010021935406566,
+                "median_abs_error": 5.20131501455281,
+                "median_rel_error": -0.17538799860429488
+              },
+              "ge30": {
+                "sessions": 671,
+                "median_error": -9.457587794273397,
+                "median_abs_error": 19.16838140809904,
+                "median_rel_error": -0.1552281919766872
+              }
+            },
+            "session_type": {
+              "after_learning": {
+                "sessions": 1526,
+                "median_error": -0.12173034958309911,
+                "median_abs_error": 0.1710714665240022,
+                "median_rel_error": -0.3424717956053731
+              },
+              "after_review": {
+                "sessions": 56954,
+                "median_error": -0.08594977925293754,
+                "median_abs_error": 0.09471053434852937,
+                "median_rel_error": -0.5704460501369173
+              }
+            }
+          }
+        },
+        "paired": {
+          "A1 vs default": [
+            0.29531092628452404,
+            0.28565209061054364,
+            0.3048016087460942
+          ],
+          "A1c vs default": [
+            0.29413148160697367,
+            0.2845492065568867,
+            0.3038354611995618
+          ],
+          "B1 vs default": [
+            0.29402739772751074,
+            0.28429356730995164,
+            0.3039151907312611
+          ],
+          "B1 vs A1c": [
+            -0.00010408387946292397,
+            -0.0005218179723693176,
+            0.0002437047473360259
+          ],
+          "A1c vs A1": [
+            -0.0011794446775503786,
+            -0.0026777583927183736,
+            0.00047112574223089006
+          ]
+        }
+      }
+    }
+  }
+}

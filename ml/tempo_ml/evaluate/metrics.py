@@ -38,7 +38,7 @@ def auc(p: np.ndarray, y: np.ndarray) -> float:
 
 def rmse_bins(p: np.ndarray, y: np.ndarray, n_bins: int = 20) -> float:
     """Calibration: weighted RMSE between mean prediction and observed rate per bin
-    (same definition as ml_1000bots ``tempo_sim/evaluate.py``)."""
+    (the definition the removed ml_1000bots evaluation used)."""
     p = np.clip(p, EPS, 1 - EPS)
     b = np.minimum((p * n_bins).astype(int), n_bins - 1)
     num = den = 0.0

@@ -4,8 +4,6 @@ Routes only. The linked owner holds the checklist, rationale and evidence.
 
 - Starter adoption: [guide acceptance checklist](../topics/guide/guide.md#acceptance-checklist) owns configuration replacement, kit initialization and integration review.
 - The implemented opening catalog structure (family sides, merged gambits, line tree, learnable subvariations) awaits team confirmation: [opening catalog structure](../topics/opening-catalog/opening-catalog.md#open-questions).
-- Side labels of the opening library await team confirmation: [opening library open questions](../topics/opening-library/opening-library.md#open-questions).
-- Recall per line, extra dataset columns and ML engine start-up proposals await team decisions: [FSRS training open questions](../topics/fsrs-training/fsrs-training.md#open-questions).
 - Retraining both FSRS-6 variants on the cleaned catalog, with true-recall arms, a days metric and dataset removal: [retraining plan](../topics/fsrs-training/retraining-plan.md).
 - [Product to-dos](#product-to-dos) covers forgetting estimates, benchmark metrics, review intervals, the schedule view, repertoire access, and cleaning the opening dataset.
 
@@ -91,10 +89,10 @@ Routes only. The linked owner holds the checklist, rationale and evidence.
 **Goal:** the opening library holds only lines long enough to be worth training, with every line of 3 moves or less removed.
 
 **Details:**
-- Source: `ml/ml_1000bots/openings/lichess_openings.tsv` (3,865 lines) and the derived `lichess_openings_classified.csv`, which `ml/ml_1000bots/openings/classify.py` writes.
+- Source: `ml/ml_1000bots/openings/lichess_openings.tsv` (3,865 lines) and the derived `lichess_openings_classified.csv`, which `ml/ml_1000bots/openings/classify.py` writes. That folder was removed on 2026-11-14 and is retrievable at commit `825e9d8`; the app's catalog is `backend/tempo_demo.sqlite` ([opening catalog structure](../topics/opening-catalog/opening-catalog.md)).
 - "3 moves or less" means 3 full moves or fewer (the `white_moves` column is 3 or less), which removes 1,146 lines. Counted in half-moves (`plies` column is 3 or less) it would remove only 269. Confirm the definition before deleting.
 - Filter in `classify.py` (or a separate cleaning step) rather than editing the TSV by hand, so the library can be rebuilt from the Lichess source. Record the rule and the new line count and sha256 in the [opening library record](../topics/opening-library/opening-library.md).
-- The simulator already draws only lines with 4 to 16 player moves (`user_moves` in `ml/ml_1000bots/tempo_sim/config.py`), so dataset `tempo_v1` contains no short lines and does not need regenerating.
+- The removed 1,000-client simulator drew only lines with 4 to 16 player moves (`user_moves` in its `tempo_sim/config.py`), so its dataset `tempo_v1` contained no short lines.
 - Check that `frontend/src/data/openings.ts` and the demo database contain no short lines either.
 
 **Done when:** no line of 3 moves or less remains in the library files, the filter is reproducible from the script, and the opening library record states the rule and the new counts.

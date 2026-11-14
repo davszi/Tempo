@@ -11,7 +11,10 @@ Status (2026-11-13): the `ml_300bots` part is done: tasks 1–7 for that
 variant, arms A2 and B2, results in
 [`2026-11-13-fsrs-synthetic-v2`](../../../ml/experiments/2026-11-13-fsrs-synthetic-v2/SUMMARY.md).
 The `ml_1000bots` part (A1, A1c, B1, its dataset removal and catalog reader)
-has not started. Later the same day the whole `fsrs-synthetic-v1` run (data,
+was superseded on 2026-11-14: `ml/ml_1000bots/` was removed (retrievable at
+commit `825e9d8`), and arms A1, A1c and B1 ran instead on the package
+simulator with FSRS-6 hidden memory, results in
+[`2026-11-14-fsrs-memory`](../../../ml/experiments/2026-11-14-fsrs-memory/SUMMARY.md). Later the same day the whole `fsrs-synthetic-v1` run (data,
 results, README) and its page `ml/ml_300bots/fsrs_results.html` were removed
 at the team's request, instead of keeping its results as history; both are
 retrievable at commit `09f8a22`.
@@ -35,7 +38,7 @@ the layout the tasks were written and run in. Where things are now:
 | `tests/` | `tests/test_simulator.py`, `test_memory_models.py`, `test_trainers.py`, `test_metrics.py` |
 | `experiments/fsrs-synthetic-v2/` (data in `data/`, `holdout_data/`) | `experiments/2026-11-13-fsrs-synthetic-v2/` (data in `data/fsrs-synthetic-v2/train/`, `holdout/`; settings in `configs/multiplicative-memory*.json`) |
 
-The 1000-client variant `ml/ml_1000bots/` is unchanged and not yet moved into this layout.
+The 1000-client variant `ml/ml_1000bots/` was removed on 2026-11-14 (retrievable at commit `825e9d8`); paths below that name it describe that layout.
 
 Terms used here:
 
@@ -538,7 +541,7 @@ the first run's global fit against the hidden truth.
 | days: median error, true interval 30 days or more | −5.8 | −10.5 |
 
 - The log-loss, RMSE(bins) and AUC from the same run reproduced the published
-  values in [FSRS training](fsrs-training.md#training-and-results) exactly.
+  values in [FSRS training](fsrs-training.md#earlier-1000-client-simulator-removed) exactly.
 - This probe measured days to each player's own target retention (80–95%),
   not the 90% proposed above, so its days numbers are motivation, not
   baselines for this plan.

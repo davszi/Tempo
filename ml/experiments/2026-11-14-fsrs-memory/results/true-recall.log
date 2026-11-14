@@ -1,0 +1,5 @@
+[    0.2s] 7903 cards, 216271 tested reviews; fit: 210 clients / 149972 reviews, validation: 30 clients / 21739 reviews, test: 60 clients / 44560 reviews
+[    0.2s] fitting general FSRS-6 parameters on fit clients (target=true, loss=mse) ...
+[  321.8s] done: {'loss': 0.015256051719872191, 'iterations': 242, 'evaluations': 6776, 'converged': True, 'message': 'CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH'}
+[  322.1s] test: {"constant_base_rate": 0.6661, "fsrs6_default": 0.8307, "fsrs6_trained": 0.6091}
+[  322.1s] wrote experiments/2026-11-14-fsrs-memory/results/true-recall

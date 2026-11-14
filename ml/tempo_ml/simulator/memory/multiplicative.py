@@ -97,6 +97,8 @@ class LineMemory:
         last_session_day: Simulation day of the last session on this line.
         last_review_lapsed: Whether the last Repeating Mode session had a blunder.
         sessions: Number of sessions so far (both modes).
+        difficulty: Line difficulty for memory models that keep one
+            (``memory/fsrs.py``); None for the multiplicative model.
     """
 
     stability: float | None = None
@@ -104,6 +106,7 @@ class LineMemory:
     last_session_day: float | None = None
     last_review_lapsed: bool = False
     sessions: int = 0
+    difficulty: float | None = None
 
     @property
     def seen(self) -> bool:
