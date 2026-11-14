@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/learning.test.mjs tests/variations.test.mjs",
+    "test": "node --experimental-strip-types --test tests/learning.test.mjs tests/variations.test.mjs tests/memory.test.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

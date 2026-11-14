@@ -1,18 +1,22 @@
 import { useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { createPortal } from "react-dom";
 import { Chess, type Square } from "chess.js";
+import { pieceImage, useAppearance } from "../lib/appearance";
 
-const symbols: Record<string, string> = { p: "♟", n: "♞", b: "♝", r: "♜", q: "♛", k: "♚" };
 const names: Record<string, string> = { p: "pawn", n: "knight", b: "bishop", r: "rook", q: "queen", k: "king" };
 const DRAG_THRESHOLD_PX = 5;
 type MoveCoordinates = { from: Square; to: Square };
-type Drag = { from: Square; startX: number; startY: number; x: number; y: number; moved: boolean };
+type Drag = { from: Square; startX: number; startY: number; x: number; y: number; moved: boolean; size: number };
 type BoardProps = {
   fen: string;
   flipped?: boolean;
   disabled?: boolean;
+  /** Small preview: no coordinates, not interactive. */
+  mini?: boolean;
   arrow?: MoveCoordinates | null;
   selected?: Square | null;
   lastMove?: MoveCoordinates | null;
+  shake?: number;
   onSquareClick?: (square: Square) => void;
   /** Called when a piece is dragged from one square and dropped on another. */
   onPieceDrop?: (from: Square, to: Square) => void;
@@ -20,7 +24,9 @@ type BoardProps = {
   canDrag?: (square: Square) => boolean;
 };
 
-export function ChessBoard({ fen, flipped = false, disabled = false, arrow, selected, lastMove, onSquareClick, onPieceDrop, canDrag }: BoardProps) {
+export function ChessBoard({ fen, flipped = false, disabled = false, mini = false, arrow, selected, lastMove, shake = 0,
+  onSquareClick, onPieceDrop, canDrag }: BoardProps) {
+  const { theme, pieces } = useAppearance();
   const markerId = useId().replace(/:/g, "");
   const board = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -33,6 +39,15 @@ export function ChessBoard({ fen, flipped = false, disabled = false, arrow, sele
   const start = arrow ? centre(arrow.from) : null;
   const end = arrow ? centre(arrow.to) : null;
   const angle = start && end ? Math.atan2(end.y - start.y, end.x - start.x) : 0;
+  const image = (color: string, type: string) => pieceImage(pieces, color + type.toUpperCase(), theme);
+
+  // Replay the shake animation when the parent reports a wrong move.
+  useEffect(() => {
+    if (!shake || !board.current) return;
+    board.current.classList.remove("shake");
+    void board.current.offsetWidth;
+    board.current.classList.add("shake");
+  }, [shake]);
 
   function squareAt(clientX: number, clientY: number): Square | null {
     const rect = board.current?.getBoundingClientRect();
@@ -77,33 +92,37 @@ export function ChessBoard({ fen, flipped = false, disabled = false, arrow, sele
     };
   }, [drag !== null]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function startDrag(event: ReactPointerEvent, square: Square) {
+  function startDrag(event: ReactPointerEvent<HTMLElement>, square: Square) {
     if (disabled || !onPieceDrop || !canDrag?.(square) || event.button !== 0) return;
     if (event.pointerType === "mouse") event.preventDefault();   // no text selection while dragging
-    updateDrag({ from: square, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, moved: false });
+    const size = event.currentTarget.getBoundingClientRect().width;
+    updateDrag({ from: square, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, moved: false, size });
   }
 
   const dragging = drag?.moved ? drag : null;
-  const boardRect = dragging ? board.current?.getBoundingClientRect() : undefined;
   const draggedPiece = dragging ? game.get(dragging.from) : undefined;
   const hoverSquare = dragging ? squareAt(dragging.x, dragging.y) : null;
+  const interactive = !!onSquareClick;
 
-  return <div ref={board} className={`learning-board ${dragging ? "learning-board-dragging" : ""}`} role={onSquareClick ? "group" : "img"}
-    aria-label={`Chessboard, ${flipped ? "Black" : "White"} at the bottom`}>
-    <div className="learning-board-squares">
+  return <div ref={board} className={`board ${interactive ? "interactive" : ""} ${mini ? "mini" : ""}`}
+    role={interactive ? "group" : "img"} aria-label={`Chessboard, ${flipped ? "Black" : "White"} at the bottom`}>
+    <div className="squares">
       {Array.from({ length: 64 }, (_, index) => {
         const row = Math.floor(index / 8), col = index % 8;
         const square = `${files[col]}${ranks[row]}` as Square;
         const piece = game.get(square);
-        const draggable = !disabled && !!onPieceDrop && !!piece && !!canDrag?.(square);
-        const className = `learning-square ${(row + col) % 2 ? "learning-square-dark" : "learning-square-light"} ${selected === square ? "learning-square-selected" : ""} ${lastMove && (lastMove.from === square || lastMove.to === square) ? "learning-square-last" : ""} ${draggable ? "learning-square-draggable" : ""} ${hoverSquare === square && dragging?.from !== square ? "learning-square-drop" : ""}`;
+        const mine = !disabled && !!onPieceDrop && !!piece && !!canDrag?.(square);
+        const className = ["sq", (row + col) % 2 ? "d" : "l",
+          lastMove && (lastMove.from === square || lastMove.to === square) ? "last" : "",
+          selected === square ? "sel" : "", mine ? "mine" : "",
+          hoverSquare === square && dragging?.from !== square ? "drop" : ""].join(" ");
         const content = <>
-          {col === 0 && <small className="learning-rank" aria-hidden="true">{ranks[row]}</small>}
-          {row === 7 && <small className="learning-file" aria-hidden="true">{files[col]}</small>}
-          {piece && <span className={`learning-piece learning-piece-${piece.color} ${dragging?.from === square ? "learning-piece-lifted" : ""}`}
-            aria-hidden="true">{symbols[piece.type]}</span>}
+          {!mini && col === 0 && <small className="coord r" aria-hidden="true">{ranks[row]}</small>}
+          {!mini && row === 7 && <small className="coord f" aria-hidden="true">{files[col]}</small>}
+          {piece && <span className={`pc ${dragging?.from === square ? "lifted" : ""}`} aria-hidden="true">
+            <img src={image(piece.color, piece.type)} alt="" draggable={false} /></span>}
         </>;
-        return onSquareClick ? <button type="button" key={square} className={className}
+        return interactive ? <button type="button" key={square} className={className}
           aria-label={`${square}${piece ? `, ${piece.color === "w" ? "white" : "black"} ${names[piece.type]}` : ", empty"}`}
           aria-pressed={selected === square} aria-disabled={disabled}
           onPointerDown={(event) => startDrag(event, square)}
@@ -114,15 +133,16 @@ export function ChessBoard({ fen, flipped = false, disabled = false, arrow, sele
           : <div className={className} key={square} aria-hidden="true">{content}</div>;
       })}
     </div>
-    {start && end && <svg className="learning-move-arrow" viewBox="0 0 800 800" aria-hidden="true">
+    {start && end && <svg className="arrow" viewBox="0 0 800 800" aria-hidden="true">
       <defs><marker id={markerId} markerWidth="3.6" markerHeight="3.6" refX="2.8" refY="1.8" orient="auto">
         <path d="M0,0 L3.6,1.8 L0,3.6 Z" fill="currentColor" />
       </marker></defs>
       <line x1={start.x} y1={start.y} x2={end.x - Math.cos(angle) * 22} y2={end.y - Math.sin(angle) * 22}
         stroke="currentColor" strokeWidth="17" strokeLinecap="round" markerEnd={`url(#${markerId})`} />
     </svg>}
-    {dragging && boardRect && draggedPiece && <span aria-hidden="true"
-      className={`learning-piece learning-piece-${draggedPiece.color} learning-piece-ghost`}
-      style={{ left: dragging.x - boardRect.left, top: dragging.y - boardRect.top }}>{symbols[draggedPiece.type]}</span>}
+    {/* The dragged piece follows the pointer above everything else, so it is drawn on the page body. */}
+    {dragging && draggedPiece && createPortal(<span aria-hidden="true" className="pc drag-ghost"
+      style={{ left: dragging.x, top: dragging.y, width: dragging.size, height: dragging.size }}>
+      <img src={image(draggedPiece.color, draggedPiece.type)} alt="" draggable={false} /></span>, document.body)}
   </div>;
 }

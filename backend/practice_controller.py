@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from .ml_controller import MLController
 from .ml_engine import MLEngine
-from .store import Store, add_event, is_learnable
+from .store import Store, add_event, is_learnable, repertoire_rows, timestamp
 
 
 def utc_now():
@@ -44,9 +44,68 @@ class PracticeController:
     def learning_catalog(self, player_id):
         return self.store.learning_catalog(player_id)
 
-    def start_learning(self, player_id, line_id, side):
+    def start_learning(self, player_id, line_id, side, resume_at=0):
+        """Open a Learning session, optionally at a saved position where the player is to move."""
         with self.lock:
-            return self._open_line(player_id, line_id, "learning", side)
+            view = self._open_line(player_id, line_id, "learning", side)
+            if resume_at:
+                session_id, session = self.sessions[player_id]
+                own_turn = side == "both" or resume_at % 2 == (side == "black")
+                if not (isinstance(resume_at, int) and 0 < resume_at < len(session.moves) and own_turn):
+                    raise ValueError("The saved position does not belong to this line and side")
+                session.move_index = resume_at
+                view = self._view(session_id, session)
+            return view
+
+    def repertoire(self, player_id):
+        """Every learned line with its schedule, current chance of recall and review history."""
+        now = self.now()
+        engine = self.ml.engine
+        with self.store.transaction() as db:
+            rows = repertoire_rows(db, player_id)
+        lines = []
+        for row in rows:
+            stability, recall = engine.memory(row.pop("fsrs_state"), now)
+            lines.append({**row, "stability_days": stability, "recall": recall})
+        return {"now": timestamp(now), "target_recall": engine.target_recall, "lines": lines}
+
+    def start_review_line(self, player_id, line_id):
+        """Review one chosen repertoire line now, from its opening family's side."""
+        with self.lock:
+            with self.store.transaction() as db:
+                row = db.execute(
+                    """SELECT f.family_side FROM player_lines AS p
+                       JOIN opening_lines AS o USING (line_id)
+                       JOIN opening_families AS f USING (family_id)
+                       WHERE p.player_id = ? AND p.line_id = ?""",
+                    (player_id, line_id),
+                ).fetchone()
+            if row is None:
+                raise LookupError("This line is not in your repertoire")
+            return self._open_line(player_id, line_id, "repeating", row["family_side"])
+
+    def abandon_review(self, player_id, session_id):
+        """Close a review the player stopped after a mistake to re-learn the line; it is graded Again."""
+        with self.lock:
+            session = self._get_session(player_id, session_id)
+            if session.mode != "repeating" or session.side is None:
+                raise ValueError("Only a running review can be closed early")
+            now = self.now()
+            with self.store.transaction(write=True) as db:
+                mistake = db.execute(
+                    """SELECT 1 FROM practice_events WHERE player_id = ? AND session_id = ?
+                         AND event_type = 'move_attempted' AND is_correct = 0 LIMIT 1""",
+                    (player_id, session_id),
+                ).fetchone()
+                if mistake is None:
+                    raise ValueError("Only a review with a mistake can be closed early")
+                grade = self.ml.complete_review(db, player_id, session.line_id, session_id, now)
+                add_event(
+                    db, player_id, session.line_id, "session_completed", session.mode, now,
+                    session_id=session_id, side=session.side, fsrs_rating=grade,
+                )
+            del self.sessions[player_id]
+            return {"status": "closed", "line_id": session.line_id, "fsrs_rating": grade}
 
     def start_repeating(self, player_id):
         with self.lock:
@@ -156,7 +215,10 @@ class PracticeController:
             session.move_started = self.timer()
             if complete:
                 del self.sessions[player_id]
-            return {**self._view(session_id, session), "correct": correct, "fsrs_rating": grade}
+            # After a wrong move in Repeating, name the expected move so the app can show it once.
+            expected = session.moves[move_index] if not correct and session.mode == "repeating" else None
+            return {**self._view(session_id, session), "correct": correct, "fsrs_rating": grade,
+                    "expected_move": expected}
 
 
 def create_backend(database_path, *, baseline_ms=0, weights_file=None):
