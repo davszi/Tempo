@@ -2,6 +2,65 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-15 Publish the neural proposal and possible recall bug
+
+The user explicitly requested committing and pushing the two Open notes and
+their routes. This landing includes the neural FSRS proposal, its mechanism
+diagram, the suspected move/line recall mismatch and the earlier draft/review
+chronology below. The proposal remains unaccepted for implementation; the
+bug remains unconfirmed. No source behavior, weights, dataset or experiment
+result changes. The commit identity is assigned by this entry's landing commit.
+
+Reused the unchanged proposal's independent review, desktop/phone inspection
+and sparse-history probe. Final publication checks cover a fresh build,
+strict lint, six-page reader preservation, all 47 existing formulas and
+whitespace. Historical worklog link/title notes remain informational. No
+training, app tests or shared-engine regression rerun is claimed. The earlier
+entries describe the local draft state before this publication request.
+
+## 2026-11-15 Track the possible move/line recall mismatch
+
+At the user's request, added an Open route and
+[suspected-bug record](open/recall-target-mismatch.md). It distinguishes
+verified per-move generation and whole-line fitting from an unconfirmed
+contract defect, records the possible intentional approximation, and names
+the minimal investigation and decision needed before changing behavior.
+The optimizer-start issue is left unchanged. This local documentation update
+does not adopt the neural proposal or run/fix either approach.
+
+## 2026-11-15 Save neural FSRS proposal and assess the existing approach
+
+At the user's request, saved the unaccepted
+[neural parameter-estimation proposal](open/neural-fsrs-weights.md) under Open,
+with its mechanism diagram and an OPEN.md route. It separates research from
+deployment, defines prefix-only inputs and matched baseline chronology, and
+records unresolved execution budgets and success criteria. No training or
+runtime change was authorized or made. This is a local review draft; it has
+not been committed or pushed.
+
+Reviewed the current trainer, replay/evaluation helpers and retained results
+at `62ff67b`; an independent read-only review inspected simulator, experiment
+and runtime differences. The proposal records strengths, target/clock
+mismatches, a known better starting vector and remaining scheduling evidence.
+Historical numbers were inspected rather than reproduced.
+
+Probed sparse-history personalization → an empty result has no expected
+columns and subsequent access raises AttributeError; extracted current
+helpers used the actual NumPy model and pandas, without entering the
+optimizer. Execution took 2.2 seconds; investigation time was not recorded.
+The proposal retains the reproduction and environment. No full CLI, ML test
+suite, generation, fitting or benchmark was run; SciPy/pytest/py-fsrs were
+unavailable in the inspected bundled environment.
+
+Documentation build/freshness, six-page reader preservation and strict lint
+passed; all 47 existing formulas compiled. The kit still lists informational
+notes for CLAUDE.md's title and retired links in historical worklog entries.
+The new proposal's local generated links and anchors were checked separately.
+Its Reference rendering was inspected at desktop width and 390 x 844, with
+no page-wide overflow; the comparison table scrolls locally on phone. Shared
+engine tests, print and reduced-motion checks were not rerun for this plain
+record addition. The proposal is available in the local preview only.
+
 ## 2026-11-15 Consolidate topic ownership and audit code coverage
 
 The user explicitly requested the actual record merges/splits, an audit of

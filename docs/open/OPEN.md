@@ -2,6 +2,10 @@
 
 Routes only. The linked owner holds status, acceptance, choices and evidence.
 
+- Possible move/line recall mismatch: [suspected model/target bug](recall-target-mismatch.md) owns the verified distinction, unresolved contract and investigation needed before changing behavior.
+
+- Neural estimation of personal FSRS parameters: [proposal and current-approach assessment](neural-fsrs-weights.md) owns the unaccepted design, baseline prerequisites, comparison and execution decisions.
+
 - Product acceptance: [product backlog and gaps](product-backlog.md) separates implemented features from remaining scheduling evidence, wording and reproducibility work.
 - Repeating conflicts with settled decisions: [App & Practice record](../topics/app-practice/app-practice.md) owns the hint and selected-line review choices pending the project owner's decision.
 - Remaining opening-family confirmation: [opening catalog questions](../topics/catalog-data/catalog-data.md#open-questions) owns unsettled side-label decisions.

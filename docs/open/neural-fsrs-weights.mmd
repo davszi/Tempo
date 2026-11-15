@@ -1,0 +1,9 @@
+flowchart LR
+    H[Observed history before cutoff] --> N[Small neural parameter estimator]
+    G[Global FSRS vector and bounds] --> N
+    N --> W[Personal FSRS vector]
+    W --> R[Replay prefix with those weights]
+    R --> P[Predict later reviews before their outcomes]
+    O[Later observed outcomes] --> L[Training loss or held-out score]
+    P --> L
+    L -. Training players only .-> N
