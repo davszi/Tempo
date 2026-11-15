@@ -2,6 +2,169 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-15 Consolidate topic ownership and audit code coverage
+
+The user explicitly requested the actual record merges/splits, an audit of
+code for missing documentation, a proper HTML explanation for every real
+topic, complete applicable checks and publication. The prior menu pass had
+established file rendering, not complete subject coverage. This landing
+implements the accepted six-topic structure in the source records too.
+The commit identity is assigned by this entry's landing commit.
+
+### Scope and actual consolidation
+
+Base: clean `main` at `788e06039dd2869b23261dd80ea8fc49367ab33c`.
+The bounded work covered current source/configuration, related tests by
+inspection, retained driver interfaces and existing evidence. It changed
+documentation and links only; no runtime behavior, input data or numerical
+result was authorized to change. Work stopped after every current code area
+had an owning explanation, review findings were addressed, all six topic
+pages were synchronized and applicable documentation checks completed.
+
+- Frontend and whole-flow records are merged into
+  [App & Practice](topics/app-practice/app-practice.md). The old two topic
+  folders are gone. The merged topic owns screens, board input, identity,
+  saved lessons, HTTP contract, display semantics and the player journey.
+- Catalog decisions and the database schema are merged into
+  [Catalog & Data](topics/catalog-data/catalog-data.md). The opening-library
+  material is [historical provenance](topics/catalog-data/provenance.md)
+  inside that topic. Unique field mappings, types/required values, rationale,
+  queries, identities and old migration evidence are retained. The duplicated
+  standalone schema HTML is retired, with its exact Git source cited there.
+- [System Architecture](topics/system-architecture/system-architecture.md)
+  owns runtime coordination, session/transaction boundaries, selection,
+  grading, weights and the terminal demo, linking the app journey.
+- Simulator policy and hidden memory implementations move from Training into
+  [Synthetic Players](topics/synthetic-clients/record.md); [Review Dataset](topics/review-dataset/record.md)
+  owns telemetry, sidecars, grading and future calibration. [Training](topics/fsrs-training/fsrs-training.md)
+  owns replay, fitting, metrics, artifacts and scoped historical results.
+- The completed retraining plan is retired. Its accepted comparison/metric
+  criteria and unique motivation probe are absorbed into Training, with an
+  exact pre-change Git link for the superseded protocol/task text.
+- Product acceptance moves to [the open backlog](open/product-backlog.md);
+  package setup moves from the nested README to [ML development](development/ml.md).
+  The repository root retains the only project-authored README.
+
+The six authored topic URLs remain stable (`whole-flow`,
+`system-architecture`, `opening-catalog`, `synthetic-clients`,
+`review-dataset`, `fsrs-training`). Their canonical source/Reference paths
+follow the consolidated owners. The [reading index](index.md#reading-order)
+and project context route those owners. No generic documentation/audit topic
+or archive collection was created.
+
+### Code-to-documentation audit and findings
+
+The source inventory covered eight backend source/launcher files, all 23
+frontend source/style/asset files plus configuration/entrypoint and three
+helper test files, all 17 ML package files, four generation configurations,
+four ML test files and six retained experiment Python drivers. The historical
+HTML prototype was classified as a non-current design source. Root also
+inspected CI/site configuration, the figure recipe and SQLite store/schema.
+Topic-local coverage tables map modules/symbols to the filled explanations;
+tests inspected are distinguished from checks actually executed.
+
+New coverage includes HTTP validation/errors, coordinate move input,
+resume/identity/cache isolation, clock and snapshot displays, commit/response
+failure boundaries, store locking/upserts/constraints, generation policy and
+random streams, hidden models, output identity/alignment/rounding, replay
+masks/targets, optimizer/personalization and metric/artifact contracts.
+
+Independent reviews compared source and predecessor records. Corrections:
+
+- Restored catalog DDL type/nullability details in a 27-column matrix;
+  limited line-ID preservation claims to the implemented operations.
+- Corrected an inherited classifier deletion pin: `ea3d01d` removes it;
+  `825e9d8` is the retained pre-removal source.
+- Documented same-page lesson-return desynchronization as a source-derived
+  inference: App retains the initial response while LessonPage advances local
+  state, so a shell/hash return can show a stale position and later receive a
+  stale-index/closed-session response. No app failure was executed here.
+- Corrected the decay-clipping explanation: exported w20 can be clipped,
+  but current hidden start/update do not read it and use trait-derived R.
+  The limit concerns exported/fitted representability, not a changed hidden
+  simulation. No incidence was measured.
+- Documented the fresh generation-directory precondition. The generator can
+  retain/hash stale CSVs, including old hidden weights. This follows source
+  control flow; no historical dataset contamination is established.
+- Retained study drivers expose a reversed paired-gain legend (positive
+  actually favors the first-named model), an exact-clock loss mask retained
+  during calendar replay, and a formatter that embeds historical constants
+  and rounds despite its broader automatic/unrounded claim. Current Training
+  explains these discrepancies without recomputing recorded scores.
+
+Existing no-hints/planner-only requirements remain settled; implemented
+review hints/direct selection remain unresolved deviations. Missing human
+calibration, app-to-training export, current catalog importer and operational
+recovery policies remain explicit limitations, routed to their owners. This
+pass does not turn them into accepted requirements or implemented features.
+
+### Verification and evidence scope
+
+Documentation used the existing project Python 3.12.14 environment,
+Mistune 3.3.4, Pygments 2.21.0 and Node 24.13.0/KaTeX 0.16.11. Full build,
+freshness, strict lint, reader preservation and scoped content checks are
+recorded for this source state. New topic inputs required intent-to-add
+registration before the kit could build them; the first integrated build
+also correctly rejected eight retired generated Reference files. Those
+exact old build outputs were removed, then the complete site was rebuilt.
+No shared-kit source or pin was changed.
+
+There are six real topic folders plus Home, each with its authored entry;
+all have canonical records except the reader-free Home. The tracked Markdown
+coverage inventory is 28 files: seven authored entries and 21 Reference
+sources, with no unmatched file. The corresponding public bundle has 28 HTML
+routes. A local HTTP sweep returned 200 for all 28; the old Guide and
+four sampled retired Reference routes returned 404.
+
+A new read-only SQLite check confirmed all four field/index layouts,
+82 families, 2,719 lines, 1,889 leaves and no foreign-key violations; seed
+SHA-256 before/after remains
+`5eb848f110d5f3634344b854038a4482a16c7d2ecc7da782b01c2b326188eaa0`.
+The owning data record contains the command and limits. No Store startup,
+write connection, migration, training, benchmark or app session ran.
+
+The architecture figure recipe's current input path was updated after the
+merge; the SVG remains byte-identical at
+`f057fd808e6f4fc5d2c084bbca814701c819814e63395039d144966faeaf97da`.
+The source HTML remains a required drawing input. `backend/store.py` changed
+only its documentation-path comment; an AST comparison with the base is
+identical. Frontend/ML code, weights, seed and numerical experiment outputs
+are unchanged. Two historical SUMMARY files have exactly three href repairs
+(plan to pinned Git source, catalog to current owner); measured prose and
+results are preserved.
+
+Worklog entries remain append-only. `worklog_links_checked_from` is set to
+2026-11-16 so same-day historical entries can retain their original paths
+through this consolidation. This entry's current links were checked separately;
+that cutoff does not exempt current records/pages from strict lint.
+
+Root inspected all six rendered pages in wide (1440 x 1000), phone
+(390 x 844) and equal-column reading. Initial geometry checks found no
+page-wide overflow, broken images or SVG labels below 11 px. The by-eye pass
+found several narrow tables and clipped flow labels; ten table regions were
+made locally scrollable/focusable and labels shortened, then the affected
+rendering was checked again. All original source words, public anchors,
+tables, media and SVG geometry remain covered by reader parity. The site
+uses ordinary figures, with sequential captions and source/prose links.
+
+Temporary copies with every script element removed exercised static reading
+at both widths for all six topics: all chapter sections remained visible,
+with no document overflow. These copies used identical CSS/media paths;
+this was a derived no-script fixture, not a browser preference toggle.
+Keyboard menu/focus, table scrolling, reader/history navigation and actual
+Reference citations were checked in the normal site. Print/reduced-motion
+rules were inspected in the unchanged shared CSS; native print output and
+reduced-motion emulation were unavailable through this browser API and are
+not claimed as executed checks. The previously recorded Windows shared-kit
+suite failures remain historical limitations; no successful fresh engine
+suite or application test run is claimed.
+
+The earlier preview listener had ended. The owned generated-output server
+was restarted hidden on loopback port 18321 and retained for the user;
+port 8321 was not touched. A stale error-page tab required a fresh tab in the
+same approved browser after the server was confirmed reachable. No browser
+security settings or transport were changed.
+
 ## 2026-11-15 Curate topics and enable Reference
 
 The user requested removal of the starter Guide, kit 5's Reference section,

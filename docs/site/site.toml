@@ -4,6 +4,7 @@ gh_ref = "main"
 chapter_reader = true
 reference_listing = true
 tooling_roots = []
+worklog_links_checked_from = "2026-11-16"
 
 [[nav]]
 label = "Home"

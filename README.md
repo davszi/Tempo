@@ -40,7 +40,7 @@ fourth move. The app loads 21 fitted FSRS weights from `backend/fitted_global.cs
 Those are the historical first-run weights, not automatically replaced by the
 newer experiments. `backend/synthetic_reviews.csv` is presentation telemetry;
 current generated training data lives under ignored `ml/data/` paths named
-by each experiment's manifest. See [ML setup](ml/README.md).
+by each experiment's manifest. See [ML setup](docs/development/ml.md).
 
 The browser app and terminal demo write practice history to the database. To keep the tracked seed pristine, copy it to a scratch location and pass the copy with `--database`.
 
@@ -48,6 +48,6 @@ See the [project documentation](docs/PROJECT_CONTEXT.md) for architecture and do
 
 The browser implementation currently exposes a review hint and selected-line
 reviews, contrary to the settled Repeating contract. The
-[frontend record](docs/topics/frontend/frontend.md#unresolved-repeating-behavior)
+[frontend record](docs/topics/app-practice/app-practice.md#unresolved-repeating-behavior)
 tracks that unresolved decision. This is a local demo with a browser-stored
 player ID, not an authenticated account system.

@@ -1,4 +1,4 @@
-# Opening library
+# Historical opening-library provenance
 
 ## Scope
 
@@ -11,7 +11,7 @@ simulator that uses the library is described in
 Status: implemented in `ml/ml_1000bots/openings/` until 2026-11-14, when that
 folder was removed; its files and scripts are retrievable at commit `825e9d8`.
 The app's catalog is `backend/tempo_demo.sqlite`
-([opening catalog structure](../opening-catalog/opening-catalog.md)). The side labels are a proposal
+([opening catalog structure](catalog-data.md)). The side labels are a proposal
 from the ML work; the team has not accepted them yet (see
 [open questions](#open-questions)).
 
@@ -145,5 +145,10 @@ backend catalog, pending team confirmation: Queen's Gambit white, Benko Gambit
 black, Four Knights Game white, Accepted/Declined merged into their gambit,
 and `family_side` alone, with `side_in_games` removed from the backend
 database. The backend implements this; the library files and scripts here are
-unchanged. [Opening catalog structure](../opening-catalog/opening-catalog.md#decisions)
+unchanged. [Opening catalog structure](catalog-data.md#decisions)
 owns those decisions and their rationale.
+
+
+## Provenance boundary after consolidation
+
+This file is supporting historical evidence for [Catalog and data](catalog-data.md), not an independent current topic. The earlier schema linked a Hugging Face dataset, but the retained import evidence above identifies the GitHub TSV files and their dated hash. No current importer was found in this checkout; upstream freshness and a reproducible present-day rebuild were not verified.

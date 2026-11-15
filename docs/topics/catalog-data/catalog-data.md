@@ -1,14 +1,19 @@
-# Opening catalog structure
+# Catalog and data
 
-## Scope
+## Scope and ownership
 
-This record owns the structure of TEMPO's opening catalog in the backend
-database and why it has that structure: how opening families and lines are
-stored, which side each family belongs to, how lines relate to each other,
-and which lines a player can learn. The field-by-field schema is in
-[TEMPO database schema](../database-schema/database-schema.md). Where the
-library's lines come from and how their sides were first classified is in
-[opening library](../opening-library/opening-library.md).
+This topic owns the current opening catalog, its four-table SQLite storage
+contract, line identity, family/parent/learnability decisions and startup
+migration. [Historical provenance](provenance.md) retains the retired library
+classifier, original input identities and game evidence; it is supporting
+evidence within this topic, not a separate current subsystem.
+
+[App & Practice](../app-practice/app-practice.md) owns the HTTP/UI contract and
+practice lifecycle. [Architecture](../system-architecture/system-architecture.md)
+owns runtime coordination; [Synthetic Players](../synthetic-clients/record.md)
+owns simulated consumers. Catalog content is shared; per-player repertoire
+and practice events remain separate. No current reproducible upstream-import
+command is implemented in this checkout.
 
 ## Status
 
@@ -19,7 +24,7 @@ the user, as recorded in [the worklog](../../worklog.md); the other catalog
 choices still await team confirmation. See [open questions](#open-questions).
 The current `ml/tempo_ml/catalog.py` reads this SQLite catalog; historical
 opening-building scripts and their CSV workflow are described in
-[opening library](../opening-library/opening-library.md).
+[opening library](provenance.md).
 
 ## Decisions
 
@@ -54,7 +59,7 @@ dropped from the schema, the demo database, `Store.add_line` and the catalog
 queries.
 
 **Why:** the column is a per-family measurement from
-`ml/ml_1000bots/openings/side_evidence.py` (removed 2026-11-14, at `825e9d8`) copied onto every line of the
+`ml/ml_1000bots/openings/side_evidence.py` (removed 2026-11-14 at `ea3d01d`; pre-removal source at `825e9d8`) copied onto every line of the
 family, so it never described individual lines. It only adds a hint that
 the other side also plays a family. TEMPO does not need that hint, because the
 player chooses the session side. In the demo database, 1,973 of 2,719 lines
@@ -216,26 +221,108 @@ keeps their data.
 
 ## Schema
 
-```sql
-CREATE TABLE opening_families (
-    family_id   INTEGER PRIMARY KEY,
-    name        TEXT NOT NULL UNIQUE,
-    family_side TEXT NOT NULL CHECK (family_side IN ('white', 'black'))
-);
+## opening_families (3 fields)
 
-CREATE TABLE opening_lines (
-    line_id        INTEGER PRIMARY KEY,
-    family_id      INTEGER NOT NULL REFERENCES opening_families,
-    parent_line_id INTEGER REFERENCES opening_lines,
-    name           TEXT NOT NULL,
-    eco            TEXT NOT NULL,
-    moves_uci      TEXT NOT NULL UNIQUE
-);
-CREATE INDEX opening_lines_family ON opening_lines (family_id);
-CREATE INDEX opening_lines_parent ON opening_lines (parent_line_id);
-```
+| Field | What it stores |
+|---|---|
+| `family_id` | Unique family ID. Primary key. |
+| `name` | Unique family name, such as Sicilian Defense. Accepted and Declined lines belong to their gambit's family, such as Queen's Gambit. |
+| `family_side` | Side the family belongs to: `white` or `black`. Required. |
 
-`practice_events` and `player_lines` are unchanged.
+## opening_lines (6 fields)
+
+One row per opening line. Each line contains moves for both colors.
+
+| Field | What it stores |
+|---|---|
+| `line_id` | Integer primary key. Current upserts and recognized migrations preserve existing line IDs. |
+| `family_id` | Reference to `opening_families.family_id`. One family can have many lines. A line's side is its family's side. |
+| `parent_line_id` | Reference to `opening_lines.line_id`: the longest other line of the same family whose moves start this line. Empty when there is none. |
+| `name` | Full name of the opening line. Several lines can share a name. |
+| `eco` | Lichess opening classification code. Multiple lines can share a code. |
+| `moves_uci` | Unique ordered move sequence for White and Black in UCI notation. The line's permanent identity. |
+
+A line can be learned only when no other line names it as `parent_line_id`. This is derived, not stored; `LEARNABLE` in `backend/store.py` holds the condition. Learning a line that other lines extend is refused, and only learnable lines can join a repertoire. A line already in a player's repertoire stays reviewable if the catalog later gains a longer line.
+
+`Store.add_line` takes moves in UCI; convert PGN first. It inserts a line or, when the moves already exist, updates that line's family, name and ECO code and keeps its `line_id`. A new family needs a side. After every change it recomputes `parent_line_id` for the catalog. The family side is separate from the side selected for a practice session.
+
+Startup migration is specified under [decision 9](#9-older-databases-are-upgraded-when-the-backend-starts).
+
+## practice_events (12 fields)
+
+One row per suggestion, move attempt, or completed session.
+
+| Field | What it stores |
+|---|---|
+| `event_id` | Unique event ID. Primary key. |
+| `player_id` | Player the event belongs to. |
+| `line_id` | Reference to opening_lines.line_id. |
+| `session_id` | Groups events from the same session. Can be empty for a suggestion. |
+| `event_type` | line_suggested, move_attempted, or session_completed. |
+| `mode` | learning or repeating. |
+| `side` | Perspective used by the session: white, black, or both. Empty for planner suggestion events. The browser currently selects the family side automatically; the backend/demo also support a chosen side. |
+| `occurred_at` | UTC timestamp with microsecond precision, serialized as ISO 8601 text. |
+| `move_index` | Zero-based position of the expected move in the full line. Filled for move attempts. |
+| `is_correct` | Whether the move attempt matched the expected move. Filled for move attempts. |
+| `response_time_ms` | Server monotonic time since the side was selected or the previous attempt completed, rounded to nonnegative milliseconds. Includes request/UI waiting time; filled for move attempts. |
+| `fsrs_rating` | Again, Hard, Good, or Easy for a completed Repeating session, including one closed early after a mistake. Empty for Learning completion. |
+
+## player_lines (6 fields)
+
+One row per player and opening line. The primary key is (player_id, line_id).
+
+| Field | What it stores |
+|---|---|
+| `player_id` | Player who owns this progress record. |
+| `line_id` | Reference to opening_lines.line_id. |
+| `learned_at` | When the player first completed Learning for this line as White, Black, or Both. |
+| `last_reviewed_at` | When the player last completed a review of the line or closed one early after a mistake. |
+| `next_review_at` | When the line is due for review again. |
+| `fsrs_state` | Current FSRS state used to update the review schedule. |
+
+
+### Declared types and required values
+
+Verified against `CATALOG_SCHEMA` and `PRACTICE_SCHEMA` in `backend/store.py`
+at `788e060`; this table retains the exact declared storage types and
+nullability that the former catalog DDL specified. Integer primary keys are
+SQLite rowid keys and may be generated when omitted. No `AUTOINCREMENT` or
+cross-deletion never-reuse promise is declared; the current upsert/migration
+operations preserve existing line IDs.
+
+| Column | SQLite type | Required value |
+|---|---|---|
+| `opening_families.family_id` | `INTEGER` | generated integer primary key |
+| `opening_families.name` | `TEXT` | required (NOT NULL) |
+| `opening_families.family_side` | `TEXT` | required (NOT NULL) |
+| `opening_lines.line_id` | `INTEGER` | generated integer primary key |
+| `opening_lines.family_id` | `INTEGER` | required (NOT NULL) |
+| `opening_lines.parent_line_id` | `INTEGER` | nullable |
+| `opening_lines.name` | `TEXT` | required (NOT NULL) |
+| `opening_lines.eco` | `TEXT` | required (NOT NULL) |
+| `opening_lines.moves_uci` | `TEXT` | required (NOT NULL) |
+| `practice_events.event_id` | `INTEGER` | generated integer primary key |
+| `practice_events.player_id` | `TEXT` | required (NOT NULL) |
+| `practice_events.line_id` | `INTEGER` | required (NOT NULL) |
+| `practice_events.session_id` | `TEXT` | nullable |
+| `practice_events.event_type` | `TEXT` | required (NOT NULL) |
+| `practice_events.mode` | `TEXT` | required (NOT NULL) |
+| `practice_events.side` | `TEXT` | nullable |
+| `practice_events.occurred_at` | `TEXT` | required (NOT NULL) |
+| `practice_events.move_index` | `INTEGER` | nullable |
+| `practice_events.is_correct` | `INTEGER` | nullable |
+| `practice_events.response_time_ms` | `INTEGER` | nullable |
+| `practice_events.fsrs_rating` | `TEXT` | nullable |
+| `player_lines.player_id` | `TEXT` | required (NOT NULL) |
+| `player_lines.line_id` | `INTEGER` | required (NOT NULL) |
+| `player_lines.learned_at` | `TEXT` | required (NOT NULL) |
+| `player_lines.last_reviewed_at` | `TEXT` | nullable |
+| `player_lines.next_review_at` | `TEXT` | required (NOT NULL) |
+| `player_lines.fsrs_state` | `TEXT` | required (NOT NULL) |
+
+The composite `player_lines` primary key is `(player_id, line_id)`; both
+columns are explicitly required. Named uniqueness, foreign keys and check
+constraints are described under Storage operations and constraints.
 
 ## Implementation
 
@@ -253,7 +340,7 @@ The former `ml/ml_1000bots/openings/` workflow read separate CSV files and kept
 at `825e9d8`; it is not a current implementation path. The package generator's
 `ml/tempo_ml/catalog.py` reads every database line and uses `family_side`; it
 does not apply the app's leaf-only Learning restriction. Historical
-game-evidence sources belong to the [opening library record](../opening-library/opening-library.md).
+game-evidence sources belong to the [opening library record](provenance.md).
 `backend/synthetic_clients.py` reads the new tables unchanged; with
 `--one-line-per-family` it now draws from 82 families instead of 91.
 `backend/synthetic_reviews.csv` was not regenerated.
@@ -330,23 +417,23 @@ db.close()
 
 - The team has to confirm the catalog choices other than the same-family
   parent-link rule and startup migration, which the worklog records as settled.
-  The [opening library open questions](../opening-library/opening-library.md#open-questions)
+  The [opening library open questions](provenance.md#open-questions)
   include confirmation of side labels.
 
 ## Catalog and data overview sources
 
 The requested `opening-catalog.html` combines a human overview of catalog
 provenance, the current line tree and the four-table practice-data model.
-This record still owns catalog rationale; database-schema owns field mappings,
-and opening-library owns the historical classifier and side evidence. The
-latter is retired tooling, not a current catalog import command. Plans,
+This record owns catalog rationale, field mappings, storage operations and
+migration. `provenance.md` retains the historical classifier and side evidence
+inside the same topic. That is retired tooling, not a current import command. Plans,
 checks and full evidence remain in Reference rather than separate main pages.
 
 The source-authored HTML figures in `index.md` are their own generators. The
-relationship diagram uses the schema record and `backend/store.py` at
+relationship diagram uses the field mapping retained here and `backend/store.py` at
 `dab04ac`; its arrows mean foreign-key references, with the composite
 `player_lines` key shown explicitly. There is no players table. The runtime
-practice-data sequence uses the schema record and controller sources at the
+practice-data sequence uses the retained schema mapping and controller sources at the
 same pin.
 
 A read-only SQLite query on 2026-11-15 supplied the illustrated tree example.
@@ -381,3 +468,108 @@ already recorded in decision 8. Four tables and their primary/foreign keys
 come from database-schema. Example line IDs and the four-child claim come
 from the exact query above. These are seed facts, not counts guaranteed for
 every user's modified database. No experimental result is changed.
+
+## Storage operations and constraints
+
+Source inspection at `788e060` on 2026-11-15 covers all of `backend/store.py`.
+These are implementation facts, not new runtime or migration test results.
+
+- `Store.transaction` opens a short-lived SQLite connection per operation,
+  sets row access to `sqlite3.Row` and enables foreign keys by default. Writes
+  explicitly use `BEGIN IMMEDIATE`; the connection context commits on success
+  or rolls back on an exception, and always closes. No WAL, backup policy,
+  retention policy or application-level busy retry is configured here.
+- Construction creates missing tables. Recognized legacy layouts trigger the
+  transactional rebuild described in decision 9. This is a specific layout
+  detector, not a general schema-version migration framework. Migration turns
+  foreign-key enforcement off on that connection, then checks all references
+  before committing. `run_statements` avoids `executescript`'s implicit commit.
+- `Store.add_line` normalizes whitespace and rejects empty moves. It accepts
+  UCI text without validating chess legality. It folds family suffixes, creates
+  a missing family using `family_side`, upserts on the unique move sequence,
+  and recomputes all parent links inside the write transaction. For an existing
+  family, a supplied side does not update the stored family side. This API
+  offers no deletion, family relabel or PGN-import operation.
+- `family_side` first uses the Queen's Gambit, Benko Gambit and Four Knights
+  overrides, then the Defense/Defence name rule, then an unambiguous supplied
+  existing side. Otherwise it raises. These implemented decisions retain the
+  team's confirmation status under Open questions.
+- `list_lines` returns catalog metadata and a derived `learnable` boolean,
+  ordered by family name, line name and line ID. `learning_catalog(player_id)`
+  also returns moves and whether that player's repertoire contains the line;
+  it returns headings too, so the consumer still filters learnability.
+- `repertoire_rows` selects that player's progress joined to catalog details,
+  ordered by due date, first learned date and line ID. It attaches repeating
+  completion history in insertion/event-ID order. Recall and stability are
+  derived later by the runtime, not stored as extra columns. `add_event`
+  serializes supplied timestamps to UTC ISO text with microseconds.
+- Family names and ordered move strings are unique. Catalog name and ECO are
+  required, with no uniqueness constraint on either. There is no players or
+  accounts table: `player_id` is required text, and `(player_id, line_id)` is
+  the progress primary key. The HTTP layer's UUID check is an application
+  boundary, not a database identity/authentication constraint.
+- Table checks restrict family side, event type, mode, optional session side,
+  correctness, nonnegative response time and optional FSRS grade. Foreign keys
+  connect families, lines, parent lines, events and progress. They do not prove
+  that a parent is a shorter same-family prefix; `link_parents` establishes
+  that property. The database does not validate UCI legality, timestamp format,
+  FSRS JSON validity or per-event conditional field requirements.
+- Named indexes are `opening_lines_family`, `opening_lines_parent`,
+  `practice_events_player` on `(player_id, event_id)` and `player_lines_due`
+  on `(player_id, next_review_at)`, in addition to uniqueness/primary-key
+  indexes. Suggestion events and completed reviews have different meanings;
+  current chosen-line reviews omit suggestions. Browser-local progress and
+  active process sessions live outside these tables.
+
+## Code coverage and verification limits
+
+| Reviewed source or input | Owning explanation | Gap filled in this pass |
+|---|---|---|
+| `backend/store.py`: schemas and indexes | Schema; Storage operations and constraints | Database-enforced checks versus controller assumptions; indexes and missing identity table |
+| `timestamp`, `run_statements`, `Store.transaction` | Storage operations and constraints | UTC serialization, short connections, write locking, rollback and missing operational policies |
+| `family_name`, `family_side`, `link_parents`, `is_learnable` | Decisions 1, 3, 7, 8; Storage operations | Side precedence, same-family prefix mechanism and leaf derivation |
+| `Store.__init__`, `_rebuild_catalog` | Decision 9; Evidence | Exact layout detection and retained historical migration scope |
+| `add_line`, `list_lines`, `learning_catalog` | Decisions 5/6; Storage operations | Whitespace/upsert semantics, existing-family side behavior, headings in API data |
+| `repertoire_rows`, `add_event` | Schema; Storage operations | Ordering, completion history and derived runtime fields |
+| `backend/tempo_demo.sqlite` | Read-only seed verification; query below | Current fields, indexes, counts and foreign-key closure checked without mutation |
+| Removed `ml/ml_1000bots/openings/` | Historical provenance | Historical classifier/side evidence separated from current import capability |
+
+A fresh read-only check used Python 3.12.14 `sqlite3` in `.build/docs-env`.
+It confirmed 82 families, 2,719 lines, 1,889 leaves, the four documented table
+layouts and named indexes, and no `PRAGMA foreign_key_check` rows. SHA-256
+before and after remained
+`5eb848f110d5f3634344b854038a4482a16c7d2ecc7da782b01c2b326188eaa0`.
+Reproduce from the repository root with the documentation interpreter:
+
+```python
+from pathlib import Path
+import sqlite3
+p = Path('backend/tempo_demo.sqlite').resolve()
+with sqlite3.connect(p.as_uri() + '?mode=ro', uri=True) as db:
+    for table in ('opening_families', 'opening_lines', 'practice_events', 'player_lines'):
+        print(table, list(db.execute('PRAGMA table_info(' + table + ')')))
+        print(list(db.execute('PRAGMA index_list(' + table + ')')))
+    print(list(db.execute('PRAGMA foreign_key_check')))
+    print(db.execute('SELECT COUNT(*) FROM opening_families').fetchone())
+    print(db.execute('SELECT COUNT(*) FROM opening_lines').fetchone())
+    print(db.execute('SELECT COUNT(*) FROM opening_lines o WHERE NOT EXISTS '
+                     '(SELECT 1 FROM opening_lines c WHERE c.parent_line_id=o.line_id)').fetchone())
+```
+
+The check did not call `Store`, open a write connection, migrate a database,
+exercise lock contention or run an app session. The older migration checks
+above retain their original source/environment. A complete current upstream
+rebuild and a database operational/recovery policy remain product work;
+this audit supplies no invented import or backup command.
+
+## Retired duplicate schema page
+
+The actual topic consolidation replaces the separate database-schema record
+and hand-maintained `database-schema.html` with this topic's complete field
+mapping and requested `opening-catalog.html` explanation. The former standalone
+page contained the same four-table lookup and practice notes, no separate
+interactive or measured evidence. Repository searches found no runtime caller.
+Its historical bytes remain at
+[788e060:docs/topics/database-schema/database-schema.html](https://github.com/davszi/Tempo/blob/788e06039dd2869b23261dd80ea8fc49367ab33c/docs/topics/database-schema/database-schema.html).
+The current supported topic URL `opening-catalog.html` is unchanged; retired
+source/Reference paths are replaced by the current topic routes in live docs.

@@ -1,6 +1,6 @@
 # Experiment: FSRS-6 on the cleaned opening catalog, pass/fail vs true recall (v2)
 
-Arms A2 and B2 of the [retraining plan](../../../docs/topics/fsrs-training/retraining-plan.md),
+Arms A2 and B2 of the [retraining plan](https://github.com/davszi/Tempo/blob/788e06039dd2869b23261dd80ea8fc49367ab33c/docs/topics/fsrs-training/retraining-plan.md),
 run on the 300-client simulator (multiplicative memory, every move must be
 right). Topic record: [FSRS training](../../../docs/topics/fsrs-training/fsrs-training.md).
 The 1000-agent arms (A1, A1c, B1) are not part of this run.

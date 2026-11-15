@@ -1,6 +1,6 @@
 # Experiment: FSRS-6 on clients whose hidden memory is FSRS-6 (arms A1, A1c, B1)
 
-Arms A1, A1c and B1 of the [retraining plan](../../../docs/topics/fsrs-training/retraining-plan.md),
+Arms A1, A1c and B1 of the [retraining plan](https://github.com/davszi/Tempo/blob/788e06039dd2869b23261dd80ea8fc49367ab33c/docs/topics/fsrs-training/retraining-plan.md),
 run on the package simulator of `ml/tempo_ml/` with the new FSRS-6 hidden
 memory model (`simulator/memory/fsrs.py`). Everything else (clients, sides,
 repertoires, per-move recall with retries, grading, practice policy, split,
@@ -53,7 +53,7 @@ A2/B2); the same metrics with calendar days are reported beside them.
 ## Inputs, code and environment
 
 - Opening catalog: `backend/tempo_demo.sqlite` as maintained by the team
-  ([opening catalog structure](../../../docs/topics/opening-catalog/opening-catalog.md)),
+  ([opening catalog structure](../../../docs/topics/catalog-data/catalog-data.md)),
   as of commit `825e9d8`: 82 families, 2,719 lines, content sha256
   `da5fc96c…` (full value in [`dataset_MANIFEST.txt`](dataset_MANIFEST.txt)).
 - Configs: `ml/configs/fsrs-memory.json` and `fsrs-memory-holdout.json`, the

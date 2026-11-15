@@ -35,7 +35,7 @@ Review sessions in both Learning and Repeating modes log structured outcomes to 
 | `review_status` | Enum | State/mode of the review session | `new`, `learning`, `review`, `relearning` |
 | `t_days` | Float | Elapsed time since the previous review session for this line | $\ge 0.0$ (days; $0.0$ for `new`) |
 | `grade` | Integer | Calculated FSRS session grade | `1` (Again), `2` (Hard), `3` (Good), `4` (Easy) |
-| `total_time_ms` | Integer | Total elapsed wall-clock time across all repertoire moves | $\sum_{i=1}^M \text{final\_time\_ms}_i$ (milliseconds) |
+| `total_time_ms` | Integer | Sum of recorded attempt latencies across repertoire moves | $\sum_{i=1}^M \text{final\_time\_ms}_i$ (milliseconds; each move includes retries) |
 | `accuracy` | Float | First-attempt move accuracy ratio across the line | $A \in [0.0, 1.0]$ ($1.0$ if no blunders) |
 
 In the package, `total_time_ms` sums every attempt's latency, including
@@ -186,6 +186,84 @@ non-significant test alone as realism. No numerical tolerance is proposed
 without human evidence. Implementing qualification checks or declaring
 calibrated cohorts validated waits for agreement on the data split,
 sampling assumptions, methods and acceptance criteria.
+
+## 5. Generated files and producer boundaries
+
+The seven-column header is a shared interface, not proof that producers
+model the same population or collection policy. [Synthetic Players](../synthetic-clients/record.md#9-practice-policy-generation-and-demo-producer)
+owns those mechanisms; [FSRS Training](../fsrs-training/fsrs-training.md#fitting-and-state-replay)
+owns masking and fitting.
+
+| File / producer | Content and interpretation |
+|---|---|
+| Offline `sessions.csv` | Exactly section 2's seven columns, chronological per client; one row per guided or unassisted session |
+| `ground_truth.csv` | Hidden row-aligned sidecar: agent/archetype/side/line ID/name/move count, simulation day/mode/status/elapsed/grade/accuracy/blunders, per-move R, clean chance, stability before/after and familiarity before/after |
+| `clients.csv` | Traits (baseline, mu, sigma, beta, alpha, C, derived F), archetype/side, repertoire size, attendance probability and review budget; synthetic parameters, not human observations |
+| `repertoires.csv` | Agent, catalog line ID, display name, family and side-specific move count |
+| `memory_weights.csv` | Written for FSRS-hidden-memory runs: agent plus w0–w20; hidden truth, not fitted weights; see output-directory precondition below |
+| `manifest.json` | Producer/config/model/retry cap, counts, catalog content identity, CSV hashes, source/environment and elapsed generation time |
+| Backend demo CSV | Same seven header fields from `backend/synthetic_clients.py`; no truth sidecars or manifest; counts all plies rather than player's repertoire moves |
+
+Generation should use a fresh output directory when changing models or
+producing an independently identified dataset. `generate.py` conditionally
+writes `memory_weights.csv` for FSRS hidden memory, does not delete a pre-existing
+copy for multiplicative memory, and hashes every CSV already in the output
+directory into the manifest. Reusing a previous FSRS directory can therefore
+retain and hash stale hidden weights or other unrelated CSV files. This is a
+source-control-flow inference, not evidence that any retained historical run
+was contaminated. The manifest alone does not prove every listed file was
+produced by its latest invocation.
+
+Offline `p_clean` is R raised to repertoire move count for repeating sessions
+and 1 for guided sessions. Hidden R/stability/reps are unavailable from human
+telemetry. The producer rounds `t_days` to four decimals, simulation day to
+six, hidden probabilities/stabilities to six and total latency to integer
+milliseconds. Grading uses the underlying unrounded attempt sum first.
+Move events exist in memory but are not exported here, so the seven columns
+cannot reconstruct individual attempt latencies, move order or whether the
+final retry succeeded.
+
+`SessionRecord` validates status, nonnegative elapsed/time, grade 1–4 and
+accuracy in [0,1]. `calculate_session_grade` requires positive move count
+and nonnegative blunders. Move count and physical baseline are additional
+grading inputs, absent from the seven-column row. The trainer reads CSV
+values directly rather than validating arbitrary imports with this class.
+
+The backend demo emits `new`, `review` and `relearning`, not guided
+`learning`. First exposure uses R = 1, then scheduling comes from the backend
+engine. Duplicate catalog names receive `[line ID]`, whereas offline
+repertoire selection rejects duplicates per client. Neither is an agreed
+human identity export. Browser/API submissions and persisted timestamps
+belong to [App & practice](../app-practice/app-practice.md); no completed
+app-to-training export or human calibration pipeline is established by the
+inspected ML code.
+
+## 6. Source coverage and verification limits
+
+The bounded 2026-11-15 source pass at
+`788e06039dd2869b23261dd80ea8fc49367ab33c` read every package file, four
+configs, package metadata/tests and `backend/synthetic_clients.py`.
+It filled output/sidecar, rounding, validation and producer boundaries,
+keeping future calibration distinct from implementation. No additional
+telemetry topic is needed for this scope; storage belongs to Catalog & data
+and app submission to App & practice.
+
+| Source / symbols | Canonical section or owner |
+|---|---|
+| `ml/tempo_ml/simulator/grading.py`: `calculate_session_grade`, `CSV_COLUMNS`, `REVIEW_STATUSES`, `SessionRecord`, `write_sessions_csv` | Sections 2–3 and 5 |
+| `simulator/clients.py`: `_finish`, `SessionOutcome` | Section 5 rounding/observable boundary; Synthetic Players owns memory |
+| `simulator/generate.py`: `GROUND_TRUTH_COLUMNS`, `generate` output writers/manifest | Section 5; Synthetic Players owns collection |
+| `fsrs/model.py`: `load_cards`, `Cards.row`, `loss_mask` | Section 2 identity limits; FSRS Training owns ingestion/masking |
+| `evaluate/metrics.py`: `Truth.grid` | Section 5 row alignment; FSRS Training owns scoring |
+| `backend/synthetic_clients.py`: `CSV_FIELDS`, `simulate_line`, `read_lines`, `write_dataset` | Section 5; Synthetic Players owns producer simulation |
+| `ml/tests/test_simulator.py`: grading thresholds, record fields, output header/identity | Sections 2–3 and 5; inspected assertions only |
+| `ml/tests/test_trainers.py`: `test_load_cards_and_masks` | FSRS Training replay contract; excluded rows still update state |
+
+Tests were inspected, not executed. No generation, training, app session,
+human fitting or goodness-of-fit check ran. Existing assertions cover grade
+boundaries and example exports, not human calibration, a stable human
+identity export, retry completion or arbitrary imported CSV chronology and
+sidecar alignment. These gaps remain future work or explicit decisions.
 
 ## Page presentation and numeric sources
 

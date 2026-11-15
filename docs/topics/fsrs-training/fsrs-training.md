@@ -2,80 +2,142 @@
 
 ## Scope
 
-This record owns the synthetic-client simulator in the package `ml/tempo_ml/`,
-its two hidden memory models, how FSRS-6 weights are trained and evaluated on
-them, and the results. The client model and the dataset schema are specified
-by the team in the [synthetic clients record](../synthetic-clients/record.md)
-and the [review dataset record](../review-dataset/record.md); this record
-only states how the code follows them and where it adds to them. The opening
-lines come from the team's catalog in `backend/tempo_demo.sqlite`
-([opening catalog structure](../opening-catalog/opening-catalog.md)).
+This record owns fitting FSRS-6 parameters, evaluation, artifacts and dated
+synthetic experiments. [Synthetic Players](../synthetic-clients/record.md)
+owns producers, hidden memory and collection policy; [Review Dataset](../review-dataset/record.md)
+owns observable schema, grading and future human calibration. Setup belongs
+to [ML development](../../development/ml.md), catalog inputs to [Catalog & data](../catalog-data/catalog-data.md),
+and runtime scheduling to [App & practice](../app-practice/app-practice.md).
 
-Status: implemented and measured on synthetic data only. The earlier
-1,000-client simulator `ml/ml_1000bots/` was removed on 2026-11-14; its
-results are kept under [earlier 1,000-client simulator](#earlier-1000-client-simulator-removed).
+Status: implemented and historically measured on synthetic data only.
+The earlier 1,000-client simulator was removed on 2026-11-14; results remain
+below. This 2026-11-15 consolidation executed no new numerical experiments.
 
-## Simulator and package
+## Fitting and state replay
 
-Code: `ml/tempo_ml/` (install and run: `ml/README.md`). Each move is recalled
-on its own and a session passes only when every move is right; a wrong move
-is retried. Clients learn 1–3 new lines a day and are tested 3 minutes later;
-reviews follow a grade-based interval policy. The generator reads the catalog
-from `backend/tempo_demo.sqlite`; a line is offered to the side of its family.
+`fsrs/model.py` implements vectorised long-term FSRS-6 with 21 weights,
+defaults and bounds matching py-fsrs 6.3.2. It does not replay the runtime
+scheduler's learning-step states. `load_cards` keys a card by
+`(agent_name, opening_name)` and pads its rows into arrays. Rows must already
+be chronological within each card; the loader preserves CSV order without
+sorting or validating chronology. Package repertoire sampling guarantees
+unique names per client; arbitrary human exports do not inherit that rule.
 
-The hidden memory model is chosen in the generation config:
+The first row initializes stability/difficulty from the grade; its
+pre-review prediction is NaN. Later rows predict recall before applying
+the grade. Elapsed time below one day uses short-term stability; later
+sessions use recall/forget updates. `predict_states` also returns stability
+after every valid row, including initialization; padding stays NaN.
 
-| `memory` | Model | Per client | After a clean session | After a lapse |
-|---|---|---|---|---|
-| `multiplicative` (default) | `simulator/memory/multiplicative.py` | decay C | stability × (1 + 1.5·e^(2(1−R))) | min(previous stability, max(1 day, stability × 0.3)) |
-| `fsrs` | `simulator/memory/fsrs.py` | 21 FSRS-6 weights, w20 = C | short-term update when elapsed time < 1 day; otherwise recall update with the line's difficulty | short-term or forget update, clamped to min(previous stability, max(1 day, updated stability)) |
+The loss mask contains only `review`/`relearning` rows at least one elapsed
+day after the previous session, never a card's first row. Guided rows and
+short-delay reviews still update state; they are neither negative examples
+nor discarded from replay. Binary success is `grade > 1`. The clock is the
+exported floating-point `t_days` (rounded to four decimals by the package),
+not calendar days. The historical A1 comparison scores both clocks below.
 
-Both use the forgetting curve of the synthetic clients record, section 3.2.
-The FSRS-6 weights are the defaults with log-normal noise (sd 0.15) on w0–w16,
-w17–w19 at the defaults, drawn from their own random stream; with the same
-config apart from `memory`, both models give the same clients, sides and
-repertoires. Selecting `fsrs` leaves the multiplicative model unchanged: its
-generator output is byte-identical before and after `fsrs` was added.
+`split_clients` shuffles within each archetype using the seed (default 7),
+allocates rounded 20% test and 10% validation, and fits on the remainder.
+Test clients do not fit general weights; validation selects personalization
+settings when enabled. The dated studies also use separately generated
+hold-out clients.
 
-The byte-identity claim is the check recorded in the 2026-11-14 experiment,
-using the same catalog for both configurations; it is not a fresh run on
-the current working tree. The published A2/B2 and A1/A1c/B1 runs used
-different catalog groupings (91 and 82 families respectively), so their
-results do not isolate the memory-model change alone.
+| CLI target | Fit target and objective | Boundary |
+|---|---|---|
+| `pass` (default) | Mean binary cross-entropy against `grade > 1` | Predictions use session fields; current CLI still loads synthetic truth for scoring |
+| `true` | Mean squared error against hidden `p_clean` on fit clients | Diagnostic B arms only; unavailable for real players |
 
-## Simulator, app and accepted specification
+`objective` optionally adds an L2 pull toward a prior, normalized by each
+parameter's allowed range. `fit` clips starting weights and uses SciPy
+L-BFGS-B with FSRS bounds, finite-difference step 1e-6 and default
+`maxiter=300`. Python API `ftol`/`gtol` can tighten tolerances; the CLI uses
+SciPy defaults. It records loss, iterations, evaluations, convergence and
+termination message. Saving weights proves neither convergence nor a global
+optimum.
 
-The package is an offline data generator and trainer, not the app's runtime
-planner. `backend/ml_engine.py` uses py-fsrs `Scheduler`; it selects the
-oldest due line and uses a grading baseline of 0 ms unless configured.
-`tempo_ml.simulator.practice` instead uses grade-based noisy intervals and
-each synthetic client's known physical baseline. The app stores move events
-in SQLite, while the package writes the review-session CSV schema.
+Personalization is implemented and optional, not an accepted rollout policy.
+Without `--no-personalise`, the first 60% of each client's tested rows fit
+local weights and the remaining 40% score them; CSV order supplies time
+order. Fewer than ten tested rows gives no time split; fitting additionally
+requires ten early and five late rows. Local fits start from general weights
+with at most 100 iterations. Validation selects the L2 strength from
+0.01/0.1/1/10; late test results compare defaults, general and personalized
+predictions. Local fitting uses binary cross-entropy even when the general
+CLI target is `true`. The dated A/B arms skip personalization.
 
-Learning also differs: the package records and grades each guided session,
-updates hidden memory, then tests the line after the session duration plus
-three minutes. In the app, finishing Learning initializes a due card but
-does not grade it or initialize its stability; the first Repeating session
-does that (`backend/ml_controller.py`, `initialize_progress` and
-`complete_review`). The package samples any eligible catalog line, with
-unique names within a client's repertoire; the app admits only lines that
-no other catalog line extends. The package permits at most five attempts
-per move, whereas the app supports retries and explicitly stopped reviews.
-These are implemented differences, not accepted changes to the product
-requirements. Their effect on transfer from synthetic training to the app
-has not been measured.
+## Evaluation metrics
 
-The accepted cognitive and dataset specifications remain in their owning
-records. Package-specific additions and unresolved retry semantics are
-identified in the [synthetic clients record](../synthetic-clients/record.md#6-implementation-and-open-choices).
-Human calibration is specified for a later stage; no implemented calibration
-pipeline or human validation is established by these synthetic experiments.
+`evaluate.metrics.score` computes probability metrics on the loss mask,
+then days metrics on **every valid session**, guided rows included. The
+constant baseline is the fit clients' binary success rate; it has no
+state-based days prediction.
+
+| Output | Definition / unit |
+|---|---|
+| `log_loss` | Mean binary cross-entropy, natural logs, nats/review; probabilities clipped to 1e-6 through 1 minus 1e-6 |
+| `brier` | Mean `(prediction - outcome)^2`, probability squared |
+| `rmse_bins` | Weighted RMSE of mean prediction versus observed success in 20 equal-width probability bins; probability |
+| `auc` | Rank AUC with averaged tied ranks; assumes both classes occur |
+| `rmse_vs_truth`, `mae_vs_truth` | Error against hidden `p_clean`; probability, ×100 for percentage points |
+| `mean_predicted`, `observed_success`, `reviews` | Mean prediction, success rate and masked count |
+
+`Truth` reads `ground_truth.csv` and C from `clients.csv`, aligning through
+`Cards.row` by CSV position. It does not join or validate identity/hashes.
+Preserve row alignment and verify the generator manifest before relying on
+independently supplied sidecars. Hidden truth is evaluation data and, for
+B-arm diagnostics, a target for **fit clients only**, never a planner input.
+
+### Days metric
+
+Accepted on 2026-11-13: error is predicted minus true days until the chance
+of a clean session falls to 90%; negative means an early review. Predicted
+days equal fitted FSRS stability after the session. For the current
+per-move producer, `evaluate.days.true_days` uses hidden stability after the
+session S, move count M and client C:
+
+`F = 0.9**(-1/C) - 1`
+
+`d_true = S / F * ((0.9**(1/M))**(-1/C) - 1)`
+
+For one move this equals S. The removed simulator sampled once per line,
+so its true days simply equaled hidden stability; do not interchange these
+definitions. The 90% threshold expresses the team's requested stability
+difference and matches the app's default desired retention. Medians were
+chosen because the motivation probe contained intervals up to 1,867 days
+that dominated means.
+
+Report median error, median absolute error, median relative error
+(`error / d_true`, stored as fraction), mean error, share too early,
+median true/predicted days and count beyond the horizon. The three medians
+are also split by true interval below 7, 7 to below 30, and at least 30 days,
+and by after-learning versus after-review. Means are sensitive to long
+intervals; values beyond the horizon are extrapolations the simulated
+history cannot verify. The accepted protocol called for dropping missing
+true days; current code expects complete aligned truth and does not
+explicitly filter missing/non-finite values. This is a precondition, not
+robust arbitrary human-data ingestion.
+
+## Artifacts and reproduction
+
+The trainer writes `fsrs6_general_parameters.json` (model/target/loss,
+rounded fitted/default weights and fit-data counts), `metrics.json`
+(test, per-archetype, fit, optimizer, baseline, client split, environment and
+seconds), and optionally `personalisation_test_clients.csv`. Metrics record
+Python/NumPy/pandas/platform; the experiment record must retain SciPy and
+complete producing-source identity.
+
+Generated data stays ignored; each experiment's `dataset_MANIFEST.txt`
+retains identities and rebuild instructions. [ML development](../../development/ml.md)
+commands exercise the current package. Exact historical reproduction also
+needs the dated source pin/diff, catalog content hash, config, environment
+and local scoring scripts. Today's catalog does not reproduce the earlier
+91-family input. This documentation work regenerated no data or results.
 
 ## Multiplicative memory: arms A2 and B2
 
 Recorded run: [FSRS-6 on the cleaned catalog, pass/fail vs true recall
 (2026-11-13)](../../../ml/experiments/2026-11-13-fsrs-synthetic-v2/SUMMARY.md),
-arms A2 and B2 of the [retraining plan](retraining-plan.md). It holds two
+arms A2 and B2 of the [accepted comparison](#accepted-comparison-and-retired-protocol). It holds two
 trained weight sets:
 
 | Weights | Trained on | Loss | File |
@@ -102,7 +164,7 @@ clients agree):
 
 Run: [FSRS-6 on clients whose hidden memory is FSRS-6
 (2026-11-14)](../../../ml/experiments/2026-11-14-fsrs-memory/SUMMARY.md),
-arms A1, A1c and B1 of the [retraining plan](retraining-plan.md), with the
+arms A1, A1c and B1 of the [accepted comparison](#accepted-comparison-and-retired-protocol), with the
 configuration, split, trainer settings and metrics of A2 and B2.
 
 | Weights | Trainer | Trained on | Loss | File |
@@ -206,7 +268,7 @@ remain distinct from the unretained exploratory observations.
 
 The authored `index.md` explains the offline/runtime boundary, fitting,
 metrics and the two dated synthetic studies separately. Its inline lane
-diagram is source-authored from this record's simulator/app comparison;
+diagram is source-authored from the Synthetic Players simulator/app comparison;
 the fitting flow uses the arm definitions and held-out-client protocols.
 No diagram implies that diagnostic weights are deployed.
 
@@ -218,7 +280,7 @@ No diagram implies that diagnostic weights are deployed.
 | A2/B2: median days error +0.00/-0.14/-0.10 days; long-interval medians -38.6/-47.0/-45.0 days for true interval at least 30 days | Same run, Results, days metric and interval tables |
 | A1 study: exact-clock log-loss defaults/A1/A1c/B1 = 0.8307/0.7135/0.6084/0.6091; truth RMSE 32.5/24.7/12.2/12.3 pp | `ml/experiments/2026-11-14-fsrs-memory/SUMMARY.md`, Results, exact-clock test table |
 | Calendar-day log-loss A1/A1c = 0.6127/0.6117 | Same run, Results, clock comparison |
-| 90% threshold; error = predicted minus true days; negative means early | Retained retraining plan, Days metric; this record's result/limit sections |
+| 90% threshold; error = predicted minus true days; negative means early | Days metric in this record; this record's result/limit sections |
 | 91 versus 82 families in the dated runs | Each run's Inputs; Historical evidence gaps above |
 | Runtime old first-fit weights from 800 synthetic clients; py-fsrs 6.3.2 | Earlier 1,000-client simulator section above |
 | B2 and A1c reached the 300-iteration limit | Each experiment's optimizer observations; no convergence inferred |
@@ -227,21 +289,180 @@ The dated experiment summaries and complete result artifacts are retained
 unchanged; the page's selected tables are a new view of those historical
 results, not replacement evidence or a rerun. Figure/chapter numbers and
 dated run names are presentation identifiers. Setup commands come from
-`ml/README.md`, not from the retired variant paths in the plan.
+[ML development](../../development/ml.md), rather than retired variant paths.
+
+## Accepted comparison and retired protocol
+
+The completed/superseded `retraining-plan.md` was retired in the authorized
+2026-11-15 consolidation. Its full task text, historical layout mapping,
+proposed paths and original open questions remain at
+[commit 788e06039dd2869b23261dd80ea8fc49367ab33c, docs/topics/fsrs-training/retraining-plan.md](https://github.com/davszi/Tempo/blob/788e06039dd2869b23261dd80ea8fc49367ab33c/docs/topics/fsrs-training/retraining-plan.md).
+It is historical protocol, not current execution instructions.
+
+Durable decisions from the 2026-11-13 discussion:
+
+- Keep binary training and compare true-recall MSE diagnostics using the
+  same data/split. A2/B2 and A1c/B1 isolate target/loss within each study.
+  A1/A1c compare trainers with the same target, with explicit clock treatment.
+  Cross-study comparisons have the documented 91/82-family catalog confound.
+- Keep A1c as B1's binary control. Each arm returns one global set of 21
+  weights; per-player fitting is outside these arms.
+- Never copy diagnostic true-recall B-arm weights to
+  `backend/fitted_global.csv`. Choosing the demo's binary weights remains
+  unresolved. Read catalog inputs read-only; do not commit generated data.
+- Keep evaluation clients separate from fitting and setting selection;
+  report probability and 90%-days metrics as defined above.
+- The original removed-simulator recovery gate required identifiable weights
+  (all except w0, w1, w3, w19) within 10% of generating weights and validation
+  truth RMSE below 0.005. It also required 100 random-card replays to agree
+  between implementations within 1e-9 and zero MSE at generating parameters.
+  This historical gate does not establish exact recovery by the current
+  per-move, lapse-floor generator. The inspected current unit test instead
+  checks loss improvement and a 0.005 loss bound; no recovery run was made
+  in this documentation pass.
+
+The original investigation bound was about one hour of laptop CPU, stopping
+after five arms. Changed settings after evaluation required a new recorded
+attempt. A1/A1c/B1 ultimately used package FSRS memory instead of the removed
+simulator. Each dated experiment keeps its actual scope, settings, attempts
+and original environment. The removed `fsrs-synthetic-v1` run and HTML page
+remain retrievable at `09f8a22`; the removed 1,000-client variant at `825e9d8`.
+
+## Motivation probe (2026-11-13)
+
+A probe on the old `tempo_v1` val agents (200 agents, 18,631 reviews) scored
+the first run's global fit against the hidden truth.
+
+| | default FSRS-6 | global fit, first run |
+|---|---|---|
+| RMSE against true recall | 4.8 pp | 3.5 pp |
+| MAE against true recall | 3.0 pp | 2.5 pp |
+| days: median error | +0.04 | −0.27 |
+| days: median absolute error | 1.48 | 1.30 |
+| days: median error, true interval 30 days or more | −5.8 | −10.5 |
+
+- The log-loss, RMSE(bins) and AUC from the same run reproduced the published
+  values in [FSRS training](fsrs-training.md#earlier-1000-client-simulator-removed) exactly.
+- This probe measured days to each player's own target retention (80–95%),
+  not the 90% proposed above, so its days numbers are motivation, not
+  baselines for this plan.
+- Source: commit `e130687`. The inputs are unchanged in `5cbe0a6`.
+- Environment: Python 3.12.12, numpy 2.3.5, Windows 11.
+- Scripts: [`evidence/2026-11-13-probe/`](evidence/2026-11-13-probe/). Run
+  them from the repository root:
+  - `python -I docs/topics/fsrs-training/evidence/2026-11-13-probe/accuracy_check.py ml/ml_1000bots`
+  - `python -I docs/topics/fsrs-training/evidence/2026-11-13-probe/days_error.py ml/ml_1000bots`
+
+## Open research and implementation choices
+
+- Which binary arm's weights should the demo load? Runtime still uses the
+  removed simulator's first global fit. Replacing it needs a separate
+  decision; B-arm diagnostic weights remain excluded.
+- Whether to rerun historical `agent_curve.py` and per-player experiments
+  on the cleaned catalog remains undecided; neither A/B study required it.
+  Source support for personalization is not a real-player rollout decision.
+- The retired plan asked whether collection should use family popularity
+  and where the catalog build should live. Current collection is uniform
+  because SQLite has no popularity field. [Catalog & data](../catalog-data/catalog-data.md)
+  owns build/provenance; changing collection weighting needs an agreed
+  experiment scope. Migration did not silently accept the old proposal.
+
+## Retained study drivers
+
+The six Python files directly under the two retained `ml/experiments/`
+directories are study-owned drivers, not additional package entrypoints or
+app runtime code. A bounded 2026-11-15 extension read all six against their
+`SUMMARY.md` protocols; none was executed. The summaries retain run settings,
+environments, historical checks and results. This table fills the source
+ownership and reproduction boundary without qualifying those runs again.
+
+| Study / driver | Inputs and operation | Outputs / boundary |
+|---|---|---|
+| `2026-11-13-fsrs-synthetic-v2/holdout_benchmark.py` | `--data`, named parameter JSON files and explicit fit-client `--base-rate`; scores defaults and supplied weights on every client, overall and by archetype | `--out` JSON; no fitting or new client split; exact exported elapsed-time replay |
+| `2026-11-13-fsrs-synthetic-v2/compare_v1.py` | Fixed package data paths, A2/B2 files and v1 parameters retrieved through `git show 09f8a22:ml/ml_300bots/ml_engine/experiments/fsrs-synthetic-v1/results/fsrs6_general_parameters.json`; recreates seed-7 test membership, scores test and all hold-out clients | `results/v1_comparison.json`, including all weight sets; no fitting; needs reachable Git history and matching datasets |
+| `2026-11-13-fsrs-synthetic-v2/benchmark_data.py` | Reads binary/true-recall metrics, hold-out and v1 comparison JSON; formats probability, days, archetype, optimizer and weight tables | `results/benchmark-data.md`; reporting only, with some hardcoded historical text/numbers described below |
+| `2026-11-14-fsrs-memory/train_pyfsrs.py` | Sessions, client split and row-aligned simulation day; sends **fit clients only** to py-fsrs `Optimizer`; then scores default/fitted weights on test clients with exact and calendar replay | A1 parameter JSON and metrics JSON; actual fitting; calendar timestamps derive from floored simulation days, not hidden recall probabilities |
+| `2026-11-14-fsrs-memory/score_all.py` | Saved A1/A1c/B1 weights, train and hold-out datasets; recreates split, derives the constant from fit clients and scores test/all hold-out clients under both clocks | `results/scores.json`; no fitting; paired review-weighted log-loss gains from 1,000 whole-client bootstrap resamples (bootstrap seed 0) |
+| `2026-11-14-fsrs-memory/tables.py` | Results directory's `scores.json`; rounds/formats both sets/clocks, paired intervals and days bands | `results/tables.md`; reporting only, with the sign-legend discrepancy below |
+
+Paths in the first column are relative to `ml/experiments/`. These commands
+write or replace their named artifacts; reading their source is distinct
+from invoking them. Exact reproduction still needs each summary's producing
+source, input identities and environment. Drivers reuse the package's
+row-aligned truth loaders and do not independently verify dataset hashes,
+sidecar alignment or evaluation membership against saved training metadata.
+Changing a split seed during scoring can therefore change the claimed test
+cohort; it must match the fitted run. A1's `--seed` controls client splitting,
+not an explicit optimizer/Torch random seed in this script. Its optimizer
+settings are dependency defaults, whose historical versions belong to the
+run record.
+
+### Clock, presentation and uncertainty limits
+
+`train_pyfsrs.review_logs` stamps every fit session at UTC midnight on
+`2026-01-05 + floor(simulation day)`, carrying grade and duration. It does
+not use hidden recall probabilities as A1 fit targets. `calendar_cards`
+replaces elapsed values with differences between floored simulation days
+but preserves the **original exact-clock loss mask**. Thus exact/calendar
+probability comparisons retain the same review cohort; they do not each
+reselect rows using their own one-day threshold. Both clocks update state
+through the full session history. Days errors retain the same hidden true
+intervals while their predicted states follow the selected replay clock.
+Calendar-day scoring does not establish that the live app uses that same
+clock convention for every scheduler operation.
+
+`score_all.paired(wa, wb)` computes loss(wa) minus loss(wb). Its comparison
+keys are `wb vs wa`, so a **positive gain favors the first-named weights**.
+The retained `tables.py` emits a legend saying positive favors the
+second-named weights; that legend is reversed relative to the computation.
+Use the source-defined sign and raw JSON when interpreting those historical
+comparison rows. This documentation pass changes neither the driver nor
+the retained table.
+
+`benchmark_data.py` predominantly formats retained JSON, but also embeds
+historical fit-objective values 0.560232 and 0.553194 and cohort/split text
+as literals. Its generated claim that every number is unrounded and none
+was typed by hand is broader than its implementation: tables explicitly
+round values and those fit objectives are not recomputed there. Those
+figures remain historical observations attributed to the dated study,
+not newly verified calculations or wholly JSON-derived output. No driver
+was run to reproduce weights, scores, intervals, tables or data in this pass.
+
+## Source coverage and verification limits
+
+The bounded 2026-11-15 source pass at
+`788e06039dd2869b23261dd80ea8fc49367ab33c` read every package file, four
+configs, package metadata, four ML test files, the backend demo producer
+and both dated experiment summaries. It filled replay/mask, optimizer,
+personalization, metric, truth-alignment, artifact and reproduction gaps.
+Source facts and historical measurements remain distinct.
+
+| Source / symbols | Canonical section |
+|---|---|
+| `ml/tempo_ml/fsrs/model.py`: parameters/bounds, step functions, `predict`, `predict_states`, `Cards`, `load_cards` | Fitting and state replay; Days metric |
+| `ml/tempo_ml/fsrs/train.py`: `objective`, `fit`, `split_clients`, `time_split`, `personalise`, `main` | Fitting and state replay; Artifacts and reproduction |
+| `ml/tempo_ml/evaluate/metrics.py`: `bce`, `auc`, `rmse_bins`, `metrics`, `Truth`, `score` | Evaluation metrics |
+| `ml/tempo_ml/evaluate/days.py`: `TARGET_RETENTION`, `true_days`, `days_metrics` | Days metric |
+| Package, `fsrs/`, `evaluate/` `__init__.py` files | Package scope; app runtime planner is separate |
+| `ml/pyproject.toml`; CLI arguments | ML development guide |
+| `ml/tests/test_trainers.py`, `test_metrics.py` | Inspected reference-formula/bounds, masks, replay/padding, client split, loss improvement, AUC, truth/day and zero-MSE assertions |
+| Six retained `ml/experiments/*/*.py` drivers | Retained study drivers: inputs, outputs, fit/score/report boundary, clock cohort and historical presentation limitations; inspected without execution |
+
+Tests were inspected, not executed. No training, benchmark, generation,
+app run or human calibration occurred. No new numerical equivalence,
+convergence or performance claim follows. Current `--target pass` still
+requires synthetic truth sidecars; production human export/fitting remains
+future work in [Review Dataset](../review-dataset/record.md). Missing-data
+robustness, single-class AUC, arbitrary human chronology and calibration
+qualification remain outside demonstrated package coverage.
+
 
 ## Retained retraining plan and ML setup guide
 
-### Finished retraining plan
-
-`docs/topics/fsrs-training/retraining-plan.md` says its work is completed or
-superseded. Kit 4/5 asks to retire finished working documents after lasting
-content has a current home and concrete deletion approval. Its accepted
-days metric, recovery criteria and diagnostic-weight restriction must be
-accounted for first. Recommend that coverage check followed by approved
-retirement. The plan is retained pending that decision.
-
-### ML setup guide name
-
-`ml/README.md` is a useful setup guide but kit 5 expects one root README.
-Recommend approving a rename to `ml/ML_GUIDE.md`, updating current links and
-preserving historical source identities. It remains in place pending approval.
+The two earlier cleanup decisions are resolved by this consolidation. The
+completed plan is retired after its accepted criteria and unique motivation
+probe were absorbed above; [Accepted comparison and retired protocol](#accepted-comparison-and-retired-protocol)
+retains its exact historical Git identity. Package setup now lives in
+[ML development](../../development/ml.md), leaving only the repository-root
+README. This section records that closure for historical links; it is not a
+second requirements owner or an active cleanup request.

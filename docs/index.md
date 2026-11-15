@@ -1,63 +1,60 @@
 # Documentation reading index
 
-[Project context](PROJECT_CONTEXT.md) owns TEMPO's purpose, settled decisions,
-repository map and commands. [Task routes](../AGENTS.md) name the shared guides
-to read before an action. The main menu is a reading path; Reference contains
-all eligible tracked Markdown records, plans and results.
+[Project context](PROJECT_CONTEXT.md) owns purpose, accepted decisions,
+repository orientation and run/build commands. [Task routes](../AGENTS.md)
+identify the adopted shared guides. The six real topics below each have a
+canonical record and a requested explanatory HTML entry page. Reference
+renders supporting records, setup, open work and dated experiment material.
 
 ## Reading order
 
-| Order | Overview | Question it answers |
+| Order | Topic and HTML page | Canonical record and responsibility |
 |---|---|---|
-| 1 | [App & practice](https://davszi.github.io/Tempo/html/whole-flow.html) | What does the player do, and what is saved? |
-| 2 | [System architecture](https://davszi.github.io/Tempo/html/system-architecture.html) | Which components serve the app, and where does offline fitting stop? |
-| 3 | [Catalog & data](https://davszi.github.io/Tempo/html/opening-catalog.html) | Where do lines come from, which can be learned, and how is practice stored? |
-| 4 | [Synthetic players](https://davszi.github.io/Tempo/html/synthetic-clients.html) | How are recall, retries and latency simulated? |
-| 5 | [Review data & grading](https://davszi.github.io/Tempo/html/review-dataset.html) | What does a session export mean, and how is its grade assigned? |
-| 6 | [FSRS training](https://davszi.github.io/Tempo/html/fsrs-training.html) | How are parameters fitted and evaluated, and what do the results establish? |
+| 1 | [App & practice](https://davszi.github.io/Tempo/html/whole-flow.html) | [App & Practice](topics/app-practice/app-practice.md): player journey, screens, board input, identity, saved lessons, HTTP contract and display semantics |
+| 2 | [System architecture](https://davszi.github.io/Tempo/html/system-architecture.html) | [System Architecture](topics/system-architecture/system-architecture.md): components, process/session/transaction boundaries, due-line selection, runtime FSRS and demo |
+| 3 | [Catalog & data](https://davszi.github.io/Tempo/html/opening-catalog.html) | [Catalog & Data](topics/catalog-data/catalog-data.md): line identity, catalog decisions, all four tables, store operations, constraints and migration |
+| 4 | [Synthetic players](https://davszi.github.io/Tempo/html/synthetic-clients.html) | [Synthetic Players](topics/synthetic-clients/record.md): traits, memory models, recall/retry/timing/session generation and separate demo producer |
+| 5 | [Review data & grading](https://davszi.github.io/Tempo/html/review-dataset.html) | [Review Dataset](topics/review-dataset/record.md): observable export, grade rules, hidden-truth boundary and future human calibration |
+| 6 | [FSRS training](https://davszi.github.io/Tempo/html/fsrs-training.html) | [FSRS Training](topics/fsrs-training/fsrs-training.md): fitting inputs/objectives, optimizer, evaluation/clock/metric contracts, artifacts, dated results and limits |
 
-## Topic boundaries and canonical records
+## Actual merges and splits
 
-- **App & practice** combines the human journey with the browser overview.
-  [Whole flow](topics/whole-flow/whole-flow.md) owns the cross-topic walkthrough;
-  [frontend application](topics/frontend/frontend.md) owns screens, API, storage
-  and unresolved Repeating behavior. It does not duplicate architecture detail.
-- **System architecture** owns component and deployment boundaries, runtime
-  scheduling and offline fitting. Its [record](topics/system-architecture/system-architecture.md)
-  is the technical owner; practical demo commands are routed from the journey.
-- **Catalog & data** is one reader-facing overview of three distinct owners:
-  [catalog rules](topics/opening-catalog/opening-catalog.md), [database fields](topics/database-schema/database-schema.md)
-  and [historical opening provenance](topics/opening-library/opening-library.md).
-  Those records remain separate so historical tooling is not mistaken for the
-  current catalog or schema.
-- **Synthetic players** explains the producer model. The [record](topics/synthetic-clients/record.md)
-  owns traits, memory, recall and latency assumptions.
-- **Review data & grading** explains the output interface and grade policy.
-  Its [record](topics/review-dataset/record.md) distinguishes implemented telemetry
-  from future human calibration; calibration is a chapter, not a separate
-  implemented subsystem.
-- **FSRS training** explains fitting and evaluation. The [record](topics/fsrs-training/fsrs-training.md)
-  owns current method and scoped conclusions; the simulator equations stay in
-  the synthetic-player topic rather than being repeated as another overview.
+Frontend and the whole-flow record are merged into `app-practice`; there are
+no separate frontend or whole-flow topic folders. Architecture links to the
+app journey instead of maintaining a second walkthrough. Runtime scheduling
+belongs to Architecture; offline fitting belongs to Training.
 
-## Supporting Reference material
+Catalog decisions and database field mappings are merged into `catalog-data`.
+[Historical opening-library provenance](topics/catalog-data/provenance.md)
+is supporting evidence in that same topic, with its retired classifier and
+dated input identities preserved. A historical preparation path does not
+establish a current importer.
 
-- [Product backlog](topics/product/product.md) and [open work](open/OPEN.md):
-  remaining acceptance and unresolved choices, not an extra mechanism topic.
-- [ML setup](../ml/README.md), the [retained retraining plan](topics/fsrs-training/retraining-plan.md),
-  and experiment records below support the training overview. The plan is not
-  retired by this navigation cleanup.
-- [Pass/fail versus true recall, 2026-11-13](../ml/experiments/2026-11-13-fsrs-synthetic-v2/SUMMARY.md)
-  and [FSRS-memory clients, 2026-11-14](../ml/experiments/2026-11-14-fsrs-memory/SUMMARY.md):
-  separate historical runs, with their input identities, results and caveats.
-- [Capability map](CAPABILITY_MAP.md): supporting-tooling inventory and new needs.
-- [Worklog](worklog.md): completed work and dated verification.
+Simulator implementation and hidden memory models belong to Synthetic
+Players. Training links to that producer and owns fitting/evaluation instead.
+Review Data & Grading remains one output contract; its human-calibration
+specification is marked future. Historical study protocols and results remain
+with their producing experiments. The completed retraining plan's durable
+requirements are incorporated into Training; its superseded task text remains
+available through its pinned Git reference there.
 
-Every canonical record above has an automatic Reference HTML counterpart.
-Overview sources are the corresponding topic `index.md` files; the combined
-catalog/data overview lives in `topics/opening-catalog/index.md`. Reference
-routes derive from file paths, so this presentation pass preserves the records'
-paths and historical experiment identities.
+A topic's `index.md` explains its canonical record for people. Full field and
+endpoint lookup, source coverage tables, exact provenance and run chronology
+stay in linked Reference pages. Source coverage is explicitly scoped source
+inspection; a successful HTML build is not a completeness or app-acceptance test.
+
+## Supporting material
+
+- [Product backlog](open/product-backlog.md) owns unfinished acceptance;
+  [Open work](open/OPEN.md) routes unresolved questions to their owners.
+- [ML setup and reproducibility](development/ml.md) owns package installation,
+  CLI commands and configuration/artifact use.
+- [Multiplicative-memory study](../ml/experiments/2026-11-13-fsrs-synthetic-v2/SUMMARY.md)
+  and [FSRS-memory study](../ml/experiments/2026-11-14-fsrs-memory/SUMMARY.md)
+  retain their separate historical inputs, protocols, results and reproduction.
+- [Capability map](CAPABILITY_MAP.md) identifies supporting tooling.
+- [Worklog](worklog.md) records dated changes and verification, including the
+  code-to-documentation audit's scope and limits.
 
 ## Shared practices
 
@@ -67,7 +64,9 @@ Read the matching guide in the initialized `.docs-kit` submodule:
 |---|---|
 | Code, performance or execution | `rules/engineering/code.md`, `performance.md`, `execution.md` |
 | Delivery, handoffs or Git | `rules/engineering/delivery.md`, `handoffs.md`, `git.md` |
-| Writing or changing a record | `rules/records.md` |
-| Documentation placement, order of work and lifecycle | `rules/documentation.md` |
-| Pages and explanations | Focused guides linked from `rules/writing.md` |
-| Site authoring, checks and publication | Focused guides linked from `rules/maintenance.md` |
+| Records and canonical ownership | `rules/records.md`, `rules/documentation.md` |
+| Human pages and figures | Focused guides linked from `rules/writing.md` |
+| Site build, browser checks and publication | Focused guides linked from `rules/maintenance.md` |
+
+`AGENTS.md` is the rule router. `PROJECT_CONTEXT.md` is the project orientation.
+Neither duplicates the shared kit's policy.

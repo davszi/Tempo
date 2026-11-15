@@ -2,9 +2,9 @@
 
 This record owns the six product requests previously detailed in
 `docs/open/OPEN.md`. Status comes from source inspection on 2026-11-15 of
-local merge `5d6b81c`, not a new integrated app test. The [frontend](../frontend/frontend.md),
-[opening catalog](../opening-catalog/opening-catalog.md) and
-[FSRS training](../fsrs-training/fsrs-training.md) records own current behavior
+local merge `5d6b81c`, not a new integrated app test. The [frontend](../topics/app-practice/app-practice.md),
+[opening catalog](../topics/catalog-data/catalog-data.md) and
+[FSRS training](../topics/fsrs-training/fsrs-training.md) records own current behavior
 and evidence. Implementation does not supersede accepted product decisions.
 
 | Request | Implemented or recorded | Remaining acceptance |
@@ -34,8 +34,8 @@ that date. The choice gates changed calculation and full demo acceptance.
 ## 2. Benchmark interpretation
 
 The previous assertion that no benchmarks exist is obsolete. The
-[pass/fail versus true-recall run](../../../ml/experiments/2026-11-13-fsrs-synthetic-v2/SUMMARY.md)
-and [FSRS-memory run](../../../ml/experiments/2026-11-14-fsrs-memory/SUMMARY.md)
+[pass/fail versus true-recall run](../../ml/experiments/2026-11-13-fsrs-synthetic-v2/SUMMARY.md)
+and [FSRS-memory run](../../ml/experiments/2026-11-14-fsrs-memory/SUMMARY.md)
 retain synthetic results and reproduction inputs. Acceptance requires that
 readers can distinguish log-loss, calibration, error against hidden truth,
 and schedule error; identify baseline/oracle and held-out players; and see
@@ -70,20 +70,42 @@ is browsed separately in Learning. Check whether that separation meets the
 original request to expose available lines beside repertoire status.
 
 The backlog requested starting a selected review, but that contradicts the
-settled planner-only Repeating rule in [project context](../../PROJECT_CONTEXT.md#4-the-two-modes).
-The implementation already offers it. The [frontend record](../frontend/frontend.md)
+settled planner-only Repeating rule in [project context](../PROJECT_CONTEXT.md#4-the-two-modes).
+The implementation already offers it. The [frontend record](../topics/app-practice/app-practice.md)
 owns the unresolved choice; this backlog does not authorize that deviation.
 
 ## 6. Opening data and reproducibility
 
 Cleaning means removing three full White moves or fewer, not three
-half-moves. The [opening-catalog record](../opening-catalog/opening-catalog.md)
+half-moves. The [opening-catalog record](../topics/catalog-data/catalog-data.md)
 owns the cleaned catalog and later regrouping. The old classifier, TSV and
 derived CSV under `ml/ml_1000bots/openings/` were removed at `ea3d01d`;
 they remain retrievable at `825e9d8`.
 
 `ml/tempo_ml/catalog.py` reads the SQLite catalog, not the removed TSV.
 A future import must identify source, cleaning rule, stable line identities
-and hashes, and protect player history. The [opening-library record](../opening-library/opening-library.md)
+and hashes, and protect player history. The [opening-library record](../topics/catalog-data/provenance.md)
 owns the historical evidence and remaining reproducibility choice. This audit
 does not change the catalog or saved user data.
+
+
+## 7. Documentation audit follow-up
+
+The source coverage tables in the six owning topic records describe inspected
+implementation and newly filled documentation gaps. They are not acceptance
+of implementation differences. The following operational/product gaps remain:
+
+- Decide the planner-only/no-hints Repeating conflict before treating chosen-line
+  review or first-mistake disclosure as accepted behavior. See
+  [App & Practice](../topics/app-practice/app-practice.md#unresolved-repeating-behavior)
+  for the options and recommendation.
+- Complete integrated browser/API/database acceptance for persistence, resume
+  failures, local-player changes, schedule clock/timezone edges and empty/error
+  states. Existing helper tests and the documentation site's browser checks
+  do not cover those app contracts end to end.
+- Agree a current upstream catalog rebuild and backup/restore/retention policy;
+  the [storage audit](../topics/catalog-data/catalog-data.md#storage-operations-and-constraints)
+  documents current operations without inventing those capabilities.
+- Resolve the simulator's retry-cap outcome, memory-decay boundary and human
+  calibration/validation choices in their owning model/data records before
+  claiming realistic players or validated human retention.

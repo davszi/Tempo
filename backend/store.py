@@ -7,7 +7,7 @@ from sqlite3 import Row, connect
 
 FAMILY_SIDES = ("white", "black")
 
-# Family-side decisions from docs/topics/opening-catalog/opening-catalog.md.
+# Family-side decisions from docs/topics/catalog-data/catalog-data.md.
 SIDE_OVERRIDES = {
     "Queen's Gambit": "white",
     "Benko Gambit": "black",

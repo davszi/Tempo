@@ -23,12 +23,12 @@ math = true
 <div class="bs-part bs-teal"><h3>App runtime</h3><p><strong>Practice events → stored card state → FSRS Scheduler</strong></p><p>The runtime chooses the oldest due line. It currently loads the older first-fit global weights, not these diagnostic weights.</p><p><strong>Due line → the next Repeating session</strong></p></div>
 </div>
 
-<figcaption><strong>Figure 1.</strong> Source-authored lanes from the <a href="docs.topics.fsrs-training.fsrs-training.md.html#simulator-app-and-accepted-specification">offline/runtime comparison</a> and <a href="docs.topics.fsrs-training.fsrs-training.md.html#earlier-1000-client-simulator-removed">runtime weight provenance</a>. Arrows mean data or scheduling flow; the lanes do not imply automatic model deployment.</figcaption>
+<figcaption><strong>Figure 1.</strong> Source-authored lanes from the <a href="docs.topics.synthetic-clients.record.md.html#8-simulator-app-and-accepted-specification">offline/runtime comparison</a> and <a href="docs.topics.fsrs-training.fsrs-training.md.html#earlier-1000-client-simulator-removed">runtime weight provenance</a>. Arrows mean data or scheduling flow; the lanes do not imply automatic model deployment.</figcaption>
 </figure>
 
 [Figure 1](#fig-training-boundary) separates a research result from a shipping decision. The app's `backend/fitted_global.csv` comes from an older global fit on 800 synthetic clients. Which synthetic weights the demo should load remains an open choice; none of these studies validates weights for real players.
 
-The package and app also differ in Learning initialization, review intervals, retry handling and eligible lines. Those [implemented differences](docs.topics.fsrs-training.fsrs-training.md.html#simulator-app-and-accepted-specification) limit transfer even before human realism is considered.
+The package and app also differ in Learning initialization, review intervals, retry handling and eligible lines. Those [implemented differences](docs.topics.synthetic-clients.record.md.html#8-simulator-app-and-accepted-specification) limit transfer even before human realism is considered.
 
 </section>
 
@@ -71,6 +71,45 @@ The B arms are diagnostic: real players supply outcomes, not a known probability
 
 </section>
 
+
+<section class="card" id="state-replay">
+
+## Every session updates replay state; only eligible tests contribute loss
+
+<p class="bs-lead">Guided and short-delay rows still shape the card that later reviews test, even when those rows are excluded from fitting loss.</p>
+
+<figure id="fig-state-replay">
+<div class="bs-flow">
+<div class="bs-node"><span class="bs-label">Chronological rows per card</span><b>Initialize or predict</b><small>First row initializes from its grade. Later rows predict recall before applying their grade.</small></div>
+<div class="bs-arrow"><span>mask loss</span></div>
+<div class="bs-node"><span class="bs-label">Eligible unassisted tests</span><b>Score review outcomes</b><small>Review/relearning at least one elapsed day later; never the first row. Other rows add no loss.</small></div>
+<div class="bs-arrow"><span>update</span></div>
+<div class="bs-node"><span class="bs-label">All valid rows</span><b>Advance card state</b><small>Apply the grade, including guided and short-delay sessions, before predicting the next row.</small></div>
+</div>
+<figcaption><strong>Figure 3.</strong> Arrows show replay order, not runtime scheduler learning steps. Generator: this page's HTML; input: <a href="docs.topics.fsrs-training.fsrs-training.md.html#fitting-and-state-replay">fitting/state replay implementation</a>.</figcaption>
+</figure>
+
+<a href="#fig-state-replay">Figure 3</a> explains why filtering guided rows out of the history would change the model being fitted. The first prediction is undefined; the first grade initializes stability and difficulty. Later predictions precede the update. The vectorized long-term model uses short-term stability below one elapsed day and recall/forget updates later; it does not replay the runtime scheduler's learning-step states.
+
+Cards are keyed by <code>(agent_name, opening_name)</code>. The loader preserves CSV order without sorting or validating chronology. Package repertoire sampling supplies unique names within a client; arbitrary human exports need a stable identity and ordering contract. Exported floating-point <code>t_days</code> drives this replay, rather than calendar dates.
+
+<div class="scroll" role="region" aria-label="Training targets and replay boundaries; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
+<div style="min-width:680px">
+
+| Fit mode | Target and state boundary | Limit |
+|---|---|---|
+| General pass/fail | Binary cross-entropy for <code style="white-space:nowrap">grade &gt; 1</code> on eligible fit-client reviews. | The current CLI still loads synthetic truth for scoring; this is not a finished arbitrary human-data importer. |
+| Diagnostic true chance | Mean squared error against hidden clean probability on fit clients only. | Real players do not expose that probability. Test truth remains evaluation data. |
+| Optional personalization | Fit early eligible rows with a pull toward general weights; score later rows. Validation chooses the regularization setting. | It requires enough early/late history; the dated A/B arms skipped this mode. It is not live app fine-tuning. |
+
+</div>
+</div>
+
+
+The trainer clips starts to FSRS bounds and uses bounded L-BFGS-B. It retains convergence state, iterations, evaluations and termination message. An output file therefore records a fit attempt, rather than proof of convergence or the best optimum. The <a href="docs.topics.fsrs-training.fsrs-training.md.html#fitting-and-state-replay">full fitting contract</a> gives defaults, split proportions, prior normalization and personalization thresholds.
+
+</section>
+
 <section class="card" id="metrics">
 
 ## Probability error and scheduling error answer different questions
@@ -91,9 +130,22 @@ The B arms are diagnostic: real players supply outcomes, not a known probability
 </div>
 </div>
 
-The [accepted days metric](docs.topics.fsrs-training.retraining-plan.md.html#days-metric) uses a 90% clean-session threshold. It measures a curve crossing, not reviews saved or a promise about when a person forgets. The population's overall median can hide much larger errors among long-lived lines; the result sections therefore include that limitation beside the headline scores.
+<figure id="fig-days-metric">
+<div class="bs-flow">
+<div class="bs-stack"><div class="bs-part"><h3>Predicted interval</h3><p>The fitted model's stability after the session.</p></div><div class="bs-part"><h3>Hidden true interval</h3><p>Invert the generating recall curve at a 90% clean-session chance, accounting for the player's move count.</p></div></div>
+<div class="bs-arrow"><span>subtract</span></div>
+<div class="bs-node"><b>Predicted minus true</b><small>Negative means early; positive means late. Summarize the errors and split by interval length.</small></div>
+</div>
+<figcaption><strong>Figure 4.</strong> Arrows mean metric construction after a session, not a measured reduction in review workload. Generator: this page's HTML; input: <a href="docs.topics.fsrs-training.fsrs-training.md.html#days-metric">accepted days metric and implemented formula</a>.</figcaption>
+</figure>
 
-These studies do not count the practical benefit of an alternative policy. Review burden and forgetting outcomes on matched workloads remain [unfinished product acceptance](docs.topics.product.product.md.html#3-practical-scheduling-benefit).
+<a href="#fig-days-metric">Figure 4</a> separates the fitted interval from a synthetic reference. Hidden stability <code>S</code> is the per-move 90% crossing; clean-line probability is <code>R^M</code>, with <code>M</code> player moves and client decay <code>C</code>. The current producer's true interval therefore inverts the curve at the clean-session threshold, rather than taking hidden stability directly. The removed once-per-line simulator used stability itself, so its days definition cannot be substituted.
+
+Probability metrics score eligible loss-mask rows. Days metrics use every valid session, including guided rows. Hidden truth aligns by CSV position rather than checked identity joins. Current scoring expects complete finite aligned truth; it does not implement the accepted protocol's explicit missing-value drop. The <a href="docs.topics.fsrs-training.fsrs-training.md.html#evaluation-metrics">metric definitions</a> provide units, clipping, calibration bins and alignment prerequisites.
+
+The [accepted days metric](docs.topics.fsrs-training.fsrs-training.md.html#days-metric) uses a 90% clean-session threshold. It measures a curve crossing, not reviews saved or a promise about when a person forgets. The population's overall median can hide much larger errors among long-lived lines; the result sections therefore include that limitation beside the headline scores.
+
+These studies do not count the practical benefit of an alternative policy. Review burden and forgetting outcomes on matched workloads remain [unfinished product acceptance](docs.open.product-backlog.md.html#3-practical-scheduling-benefit).
 
 </section>
 
@@ -161,6 +213,8 @@ Training on hidden truth added no benefit over A1c in this run. A1c reached the 
 
 The November 13 and 14 experiments used different catalog groupings: 91 and 82 families. Their scores are separate within-run comparisons, not a controlled comparison changing hidden memory alone. Some earlier exploratory observations also lack retained producing artifacts; the [historical evidence limits](docs.topics.fsrs-training.fsrs-training.md.html#historical-evidence-gaps) distinguish them from the retained experiment tables.
 
+<p>Read the retained paired-comparison tables with their source correction: the historical legend is reversed. A positive gain favors the first-named model. Calendar replay also keeps the original exact-clock scoring cohort. The <a href="docs.topics.fsrs-training.fsrs-training.md.html#retained-study-drivers">driver audit</a> explains both boundaries; the recorded scores have not been recomputed.</p>
+
 </section>
 
 <section class="card" id="reproduction-and-limits">
@@ -174,16 +228,34 @@ The November 13 and 14 experiments used different catalog groupings: 91 and 82 f
 
 | Need | Start here |
 |---|---|
-| Install the current package and run it | [ML setup and reproducibility](ml.readme.md.html) |
+| Install the current package and run it | [ML setup and reproducibility](docs.development.ml.md.html) |
 | Reproduce the multiplicative-memory study | [Recorded source, inputs and commands](ml.experiments.2026-11-13-fsrs-synthetic-v2.summary.md.html#reproduce) |
 | Reproduce the FSRS-memory study | [Recorded reproduction instructions](ml.experiments.2026-11-14-fsrs-memory.summary.md.html#reproduction) |
-| Inspect accepted metric and recovery criteria | [Retained retraining plan](docs.topics.fsrs-training.retraining-plan.md.html#decisions) |
-| Understand what still needs agreement | [Current method and limits](docs.topics.fsrs-training.fsrs-training.md.html#limits) and [product acceptance gaps](docs.topics.product.product.md.html) |
+| Inspect accepted metric and recovery criteria | [Accepted comparison and metric](docs.topics.fsrs-training.fsrs-training.md.html#accepted-comparison-and-retired-protocol) |
+| Understand what still needs agreement | [Current method and limits](docs.topics.fsrs-training.fsrs-training.md.html#limits) and [product acceptance gaps](docs.open.product-backlog.md.html) |
 
 
 </div>
 </div>
 
-No human calibration, multi-seed generalization or measured improvement in human retention is established here. The current simulator also has an unresolved retry-cap outcome. Keep those limits attached to the results when using them to choose the next investigation.
+<div class="scroll" role="region" aria-label="Training artifact files; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
+<div style="min-width:560px">
+
+| Current artifact | What it retains |
+|---|---|
+| <code style="white-space:nowrap">fsrs6_general_parameters.json</code> | Model/target/loss, fitted and default weights, and fit-data counts. |
+| <code style="white-space:nowrap">metrics.json</code> | Splits, probability/days metrics, optimizer outcome, baseline, environment and elapsed time. |
+| <code style="white-space:nowrap">personalisation_test_clients.csv</code> | Optional later-row per-client comparison after local fitting. |
+| Experiment manifest and record | Data identities/rebuild commands, producing source/diff, catalog/config/environment and local scoring scripts. |
+
+</div>
+</div>
+
+
+The older benchmark formatter rounds values and includes some historical literals, despite its broad unrounded/fully automatic wording; the <a href="docs.topics.fsrs-training.fsrs-training.md.html#retained-study-drivers">driver audit</a> distinguishes those claims from retained source data.
+
+Generated datasets stay ignored. A current config and commit alone do not reconstruct uncommitted producing changes or the earlier catalog grouping. <a href="docs.topics.fsrs-training.fsrs-training.md.html#artifacts-and-reproduction">Artifact requirements</a> distinguish package output from the full historical evidence needed to reproduce a study. The completed comparison protocol is retained inside the <a href="docs.topics.fsrs-training.fsrs-training.md.html#accepted-comparison-and-retired-protocol">training record</a>; <a href="docs.topics.fsrs-training.fsrs-training.md.html#open-research-and-implementation-choices">current research choices</a> remain separate from the recorded results.
+
+No human calibration, multi-seed generalization or measured improvement in human retention is established here. The current simulator also has an unresolved retry-cap outcome. Keep those limits attached to the results when using them to choose the next investigation. The <a href="docs.topics.fsrs-training.fsrs-training.md.html#source-coverage-and-verification-limits">source audit at <code>788e060</code></a> inspected package/test coverage; it executed no new numerical tests, generation or training. Historical measurements retain their original source, inputs and environment.
 
 </section>

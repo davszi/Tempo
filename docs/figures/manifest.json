@@ -8,7 +8,7 @@
     "generation": "Extract first inline SVG from source, add SVG namespace, and insert the original source svg text/class CSS rules in defs without changing selector specificity. Preserve dimensions and geometry.",
     "inputs": [
       "docs/topics/system-architecture/system-architecture.md",
-      "docs/topics/frontend/frontend.md",
+      "docs/topics/app-practice/app-practice.md",
       "docs/topics/fsrs-training/fsrs-training.md"
     ],
     "recipe": [

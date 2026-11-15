@@ -131,9 +131,9 @@ $$\text{total\_hesitation\_ms} = (\text{raw\_hesitation} \times 1000) \times \te
 Source inspection: `ml/tempo_ml/simulator/clients.py` implements traits,
 archetypes, per-line memory and guided/unassisted sessions;
 `recall.py` implements per-attempt latency and recall; `practice.py` owns
-the data-collection policy. The [FSRS training record](../fsrs-training/fsrs-training.md)
-owns hidden stability updates, training, recorded experiments and differences
-from the app's runtime engine.
+the data-collection policy. Sections 7–9 below own hidden stability,
+collection policy and producer differences. The [FSRS training record](../fsrs-training/fsrs-training.md)
+owns fitting, evaluation and historical results.
 
 - Every repertoire move has an independent first-attempt recall draw with
   the same line-level R. A clean session therefore has probability R^M,
@@ -172,6 +172,168 @@ The separate `backend/synthetic_clients.py` is a demo telemetry generator,
 not this package: it counts all plies, uses the backend scheduler and one
 successful retry after a failed first attempt. Do not treat its output as
 one of the package experiment datasets or as a validated human calibration.
+
+## 7. Offline simulator and hidden memory
+
+Code: `ml/tempo_ml/`; setup: [ML development](../../development/ml.md).
+The hidden memory is chosen in the generation config:
+
+| `memory` | Implementation | Initial state and updates |
+|---|---|---|
+| `multiplicative` (default) | `simulator/memory/multiplicative.py`, `MultiplicativeStability` | First exposure S = 1 day. Clean session: S × (1 + 1.5·exp(2(1−R))). Lapse: min(previous S, max(1 day, S × 0.3)) |
+| `fsrs` | `simulator/memory/fsrs.py`, `FSRSMemory` | First grade initializes S and D. Later sessions below one elapsed day use short-term stability; later sessions use recall/forget update. After a lapse, S is clamped to min(previous S, max(1 day, updated S)) |
+
+Both use section 3.2's power-law recall curve. State is per client and line:
+stability, familiarity, last session time, last-review lapse, session count,
+and difficulty for FSRS memory. Guided Learning updates hidden memory too;
+the multiplicative model treats it as success, while FSRS memory uses its
+latency-derived grade. `LineMemory.elapsed` rejects time going backwards.
+
+FSRS hidden weights start at defaults with log-normal noise (sd 0.15) on
+w0–w16; w17–w19 stay at defaults, w0–w3 are sorted, and w20 is assigned the
+client's C before all weights are clipped to FSRS bounds. Weights have a
+separate random stream, preserving client/side/repertoire draws when the
+memory setting changes. For C outside the model's w20 range 0.1–0.8, the
+exported hidden weight vector contains a clipped w20 while recall still
+uses the trait's C. The current `FSRSMemory.start/update` functions do not
+read w20: update receives the recall R computed by the client from trait C.
+Clipping that exported coefficient therefore does not change the current
+hidden simulation. The exported vector's forgetting curve and the fitter's
+bounded decay may not represent that trait-C recall curve outside the range.
+This source-derived representability limit was not measured in the historical
+populations.
+
+The byte-identity check in the 2026-11-14 experiment found the multiplicative
+generator unchanged when FSRS memory was added, on the same catalog. This
+is historical evidence, not a fresh run. The published A2/B2 and A1/A1c/B1
+studies used different catalog groupings (91 versus 82 families), so their
+results do not isolate the hidden-memory change alone.
+
+## 8. Simulator, app and accepted specification
+
+The offline producer uses grade-based noisy intervals and each synthetic
+client's known baseline. The app uses py-fsrs scheduling, persisted move
+events and a default grading baseline of 0 ms unless configured. Its runtime
+selection/storage boundary belongs to [App & practice](../app-practice/app-practice.md).
+
+The package grades guided sessions, updates hidden memory, then tests after
+the guided duration plus three minutes. In the app, finishing Learning
+initializes a due card without grading or initializing stability; the first
+Repeating session does that (`backend/ml_controller.py`,
+`initialize_progress`, `complete_review`). The package samples eligible
+catalog lines with unique names within a repertoire; the app admits only
+lines no other catalog line extends. The package caps attempts at five;
+the app supports retries and explicitly stopped reviews. These implemented
+differences do not amend the accepted product requirements. Their effect on
+transfer to human app practice has not been measured.
+
+Hidden FSRS memory is not an exact unmodified FSRS process: its stability
+update has a lapse floor and the whole session's grade, while the chance
+of a clean line is R^M. Multiplicative memory is not FSRS. Which resembles
+human players remains open; Stage 2 calibration is future work.
+
+## 9. Practice policy, generation and demo producer
+
+### Offline collection policy
+
+`SyntheticClient` answers what happens when a specified player practises a
+specified line at a simulation day. `ClientPlan` and `simulate_client`
+choose the time and line. Memory uses `line_id`; `_pick_repertoire` rejects
+duplicate display names per client so the seven-column export can key cards
+by `(agent_name, opening_name)`.
+
+`catalog.load_opening_lines` opens SQLite read-only, joins lines/families,
+orders by `line_id`, and derives side-specific move counts as
+`(plies + 1) // 2` and `plies // 2`. A line must have the player's family
+side and the configured minimum move count. It does not apply the app's
+leaf-line rule. [Catalog & data](../catalog-data/catalog-data.md) owns tables,
+catalog provenance and app learnability.
+
+The four `ml/configs/*memory*.json` files configure the following values,
+which are synthetic settings, not measured human traits:
+
+| Setting | Main / hold-out value |
+|---|---|
+| Seed; clients per each of three archetypes | 20261111 / 20261112; 100 / 20 |
+| Horizon | 180 days |
+| Requested repertoire; families initially sought | 15–40 lines; 2–6 families |
+| Minimum repertoire moves from player's side | 2 |
+| New lines per active day; fixed per-client review budget | 1–3; sampled 8–30 |
+| Per-client active-day probability | Uniform 0.50–0.95 |
+| Interval noise sigma; interval cap | 0.35; 365 days |
+| Trait standard deviations: baseline, mu, sigma, beta, alpha, C | 25 ms, 0.15, 0.05, 0.2, 0.04, 0.05 |
+| Memory | multiplicative by default; FSRS configs set `memory = fsrs` |
+
+Families are permuted uniformly. The pool may extend beyond the sampled
+family count to get enough lines; name deduplication or a small pool may
+leave the repertoire below the requested size. Active days begin uniformly
+between 0.3 and 0.7 days. Lines due before that day's end are sorted oldest
+first and capped by the client's budget; new lines follow. Recorded session
+duration advances the clock, with one-minute ordinary gaps and three
+minutes after guided Learning before its immediate unassisted test.
+
+Again resets the base interval to one day. Hard/Good/Easy multiply the
+previous interval by 1.2/2.5/3.5, with minimum base intervals of one day for
+Hard/Good and two for Easy. Log-normal noise then applies, followed by the
+configured cap. This is a data-collection policy, not FSRS scheduling.
+
+`build_plans` separates client, policy and weight random streams; `generate`
+uses scheduling seeds derived from `[seed, 1]`. `build_population` is an
+in-memory alternative with exact archetypes unless supplied distributions;
+the CLI uses `build_plans` with bounded trait spread. The manifest records
+config/model/retry cap, counts, ordered catalog-content identity, CSV hashes,
+Python/NumPy/platform, source commit when available, and generation seconds.
+Its catalog hash excludes mutable practice history. A commit alone cannot
+capture uncommitted producing changes; reproduction needs the experiment's
+pin, diff and input identities. [Review Dataset](../review-dataset/record.md#5-generated-files-and-producer-boundaries)
+owns output fields and sidecar alignment.
+
+### Backend demo producer
+
+`backend/synthetic_clients.py` is separate from this package. `Profile`
+uses the same three cognitive profiles, but `generate_dataset` uses Python
+`Random(seed)` and a default py-fsrs `Scheduler(enable_fuzzing=False)`,
+rather than the runtime weights or package collection policy.
+`simulate_line` counts **all UCI plies**, starts on 2026-01-01 UTC with status
+`new` and R = 1, then emits `review` or `relearning`. Each failed first
+attempt gets exactly one successful retry, with retry latency sampled at
+R = 1. Due dates come from `MLEngine`; attendance varies by 0.5–2 times the
+due delay, with a one-second minimum. Familiarity follows +1 / minus 2.
+
+Default demo lines are Sicilian Defence and Italian Game. An optional
+read-only catalog input can select the first line per family; duplicate
+names gain `[line ID]`. An atomic CSV write replaces the output only after
+writing all rows. These rows have no package truth sidecars or manifest;
+they are demo telemetry, not either package study or human calibration.
+[ML development](../../development/ml.md) owns CLI usage.
+
+## 10. Source coverage and verification limits
+
+The bounded 2026-11-15 source pass at
+`788e06039dd2869b23261dd80ea8fc49367ab33c` read every `ml/tempo_ml/` file,
+all four generator configs, `ml/pyproject.toml`, four ML test files and the
+backend demo producer. It filled scattered memory-model, policy, random-stream,
+config and producer-boundary documentation. Schema and fitting remain in
+their own records; no additional ML topic is needed for the inspected package.
+
+| Source / symbols | Canonical section or owner |
+|---|---|
+| `simulator/clients.py`: `ClientTraits`, `TraitDistribution`, `Line`, `SyntheticClient`, `build_population` | Sections 3–4, 6–9 |
+| `simulator/recall.py`: `MoveEvent`, `sample_move_time_ms`, `play_move` | Sections 3.3–3.4 and 6 retry discrepancy |
+| `simulator/memory/multiplicative.py`: `LineMemory`, `StabilityModel`, `MultiplicativeStability`, `retrievability`, `next_reps` | Sections 3.2, 3.5 and 7 |
+| `simulator/memory/fsrs.py`: `FSRSMemory.sample`, `start`, `update` | Section 7; FSRS Training owns fitting formulas |
+| `simulator/practice.py`: `GenerationConfig`, `_pick_repertoire`, `build_plans`, `_next_interval`, `simulate_client` | Section 9 |
+| `simulator/generate.py`: `generate`, `load_config`, `main`, `_catalog_sha256` | Section 9; Review Dataset owns files; ML development owns commands |
+| `catalog.py`: `OpeningLine`, `load_opening_lines` | Section 9 consumer contract; Catalog & data owns source tables |
+| `backend/synthetic_clients.py`: `Profile`, `simulate_line`, `generate_dataset`, `read_lines`, `write_dataset`, `main` | Section 9 |
+| Package/simulator/memory `__init__.py` files | Exports and package scope; app runtime planner is separate |
+| `ml/configs/*.json`; `test_simulator.py`, `test_memory_models.py` | Sections 4, 7 and 9; inspected formula/trait/state/catalog/deterministic generation/hidden-model assertions |
+
+Verified implementation facts come from source inspection. Tests were read,
+not executed. They bound attempt counts without proving the final attempt
+successful, so the retry discrepancy remains. No generation, training,
+benchmark, app session or human experiment was run. Historical numeric and
+byte-identity results retain their original evidence scope.
 
 ## Page presentation and numeric sources
 

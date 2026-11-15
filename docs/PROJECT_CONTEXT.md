@@ -14,30 +14,31 @@ Follow the [task routes](../AGENTS.md#read-before-the-relevant-action) before th
 
 ## Implementation snapshot and unresolved differences
 
-Source review on 2026-11-15 covers the local integration of `feature/frontend-learning`
-at `c12eb50` with main's ML work at `ea3d01d`. These are implementation facts,
+The latest source-to-documentation pass inspected `788e060` on 2026-11-15.
+The integrated implementation comes from `feature/frontend-learning` at
+`c12eb50` and main's ML work at `ea3d01d`. These are implementation facts,
 not additional accepted product decisions:
 
 - The React app calls the Python API for catalog, Learning, Repeating and
   repertoire data. It includes resumable lessons, a 30-day review schedule,
   repertoire history and appearance settings. The browser stores a demo player
   identifier, lesson progress and appearance locally; it does not implement
-  accounts or authentication. [Frontend](topics/frontend/frontend.md) owns the
+  accounts or authentication. [Frontend](topics/app-practice/app-practice.md) owns the
   routes, API and storage boundaries.
 - The current browser uses the opening family's side. The backend and terminal
   demo also support White, Black and Both. The catalog has 2,719 lines in 82
   families after cleaning and family regrouping; the dated evidence and
-  learnability rule are in [opening catalog structure](topics/opening-catalog/opening-catalog.md).
+  learnability rule are in [opening catalog structure](topics/catalog-data/catalog-data.md).
 - The runtime chooses a due repertoire line with its existing FSRS scheduler.
   Offline model fitting and the synthetic-client simulator live in `ml/tempo_ml/`.
   The dated [FSRS experiments](topics/fsrs-training/fsrs-training.md) are synthetic
   evidence; their diagnostic true-recall weights are not the app's runtime weights.
 - The implementation now permits a selected-line review and reveals the expected
   move after a review mistake. Both conflict with the settled Repeating behavior
-  in sections 4 and 9 below. The [frontend's unresolved behavior choices](topics/frontend/frontend.md)
+  in sections 4 and 9 below. The [frontend's unresolved behavior choices](topics/app-practice/app-practice.md)
   track the decision needed; this documentation pass does not approve either change.
 
-The [product backlog](topics/product/product.md) separates remaining acceptance
+The [product backlog](open/product-backlog.md) separates remaining acceptance
 work from features already implemented. [Documentation setup](#documentation-website)
 owns the kit and build commands; [the worklog](worklog.md#2026-11-15-relocate-the-kit-audit)
 records the completed audit and its verification limits.
@@ -202,13 +203,13 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 - `docs/site/site.toml`: site identity, source repository/ref and navigation.
 - `docs/topics/home/index.md`: rendered landing page and automatic site map.
 - `docs/index.md`: curated reading order and the boundary between overview pages and canonical Reference records.
-- `docs/topics/whole-flow/index.md`: App & practice, combining the player journey and browser overview.
+- `docs/topics/app-practice/index.md`: App & practice, combining the player journey and browser overview.
 - `docs/topics/system-architecture/index.md`: technical component and deployment boundaries.
-- `docs/topics/opening-catalog/index.md`: Catalog & data, combining catalog rules, schema and historical provenance for readers.
-- `docs/topics/synthetic-clients/index.md`, `docs/topics/review-dataset/index.md`, `docs/topics/fsrs-training/index.md`: producer model, telemetry/grading contract and parameter fitting, respectively.
-- `docs/topics/fsrs-training/fsrs-training.md`: synthetic-client simulator, FSRS training method and results.
-- `docs/topics/opening-library/opening-library.md`: opening library and side classification.
-- `ml/README.md`, `ml/pyproject.toml`: install and run commands for the `tempo_ml` package.
+- `docs/topics/catalog-data/index.md`: Catalog & data, combining catalog rules, schema and historical provenance for readers.
+- `docs/topics/synthetic-clients/index.md`, `docs/topics/review-dataset/index.md`, `docs/topics/fsrs-training/index.md`: producer model (including both hidden memory implementations), telemetry/grading contract and parameter fitting/evaluation, respectively.
+- `docs/topics/fsrs-training/fsrs-training.md`: fitting, evaluation, accepted metric criteria and scoped historical results.
+- `docs/topics/catalog-data/provenance.md`: historical opening-library classifier, inputs and side evidence within Catalog & Data.
+- `docs/development/ml.md`, `ml/pyproject.toml`: install and run commands for the `tempo_ml` package.
 - `ml/tempo_ml/`: catalog reader (`catalog.py`), FSRS-6 model and trainer (`fsrs/`), the synthetic-client simulator (`simulator/`: clients, memory models `memory/multiplicative.py` and `memory/fsrs.py`, recall, practice, grading, generate) and metrics (`evaluate/`); tests in `ml/tests/`.
 - `ml/configs/`: generator settings for `tempo_ml` datasets.
 - `ml/experiments/`: one dated folder per `tempo_ml` run; `SUMMARY.md` is its record, `results/` its weights and metrics, `dataset_MANIFEST.txt` where its data lives.
@@ -217,7 +218,7 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 - `docs/worklog.md`: append-only chronology.
 - `.build/docs/`: ignored generated output, never source.
 
-- `frontend/`: React browser application. See [frontend ownership and scope](topics/frontend/frontend.md).
+- `frontend/`: React browser application. See [frontend ownership and scope](topics/app-practice/app-practice.md).
 - `backend/`: Python application, requirements, and demo data.
 
 ## Build and review
@@ -301,6 +302,23 @@ Decided on 2026-11-15: enable the default automatic Reference listing and
 remove the starter Guide. No project-specific exclusions are configured;
 the build manifest lists the exact eligible sources. The prior opt-out is
 superseded. The user explicitly authorized checking and publishing this change.
+
+### Source audit and topic coverage
+
+The six canonical topic folders are `app-practice`, `system-architecture`,
+`catalog-data`, `synthetic-clients`, `review-dataset` and `fsrs-training`. Each
+has a human `index.md` and scoped source-to-topic coverage in its canonical
+record. Historical library provenance is a supporting Catalog & Data record;
+product acceptance is `docs/open/product-backlog.md`; package setup is
+`docs/development/ml.md`. The completed retraining plan is retired with its
+accepted criteria and unique probe in Training and its protocol pinned in Git.
+The [reading index](index.md#reading-order) names each
+owner. Source inspection and successful rendering do not establish full app
+acceptance, human calibration or production readiness.
+
+The shared site engine is unchanged. Historical worklog entries preserve their
+original paths; the site uses a documented date cutoff for links superseded by
+this consolidation. Current record/page links are checked separately.
 
 ### Requiring formula checks on every host
 
