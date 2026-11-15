@@ -268,6 +268,29 @@ class Store:
             ]
 
 
+def repertoire_rows(db, player_id):
+    """A player's repertoire with catalog details, plus each line's completed reviews."""
+    lines = db.execute(
+        """SELECT p.line_id, f.name AS opening_family, f.family_side, o.name, o.eco, o.moves_uci,
+                  p.learned_at, p.last_reviewed_at, p.next_review_at, p.fsrs_state
+           FROM player_lines AS p
+           JOIN opening_lines AS o USING (line_id)
+           JOIN opening_families AS f USING (family_id)
+           WHERE p.player_id = ?
+           ORDER BY p.next_review_at, p.learned_at, p.line_id""",
+        (player_id,),
+    ).fetchall()
+    reviews = {}
+    for row in db.execute(
+        """SELECT line_id, occurred_at, fsrs_rating FROM practice_events
+           WHERE player_id = ? AND event_type = 'session_completed' AND mode = 'repeating'
+           ORDER BY event_id""",
+        (player_id,),
+    ):
+        reviews.setdefault(row["line_id"], []).append({"at": row["occurred_at"], "grade": row["fsrs_rating"]})
+    return [{**dict(row), "reviews": reviews.get(row["line_id"], [])} for row in lines]
+
+
 def add_event(db, player_id, line_id, event_type, mode, at, *, session_id=None,
               side=None, move_index=None, is_correct=None, response_time_ms=None,
               fsrs_rating=None):

@@ -73,6 +73,20 @@ class MLEngine:
         card = Card(due=now)
         return card.due, json.dumps(card.to_dict())
 
+    @property
+    def target_recall(self):
+        """The recall probability reviews are scheduled at (the scheduler's desired retention)."""
+        return self.scheduler.desired_retention
+
+    def memory(self, state, now):
+        """Return (stability in days, chance of recall now), or (None, None) before the first review."""
+        from fsrs import Card
+
+        card = Card.from_dict(json.loads(state))
+        if card.stability is None:
+            return None, None
+        return card.stability, self.scheduler.get_card_retrievability(card, current_datetime=now)
+
     @staticmethod
     def stability_days(state):
         """Return the FSRS card's current stability, if a review has initialized it."""

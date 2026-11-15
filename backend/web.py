@@ -36,12 +36,16 @@ class Handler(SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
+        # path: (action, required fields, optional fields)
         routes = {
-            "/api/catalog": (self.controller.learning_catalog, ()),
-            "/api/learning": (self.controller.start_learning, ("line_id", "side")),
-            "/api/review": (self.controller.start_repeating, ()),
-            "/api/review/side": (self.controller.choose_review_side, ("session_id", "side")),
-            "/api/move": (self.controller.submit_move, ("session_id", "move_index", "move_uci")),
+            "/api/catalog": (self.controller.learning_catalog, (), ()),
+            "/api/learning": (self.controller.start_learning, ("line_id", "side"), ("resume_at",)),
+            "/api/review": (self.controller.start_repeating, (), ()),
+            "/api/review/side": (self.controller.choose_review_side, ("session_id", "side"), ()),
+            "/api/review/line": (self.controller.start_review_line, ("line_id",), ()),
+            "/api/review/abandon": (self.controller.abandon_review, ("session_id",), ()),
+            "/api/move": (self.controller.submit_move, ("session_id", "move_index", "move_uci"), ()),
+            "/api/repertoire": (self.controller.repertoire, (), ()),
         }
         if self.path not in routes:
             self.respond(404, {"error": "Unknown API endpoint"})
@@ -54,8 +58,9 @@ class Handler(SimpleHTTPRequestHandler):
             if not isinstance(data, dict) or not isinstance(data.get("player_id"), str):
                 raise ValueError("Expected a player ID")
             player_id = UUID(data["player_id"]).hex
-            action, fields = routes[self.path]
-            result = action(player_id, *(data[field] for field in fields))
+            action, fields, optional = routes[self.path]
+            extra = {field: data[field] for field in optional if field in data}
+            result = action(player_id, *(data[field] for field in fields), **extra)
         except (KeyError, TypeError, ValueError) as error:
             self.respond(400, {"error": str(error)})
         except LookupError as error:
