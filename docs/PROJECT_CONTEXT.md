@@ -38,8 +38,9 @@ not additional accepted product decisions:
   track the decision needed; this documentation pass does not approve either change.
 
 The [product backlog](topics/product/product.md) separates remaining acceptance
-work from features already implemented. The [documentation adoption record](topics/documentation/documentation.md)
-owns kit version, conformance findings and verification scope.
+work from features already implemented. [Documentation setup](#documentation-website)
+owns the kit and build commands; [the worklog](worklog.md#2026-11-15-relocate-the-kit-audit)
+records the completed audit and its verification limits.
 
 ## 1. TEMPO in one sentence
 
@@ -259,9 +260,13 @@ python -m venv .build/docs-env
 .build/docs-env/Scripts/python.exe .docs-kit/docsite.py lint --project . --strict
 ```
 
-On POSIX, use `.build/docs-env/bin/python` for the same commands. The interpreter
-used for this adoption is recorded in the documentation adoption record; do not
-assume a fresh machine already has the dependencies installed.
+On POSIX, use `.build/docs-env/bin/python` for the same commands. The kit is pinned
+at `25c058d094160faa517ec16f72ab44ed984c87ad`; its requirements file declares
+the documentation dependencies. The [worklog](worklog.md#2026-11-15-relocate-the-kit-audit)
+records the interpreter and packages used for the completed audit. A fresh
+machine still needs its environment installed. Manifest-hashed SVG figures
+use LF checkout through `.gitattributes`; their sources and identities live
+in `docs/figures/manifest.json`.
 
 For an iteration, append `--page guide` to build; this does not validate unrelated output. For browser review:
 
@@ -281,6 +286,24 @@ that broader listing has not been approved for this site. Existing topic pages
 keep their routes. A local build or commit is not a GitHub Pages deployment.
 
 A repository administrator enables the workflow under **Settings → Pages → Build and deployment → Source → GitHub Actions**. Once the first deployment succeeds, the workflow's `github-pages` environment shows the live URL.
+
+## Documentation publication choices
+
+### Reference publication
+
+Options: retain six-page scope, enable automatic references with reviewed
+exclusions, or register selected records. Recommend selected records only
+after reviewing content/routes. No migration step is blocked because the
+current scope is preserved.
+
+### Requiring formula checks on every host
+
+The local strict lint run compiles formulas with Node and the kit's KaTeX.
+`formula_check_required` remains unset, so a host without Node can skip that
+check with a note. Options: require it and explicitly provision Node wherever
+lint runs, or retain the kit default. Recommend requiring it for CI after the
+owner agrees to that dependency. The migration's owner decision is still open;
+local formula success is not a claim that every host enforces it.
 
 ## Documentation index
 

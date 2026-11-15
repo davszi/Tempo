@@ -5,8 +5,9 @@
 This topic owns Tempo's documentation authoring example, ownership map and
 acceptance checklist. The human-facing explanation is `index.md`; it illustrates
 the shared kit, not the chess application's runtime architecture or measured
-performance. Current project setup and adoption findings live in
-[documentation adoption](../documentation/documentation.md).
+performance. [Project context](../../PROJECT_CONTEXT.md#documentation-website)
+owns current setup; [the worklog](../../worklog.md#2026-11-15-relocate-the-kit-audit)
+records completed checks and their limits.
 
 Tempo pins kit 5.0.0. The site's six topic pages are Home, Guide, Synthetic
 Clients, Review Dataset, System Architecture and End-to-End Flow. Records in
@@ -52,6 +53,19 @@ The numbered HTML flows on the guide are authored directly in `index.md`. They d
 
 The guide demonstrates the shared-kit architecture selected for Tempo.
 Alternatives compare ownership and maintenance costs rather than measured
-timing. The [documentation adoption record](../documentation/documentation.md)
-states the checks actually executed and any remaining decisions; this guide
-does not turn its checklist into a claim that every check has passed.
+timing. The [worklog](../../worklog.md#2026-11-15-relocate-the-kit-audit) states
+the checks actually executed. Publication choices stay in
+[project context](../../PROJECT_CONTEXT.md#documentation-publication-choices),
+and slide design choices stay in this record. The checklist does not
+establish that every check has passed.
+
+## Slide design review
+
+The existing faces `guide#pipeline` and `guide#slides` remain in place. The
+[2026-11-15 rendered review](../../worklog.md#2026-11-15-relocate-the-kit-audit) records their
+title-first emphasis, broad empty bands and text-heavy layouts. Kit 5
+asks for a real visual per face. Options: redraw the faces, remove
+those with nothing visual to add, or explicitly retain them as a
+temporary exception. Recommend a separate approved design pass.
+Redrawing or removing these faces waits on that decision; passing lint
+does not establish design conformance.

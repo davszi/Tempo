@@ -184,3 +184,37 @@ Learning sessions so that w0–w3 can be learned.
 
 Not accepted by the team: which weights the app ships; `backend/fitted_global.csv`
 still holds the first-run weights of the removed simulator.
+
+## Historical evidence gaps
+
+
+The FSRS-memory experiment record's exploratory percentages and optimizer
+observations at `ml/experiments/2026-11-14-fsrs-memory/SUMMARY.md` describe
+uncommitted exploratory code/output that was not retained. Those observations
+are not independently reproducible from the retained artifacts. Its opener
+also says only hidden memory differed, while its own inputs/caveat show the
+catalog regrouped from 91 to 82 families. The current training topic explains
+that confound; the historical record is not rewritten by this pass.
+
+Git identifies that experiment's indirect 'landing commit' source as
+`ea3d01d7743dac5f513d853e1ef5c0d451e3b105`. A new claim based on the missing
+exploratory artifacts needs a retained rerun; this audit does not manufacture
+evidence or authorize that experiment. The full current experiment tables
+remain distinct from the unretained exploratory observations.
+
+## Retained retraining plan and ML setup guide
+
+### Finished retraining plan
+
+`docs/topics/fsrs-training/retraining-plan.md` says its work is completed or
+superseded. Kit 4/5 asks to retire finished working documents after lasting
+content has a current home and concrete deletion approval. Its accepted
+days metric, recovery criteria and diagnostic-weight restriction must be
+accounted for first. Recommend that coverage check followed by approved
+retirement. The plan is retained pending that decision.
+
+### ML setup guide name
+
+`ml/README.md` is a useful setup guide but kit 5 expects one root README.
+Recommend approving a rename to `ml/ML_GUIDE.md`, updating current links and
+preserving historical source identities. It remains in place pending approval.

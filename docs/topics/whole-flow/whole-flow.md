@@ -35,3 +35,14 @@ The first command simulates a clean Both-side review graded Good. The second sim
 The presentation generator `backend/synthetic_clients.py` reads the catalog read-only and writes CSV rather than inserting synthetic practice events into SQLite. The supplied `backend/synthetic_reviews.csv` is a historical export recorded as 50,400 sessions from 30 agents on 140 representative lines. It was not regenerated after the catalog was cleaned and merged; generating one line per family from the later catalog uses its new family count. This CSV is separate from the run that produced the app's supplied weights.
 
 The maintained generation, training and evaluation pipeline lives in `ml/tempo_ml/`, with configurations in `ml/configs/` and dated results in `ml/experiments/`. [FSRS training](../fsrs-training/fsrs-training.md) owns methods, results, weight provenance and limitations; the package guide owns its commands. The app consumes a configured weights CSV. It does not launch offline fitting, import the newest experiment automatically, or fine-tune on the current player's live history.
+
+## Slide design review
+
+The existing faces `whole-flow#catalog`, `#learning-to-schedule` and `#present-and-inspect` remain in place. The
+[2026-11-15 rendered review](../../worklog.md#2026-11-15-relocate-the-kit-audit) records their
+title-first emphasis, broad empty bands and text-heavy layouts. Kit 5
+asks for a real visual per face. Options: redraw the faces, remove
+those with nothing visual to add, or explicitly retain them as a
+temporary exception. Recommend a separate approved design pass.
+Redrawing or removing these faces waits on that decision; passing lint
+does not establish design conformance.

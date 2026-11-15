@@ -45,3 +45,23 @@ The demo writes player events and progress to `backend/tempo_demo.sqlite`. In DB
 ## Verification scope
 
 This documentation pass inspected source and existing records; it ran no backend, ML, frontend or browser checks. Historical demo/integration checks and their environments are in [frontend validation](../frontend/frontend.md#validation) and [the worklog](../../worklog.md). No production deployment, authentication or live personalization is verified here.
+
+## Standalone architecture HTML
+
+`docs/topics/system-architecture/system-architecture.html` duplicates the
+generated architecture page and also supplies the figure's inline SVG source
+and extraction recipe. Options: retire the standalone page after moving the
+drawing source and checking consumers, or retain its synchronization duty.
+Recommend retirement only after the owner approves those exact changes;
+the figure source and existing route must remain available until then.
+
+## Slide design review
+
+The existing faces `system-architecture#components`, `#practice` and `#live-demo` remain in place. The
+[2026-11-15 rendered review](../../worklog.md#2026-11-15-relocate-the-kit-audit) records their
+title-first emphasis, broad empty bands and text-heavy layouts. Kit 5
+asks for a real visual per face. Options: redraw the faces, remove
+those with nothing visual to add, or explicitly retain them as a
+temporary exception. Recommend a separate approved design pass.
+Redrawing or removing these faces waits on that decision; passing lint
+does not establish design conformance.

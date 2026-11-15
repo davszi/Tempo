@@ -79,3 +79,14 @@ Chosen-line reviews and first-mistake hints are implemented deviations from the 
 ## Verification scope
 
 The 2026-11-15 documentation audit inspected `backend/store.py`, `backend/practice_controller.py`, `backend/ml_controller.py` and the browser callers at `5d6b81c`. It did not open or migrate a live database or rerun controller tests. Historical migration checks and catalog counts are retained in [opening catalog evidence](../opening-catalog/opening-catalog.md#evidence).
+
+## Standalone schema HTML
+
+`docs/topics/database-schema/database-schema.html` duplicates this schema
+record. It was synchronized during the kit 5 audit but did not receive a
+separate rendered qualification. Before removing it, the owner must decide
+whether anything outside the repository still uses its path.
+
+Options: retire the HTML after checking consumers, or retain an explicit
+synchronization duty. Recommend retirement after that check and concrete
+approval. No route is removed while the decision remains open.

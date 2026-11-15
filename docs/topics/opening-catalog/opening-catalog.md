@@ -302,6 +302,30 @@ Implementation checks, 2026-11-13, Python 3.13.5 with fsrs installed from
   "7…Be6 8.h3" and "7…Be7 8.h3", and the browser console showed no errors.
   Node.js 26 is newer than the Node 22 line the project context records.
 
+### Read-only seed verification on 2026-11-15
+A read-only SQLite query in the documentation environment confirmed 2,719
+lines, 82 families (43 White, 39 Black), 1,889 learnable terminal variations,
+and a minimum of four White moves. The connection used `mode=ro`; no startup
+migration or practice session ran. The source remains `backend/tempo_demo.sqlite`.
+
+Input identity: `5d6b81c:backend/tempo_demo.sqlite`, Git blob
+`f955e4d5a141d8ff9d34fa66831a8f57c4d39613`, SHA-256
+`5eb848f110d5f3634344b854038a4482a16c7d2ecc7da782b01c2b326188eaa0`.
+Reproduce with the documentation interpreter from the project root:
+
+```python
+import sqlite3
+db = sqlite3.connect('file:backend/tempo_demo.sqlite?mode=ro', uri=True)
+lines = db.execute('SELECT moves_uci FROM opening_lines').fetchall()
+print(len(lines))
+print(db.execute('SELECT COUNT(*) FROM opening_families').fetchone()[0])
+print(db.execute('SELECT family_side, COUNT(*) FROM opening_families GROUP BY family_side').fetchall())
+print(min((len(row[0].split()) + 1) // 2 for row in lines))
+print(db.execute('SELECT COUNT(*) FROM opening_lines o WHERE NOT EXISTS '
+                 '(SELECT 1 FROM opening_lines p WHERE p.parent_line_id=o.line_id)').fetchone()[0])
+db.close()
+```
+
 ## Open questions
 
 - The team has to confirm the catalog choices other than the same-family

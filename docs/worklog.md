@@ -2,6 +2,195 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-15 Relocate the kit audit
+
+At the user's request, removed `docs/topics/documentation/documentation.md`
+after distributing its useful material to existing owners. Setup and
+publication policy live in `docs/PROJECT_CONTEXT.md`; catalog verification
+in the opening-catalog evidence; ML evidence and cleanup choices in FSRS
+training; legacy HTML and slide choices in their subject records. Current
+index/page/open-work links were updated. The prior audit entry's link alone
+now targets its committed Git version; its historical wording and results
+were preserved. No new topic or replacement audit document was created.
+
+The following preserves the completed kit 5 audit evidence from `5e709b8`.
+These are historical results, not claims that the relocation reran app or
+experiment tests. The checks for this relocation are recorded before landing.
+
+### Prior audit scope
+
+The completed kit adoption and documentation audit started from local merge `5d6b81c` on 2026-11-15:
+all project docs, six existing topic pages, site configuration, app source
+and current ML code. Historical experiment records/results and old worklog
+entries retain their original source scope.
+
+Work is limited to docs and their configuration. It does not change app
+behavior, catalog, inputs or weights. Checks cover documentation build, lint,
+reader regression and rendered review; no training or benchmark is rerun.
+A contradiction requiring a product decision is recorded, not resolved by
+inventing approval. Temporary failed checks are distinguished from results.
+
+### Prior kit and environment
+
+| Item | Identity |
+|---|---|
+| Previous kit | 3.2.1, `f34cf63e769fa49a16e42f9768aa239e94dadac5` |
+| Adopted kit | 5.0.0, `25c058d094160faa517ec16f72ab44ed984c87ad` |
+| Migration | 4.0 content steps, then 5.0; one pin movement |
+| Environment | `.build/docs-env`, created using desktop-bundled Python; project-local dependencies |
+| Packages | `mistune==3.3.4`, `Pygments==2.21.0` |
+| Python | 3.12.14; the plain `python` alias on this host did not work, so the project environment was created from the bundled interpreter |
+| Build output | `.build/docs/`, ignored |
+| Commands | [Project context](PROJECT_CONTEXT.md#documentation-website) |
+
+The initial 3.2.1 build passed. Strict lint found 29 pre-existing `OPEN.md`
+bullets without owning-document links. The first 5.0 build passed; its strict
+lint also found numbers only on the Guide slide face. These baseline
+findings do not establish an app regression.
+
+### Prior audit corrections
+
+- Current app records distinguish implemented browser/API behavior from
+  proposed hosted deployment and future personalized planning.
+- Storage/API descriptions separate browser identity/progress from SQLite
+  history and identify the absence of account authentication.
+- The settled no-hints/planner-selected Repeating contract remains; current
+  deviations are recorded for a decision in the frontend topic.
+- ML docs distinguish current `ml/tempo_ml/` commands from retired simulators
+  and historical results. Source pins and measured limitations remain.
+- Product acceptance has a subject record; `OPEN.md` holds routes instead
+  of detailed, partly stale checklists.
+- The router includes the new capability-map route. No dedicated reusable
+  supporting-tooling tree is declared; domain app/ML source and experiment
+  scripts keep their existing owners.
+- Manifest-hashed SVG figures use LF checkout through `.gitattributes`, so
+  Windows line-ending conversion does not silently change their byte identity.
+
+### Prior conformance and verification
+
+Executed after integration: full site build, freshness check, strict lint,
+and `build --check-reader` pass; the latter preserves words, links, media,
+anchors and SVG geometry for all five reader pages. The home page uses no
+chapter reader. All 47 formulas on three pages compile with KaTeX 0.16.11.
+Source inspection is not app runtime or visual validation.
+
+A disposable fresh local clone of the committed candidate also passed the
+full build, freshness, strict lint, five-page reader check and all 47 formula
+compilations. Its submodule was initialized at the exact adopted pin; only
+tracked project sources were available. The figure SHA-256 still matched
+after Windows checkout. This reused the documented pinned documentation
+environment; it is not a clean-machine dependency-install qualification.
+
+Shared-engine checks were also executed with the generated starter fixture:
+347 Python tests ran in 177.083 seconds, with 9 failures, 4 errors and 28
+skips. The suite is not clean on this Windows host. Reported cases include
+POSIX `/tmp` working directories, slash-format expectations, CRLF byte
+comparisons, path ordering and Windows path normalization in pin/local-file
+checks. The pin helper compares Git's slash-form path with a native Path;
+the consumer's actual pin was therefore additionally checked with
+`git -C .docs-kit branch -r --contains HEAD`, which lists `origin/main`.
+No shared-kit source or test expectations were changed to hide these failures.
+
+The failing modules/cases were `test_kit_pin` (two unpublished-pin checks),
+`test_portability` (three unrelated-working-directory errors and two shared
+asset byte comparisons), `test_markers` (registry path extraction),
+`test_reference_listing` (route ordering), `test_site_contract` (declared
+local artifact path), `test_source_links` and two `test_source_pages` cases
+(slash-form link diagnostics). No rerun with altered thresholds or patched
+upstream code was used. Missing optional page-lock dependencies account for
+some skips; the suite's exact skip reasons remain its own test output.
+
+The Node reader-navigation/fold/key/dialog/history/column tests and
+panel-switcher logic tests pass. Math-renderer and source-file-link Node
+tests pass after supplying the generated starter output at their expected
+fixture path; their first invocation lacked that fixture. These fake-DOM
+checks are not browser pixel inspection. Page-lock behavior was not adopted
+or qualified. The passing Tempo checks do not imply the entire upstream
+cross-platform suite passes.
+
+| Conformance item | Disposition |
+|---|---|
+| Pin | v5.0.0 release reachable on kit remote |
+| Build/lint/freshness/reader | Pass in working checkout and fresh tracked clone; 47 formulas compile; shared-suite Windows failures reported separately |
+| Router | New capability-map route added; existing routes retained |
+| Shared rules | Shared guides remain in kit; records contain project facts |
+| Canonical homes | Context/index/topics/worklog/open routes present |
+| Tooling | `tooling_roots = []`; capability map states current scope |
+| Topic structure | Six existing sources; no new public topic page |
+| Records/pages | Content reconciled; face design decision below |
+| Open work | One-line linked routes |
+| Compatibility | Existing topic routes and standalone HTML retained |
+| Changed guides | Existing Guide/Home updated for kit and project |
+| Rendered review | Six pages at wide/phone widths; all eight faces in-page and deck; paired diagrams checked; limits below |
+
+### Prior rendered review
+
+The page author reviewed the six published pages at 1440 by 1000 and 390 by
+844, and the coordinator inspected the captures by eye. No document-level
+horizontal overflow or broken images were observed. Latency/calibration
+figures were also checked in two equal 495-pixel columns: their steps stack,
+and long formulas scroll inside their own region. Phone chapter navigation
+opens, Escape closes it and returns focus, Tab exposes a visible layout-control
+outline, and deck Left/Right navigation works. These are focused checks, not
+exhaustive accessibility or touch qualification.
+
+Two observed rendering faults were fixed: shared CSS had overridden the
+architecture SVG's region colors, and kit image inlining dropped the image's
+minimum width. Original selector specificity and an opaque dark canvas now
+preserve contrast; an inner labelled scroll region keeps the 970 by 422
+drawing at 900 pixels wide on a phone. Its 12-pixel source labels therefore
+render at approximately 11.13 pixels (design scale arithmetic). The source
+HTML, definition and manifest recipe remain together, and extraction was
+verified byte-identical to the SVG and its recorded SHA-256. LF checkout keeps
+that identity stable across hosts.
+
+All eight faces were inspected in their page and extracted deck at both
+widths. No text cut off or parts outside the face were observed. Wide deck
+faces are 1440 by 810; phone faces stack. Each still needs an owner decision
+about design under the new real-visual rule:
+
+| Face | First focus and empty-band observation | Design finding |
+|---|---|---|
+| `guide#pipeline` | Title, then highlighted ownership tile; broad bands above/below tiles | Tiles name owners but omit the chapter's flow arrows |
+| `guide#slides` | Title, then bright 1/0 counts; broad bands around factor list | Text factors/counts repeat the chapter rather than show its mechanism |
+| `system-architecture#components` | Host takeaway title, then application-host tile; broad bands around row | Deployment boxes lack the real component drawing shown below |
+| `system-architecture#practice` | Shared-history title, then Learning/Repeating pair; broad bands | Labels do not show the actual state/grade transition |
+| `system-architecture#live-demo` | Outcome title, then Run tile; broad bands | Run/read/inspect list is textual rather than a visual result |
+| `whole-flow#catalog` | Catalog title, then catalog count tile; broad bands | Counts and labels do not show catalog structure |
+| `whole-flow#learning-to-schedule` | Practice-flow title, then Learn tile; broad bands | Three labels repeat the prose without its transitions |
+| `whole-flow#present-and-inspect` | Saved-review title, then PowerShell tile; broad bands | Text-only task list does not show the saved record |
+
+The compact phone faces remain legible. The faces were not redesigned,
+removed or newly created. Review-only generated decks/captures are scratch;
+the observations above are the durable result.
+
+Not executed: rendered no-JavaScript fallback, browser reduced-motion mode,
+print output, exhaustive keyboard/touch checks, the shared automated browser
+helper, or app runtime tests. Node tests cover some reader print/motion logic
+in an imitation DOM; that does not qualify the browser output. The retained
+standalone database-schema HTML received a content/source synchronization,
+not a separate rendered qualification.
+
+### Relocation checks
+
+This cleanup passed the full documentation build, strict lint/link/anchor
+checks, freshness check and five-page reader parity check; all 47 formulas
+compile. The retired topic directory is absent and current internal links
+no longer name it. Only the historical entry's pinned Git link remains.
+Application code, catalog, weights and page layout were unchanged. App/ML
+runtime tests, shared-kit regression tests and a new browser layout review
+were not rerun for this content relocation; the prior results above retain
+their original scope.
+
+### Current owners of remaining choices
+
+- [Publication and formula enforcement](PROJECT_CONTEXT.md#documentation-publication-choices).
+- [ML evidence gaps](topics/fsrs-training/fsrs-training.md#historical-evidence-gaps) and [record cleanup](topics/fsrs-training/fsrs-training.md#retained-retraining-plan-and-ml-setup-guide).
+- [Standalone schema HTML](topics/database-schema/database-schema.md#standalone-schema-html) and [architecture HTML](topics/system-architecture/system-architecture.md#standalone-architecture-html).
+- [Guide faces](topics/guide/guide.md#slide-design-review), [architecture faces](topics/system-architecture/system-architecture.md#slide-design-review) and [flow faces](topics/whole-flow/whole-flow.md#slide-design-review).
+
+The commit hash is assigned by this entry's landing commit.
+
 ## 2026-11-15 — Adopt kit 5.0 and reconcile Tempo documentation
 
 Upgraded `.docs-kit` from 3.2.1 (`f34cf63`) to 5.0.0 (`25c058d`) through the
@@ -24,7 +213,7 @@ corrected. The shared kit's Python suite ran 347 tests with nine failures,
 four errors and 28 skips on Windows; Node reader, panel, math and source-link
 checks pass. Exact scope, rendered-review findings, reproduction identities
 and remaining owner choices are in the
-[documentation adoption record](topics/documentation/documentation.md).
+[documentation adoption record](https://github.com/davszi/Tempo/blob/5e709b82e12a9a4889187735fd90ddfa0840765d/docs/topics/documentation/documentation.md).
 Existing slide faces and unapproved file retirements remain explicit follow-up,
 not a claim of complete kit-design conformance. No push or publication was
 performed. The commit hash is assigned by this entry's landing commit.

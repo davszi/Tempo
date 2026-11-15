@@ -23,7 +23,7 @@ math = true
 
 <p class="bs-lead">A project chooses its shared-kit revision while keeping its pages and configuration in its own repository.</p>
 
-This guide explains TEMPO's documentation setup. The [authoring record](../topics/guide/guide.md#scope) owns its scope; the [documentation adoption record](../topics/documentation/documentation.md) states the checks actually run.
+This guide explains TEMPO's documentation setup. The [authoring record](../topics/guide/guide.md#scope) owns its scope; the [worklog](../worklog.md#2026-11-15-relocate-the-kit-audit) records the checks actually run.
 
 TEMPO pins kit 5.0.0 and keeps its six existing pages: Home, Guide, Synthetic Clients, Review Dataset, System Architecture and End-to-End Flow. Its `reference_listing = false` setting keeps other topic records in Markdown rather than adding automatic Reference pages.
 
@@ -178,7 +178,7 @@ The view menu offers Presentation options. In All chapters, enable Slides to sho
 <div class="bs-row"><span class="bs-state bs-wait">Review</span><b>Integration checks</b><span>Build, check freshness, lint and inspect wide, narrow and paired reading before publication.</span></div>
 </div>
 
-These rows explain the setup and review criteria. The <a href="../topics/guide/guide.md#acceptance-checklist">authoring record</a> owns the checklist; the <a href="../topics/documentation/documentation.md">documentation adoption record</a> distinguishes completed checks from outstanding decisions.
+These rows explain the setup and review criteria. The <a href="../topics/guide/guide.md#acceptance-checklist">authoring record</a> owns the checklist; the <a href="../worklog.md#2026-11-15-relocate-the-kit-audit">worklog</a> records completed checks and <a href="../PROJECT_CONTEXT.md#documentation-publication-choices">project context</a> owns publication choices.
 
 </section>
 
