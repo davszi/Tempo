@@ -23,6 +23,10 @@ math = true
 
 <p class="bs-lead">A project chooses its shared-kit revision while keeping its pages and configuration in its own repository.</p>
 
+This guide explains TEMPO's documentation setup. The [authoring record](../topics/guide/guide.md#scope) owns its scope; the [documentation adoption record](../topics/documentation/documentation.md) states the checks actually run.
+
+TEMPO pins kit 5.0.0 and keeps its six existing pages: Home, Guide, Synthetic Clients, Review Dataset, System Architecture and End-to-End Flow. Its `reference_listing = false` setting keeps other topic records in Markdown rather than adding automatic Reference pages.
+
 [Figure 1](#fig-pipeline) separates what a project authors from what the kit supplies. The arrows carry inputs into a generated site; editing output does not update either source.
 
 <figure id="fig-pipeline">
@@ -85,7 +89,7 @@ The comparison below names the boundary of each evidence kind. A local unit test
 
 State measured motivation, a strong cheap baseline and acceptance criteria before results. Retain the reproduction command, source revision, environment, input identities, output table with units, verdict, caveats and next step. A failed acceptance check is a result worth preserving.
 
-No benchmark has been run for this starter. These are authoring requirements, not sample performance results.
+This guide reports no application benchmark. These are authoring requirements, not sample performance results.
 
 <!-- /fold -->
 
@@ -147,7 +151,11 @@ chapter_reader = true
 
 <p class="bs-lead">A slide face summarises its chapter; the chapter remains the complete, readable source of every claim.</p>
 
-Write the face between `<!-- slide -->` and `<!-- /slide -->` at the start of a chapter. The reader shows it as a 16:9 slide at the top of the card, followed by the full chapter. `python docsite.py slides --project . --select guide --out guide` collects the faces into a deck that can be presented or printed.
+Write the face between `<!-- slide -->` and `<!-- /slide -->` at the start of a chapter. The reader shows it as a 16:9 slide at the top of the card, followed by the full chapter. `python .docs-kit/docsite.py slides --project . --select guide --out guide` collects the faces into a deck that can be presented or printed.
+
+Use at most 1 face per chapter, with 0 facts that exist only on the face. Below 720 px the canvas stacks into a readable column. The [slide-face guide](../../.docs-kit/rules/site/authoring.md#slide-faces-and-decks) defines the shared layout and checks.
+
+The view menu offers Presentation options. In All chapters, enable Slides to show the faces. A chapter with nothing to show needs no face; adding a new face or redesigning an existing one remains a separate decision.
 
 </section>
 
@@ -162,15 +170,15 @@ Write the face between `<!-- slide -->` and `<!-- /slide -->` at the start of a 
 <div class="bs-part bs-orange"><span class="bs-label">Narrow and accessible</span><h3>Keep every action reachable</h3><p>Check contained tables and equations, keyboard focus, clear labels, touch targets, reduced motion, print and no-JavaScript reading.</p></div>
 </div>
 
-### What remains for this adoption
+### Check TEMPO's integration
 
 <div class="bs-board">
 <div class="bs-row"><span class="bs-state bs-ok">Decided</span><b>Ownership model</b><span>Use a version-pinned shared kit, with project-owned content and navigation.</span></div>
-<div class="bs-row"><span class="bs-state bs-wait">Open</span><b>Project identity</b><span>Replace the example repository and choose the source revision used by source links.</span></div>
-<div class="bs-row"><span class="bs-state bs-wait">Open</span><b>Integration checks</b><span>Build, check freshness, lint and inspect the consumer's actual output before adoption.</span></div>
+<div class="bs-row"><span class="bs-state bs-ok">Configured</span><b>Project identity</b><span>Source links use the Tempo repository and its main branch; page routes stay stable.</span></div>
+<div class="bs-row"><span class="bs-state bs-wait">Review</span><b>Integration checks</b><span>Build, check freshness, lint and inspect wide, narrow and paired reading before publication.</span></div>
 </div>
 
-This board describes starter adoption, not completed test execution. The <a href="../topics/guide/guide.md#acceptance-checklist">agent record</a> owns the exact checklist; <a href="../open/OPEN.md">open routing</a> points to it.
+These rows explain the setup and review criteria. The <a href="../topics/guide/guide.md#acceptance-checklist">authoring record</a> owns the checklist; the <a href="../topics/documentation/documentation.md">documentation adoption record</a> distinguishes completed checks from outstanding decisions.
 
 </section>
 
@@ -185,7 +193,7 @@ This board describes starter adoption, not completed test execution. The <a href
 | Option | Shared fixes | Project control | Maintenance cost | Verdict |
 |---|---|---|---|---|
 | Copy the theme into every project | Reapply each fix separately | Direct local edits | Copies can drift | Suitable only for an intentionally independent fork |
-| Pinned shared-kit submodule | Adopt a reviewed kit revision | Content, overrides and update timing stay local | Initialize and review each upgrade | Selected for this starter |
+| Pinned shared-kit submodule | Adopt a reviewed kit revision | Content, overrides and update timing stay local | Initialize and review each upgrade | Selected for TEMPO |
 | Independently build each site's engine | No common update path | Complete freedom | Maintain reader, checks and theme per project | Use when requirements differ enough to justify it |
 
 </div>

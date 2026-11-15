@@ -14,11 +14,13 @@ math = true
 
 ## 1. Overview & Purpose
 
-<p class="bs-lead">Synthetic clients generate realistic chess opening practice logs to train and evaluate TEMPO's Review Planner and FSRS scheduler before human testing begins.</p>
+<p class="bs-lead">Synthetic clients generate practice histories under explicit memory and timing assumptions; they have not been calibrated against human players.</p>
 
-To train our machine learning models, we cannot wait for human players to log thousands of opening reviews over months. Synthetic clients act as digital test subjects with customizable cognitive traits, producing dual-signal session logs:
+The `tempo_ml` package uses simulated players to study training before human data is available. Its [synthetic-client record](../topics/synthetic-clients/record.md#6-implementation-and-open-choices) distinguishes implemented policy from the demo specification. Each attempt produces two signals:
 - **Move Accuracy:** Did the client recall the exact repertoire move?
 - **Hesitation Latency:** How many milliseconds did the client spend searching their memory or calculating?
+
+The separate `backend/synthetic_clients.py` generator produces demo telemetry. Its all-ply counting and successful-retry policy differ from the package simulator; the datasets are not interchangeable.
 
 </section>
 
@@ -28,29 +30,29 @@ To train our machine learning models, we cannot wait for human players to log th
 
 <p class="bs-lead">Reaction time is not uniform: it combines physical interface latency, log-normal cognitive delay, and exponential strain from memory decay.</p>
 
-```python
-# 1. Sample raw hesitation from log-normal distribution (seconds)
-raw_hesitation = lognormal(mu, sigma)
+[Figure 1](#fig-latency) separates sampled hesitation from the memory and practice factors that scale it. The baseline is added after those factors; effort changes latency without directly changing recall probability.
 
-# 2. Cognitive strain amplifies hesitation when retrievability R is low
-cognitive_strain = np.exp(beta * (1 - R))
+<figure id="fig-latency">
+<div class="bs-flow" role="img" aria-label="A log-normal hesitation draw in seconds is converted to milliseconds, multiplied by memory strain and practice fluency, then added to the physical baseline.">
+<div class="bs-node bs-violet"><span class="bs-label">Sample</span><b>Raw hesitation</b><p>Log-normal draw in seconds</p></div>
+<div class="bs-arrow"><span>scale</span></div>
+<div class="bs-node bs-orange"><span class="bs-label">Multiply</span><b>Strain and practice</b><p>Lower retrievability raises strain; familiarity reduces delay.</p></div>
+<div class="bs-arrow"><span>add baseline</span></div>
+<div class="bs-node bs-teal"><span class="bs-label">Attempt</span><b>Total latency</b><p>Physical baseline plus scaled cognitive hesitation</p></div>
+</div>
+<figcaption><strong>Figure 1.</strong> Source-authored diagram of the <a href="../topics/synthetic-clients/record.md#34-hesitation-latency-model">latency model</a>; it shows assumptions, not measured human reaction times.</figcaption>
+</figure>
 
-# 3. Practice multiplier compresses hesitation as familiarity builds
-m_practice = 1.0 / (1.0 + alpha * reps)
+$$T_{\mathrm{ms}} = b_{\mathrm{ms}} + 1000 H \exp\bigl(\beta(1-R)\bigr)\frac{1}{1+\alpha n}, \qquad H\sim\operatorname{Lognormal}(\mu,\sigma)$$
 
-# 4. Total cognitive hesitation in milliseconds
-total_hesitation_ms = (raw_hesitation * 1000) * cognitive_strain * m_practice
-
-# 5. Final move latency including motor baseline
-final_time_ms = baseline_ms + total_hesitation_ms
-```
+Here $T_{\mathrm{ms}}$ is attempt latency, $b_{\mathrm{ms}}$ the physical baseline, $H$ raw hesitation in seconds, $R$ retrievability and $n$ accumulated familiarity. The factor 1000 converts seconds to milliseconds. The [model record](../topics/synthetic-clients/record.md#34-hesitation-latency-model) defines the same construction in full.
 
 ### Cognitive Components:
 
 1. **Physical Baseline ($\text{baseline\_ms}$):**
-   The minimum physiological time required to see the position, process visual features, and move the piece on the board (typically 200–400 ms).
+   An assumed floor for motor, visual-processing and interface delay; it is a client parameter rather than a measured physiological limit.
 2. **Raw Cognitive Hesitation ($\mu, \sigma$):**
-   Drawn from a log-normal distribution, accurately reflecting human response times with a steep rise and an extended right-skewed tail.
+   A log-normal draw gives a right-skewed distribution. The parameter $\mu$ is the mean of log(seconds), so its median in seconds is $e^\mu$; $\sigma$ controls dispersion. Human agreement remains unmeasured.
 3. **Cognitive Strain ($\beta$ and $R$):**
    When an opening line is fresh in memory ($R \approx 1.0$), retrieval is effortless ($\text{strain} \to 1.0$). When retrievability drops, the client spends cognitive effort $\beta$ struggling to remember or calculate.
 4. **Practice Decay ($m_{\text{practice}}$ and $\alpha$):**
@@ -62,7 +64,7 @@ final_time_ms = baseline_ms + total_hesitation_ms
 
 ## 3. Memory & Lapse Dynamics
 
-<p class="bs-lead">Accuracy is governed by memory retrievability, while mistakes trigger a realistic setback in familiarity.</p>
+<p class="bs-lead">Retrievability sets each attempt's recall probability; the model reduces familiarity after a lapse.</p>
 
 ### Retrievability Formula
 Retrievability $R(t, S)$ follows the modern FSRS power-law forgetting curve:
@@ -82,7 +84,11 @@ In TEMPO Repeating Mode, mistakes are immediately retracted rather than played o
 
 $$\text{reps}_{k+1} = \begin{cases} \text{reps}_k + 1 & \text{if clean review (success)} \\ \max(0, \text{reps}_k - 2) & \text{if blunder occurs (soft penalty)} \end{cases}$$
 
-A soft penalty reflects the psychological reality that a blunder damages confidence and increases future hesitation without wiping out physical familiarity entirely.
+This soft penalty is a modeling choice: it retains some accumulated familiarity. It is not an established psychological result.
+
+In the package, each of the player's $M$ moves has an independent first-attempt draw with the same line-level $R$. A clean session therefore has probability $p_{\mathrm{clean}} = R^M$. Memory stability and familiarity remain per line. Guided sessions instead use perfect accuracy and $R=1$ latency, update hidden memory, and are followed by an unassisted test after the session duration plus three minutes.
+
+The current implementation caps attempts at five. If the last draw fails, the session still advances without representing a successful final attempt. This unresolved behavior differs from the stated retry assumption; see [implementation limits](../topics/synthetic-clients/record.md#6-implementation-and-open-choices).
 
 </section>
 
@@ -90,23 +96,23 @@ A soft penalty reflects the psychological reality that a blunder damages confide
 
 ## 4. Benchmark Personas for Demo
 
-<p class="bs-lead">Three initial archetypes provide varied training dynamics for the review planner.</p>
+<p class="bs-lead">Three benchmark profiles vary the simulator's timing and forgetting parameters; they are not fitted human cohorts.</p>
 
-<div class="slide-main">
-  <div class="slide-row">
-    <div class="slide-tile">
+<div class="bs-grid g3">
+    <div class="bs-part bs-muted">
       <h4>The Impulsive Blitzer</h4>
-      <p>Low baseline (220 ms), low effort ($\beta = 0.4$), fast decay ($C = 0.65$). Moves fast, hesitates little even when uncertain, but blunders when lines are neglected.</p>
+      <p>Low baseline (220 ms), low effort (\(\beta = 0.4\)), fast decay (\(C = 0.65\)). Moves fast, hesitates little even when uncertain, but blunders when lines are neglected.</p>
     </div>
-    <div class="slide-tile is-term">
+    <div class="bs-part bs-teal">
       <h4>The Balanced Learner</h4>
-      <p>Standard baseline (300 ms), moderate effort ($\beta = 1.0$), average decay ($C = 0.50$). Representative baseline for general benchmark evaluation.</p>
+      <p>Standard baseline (300 ms), moderate effort (\(\beta = 1.0\)), average decay (\(C = 0.50\)). A benchmark reference profile, not a measured average player.</p>
     </div>
-    <div class="slide-tile">
+    <div class="bs-part bs-muted">
       <h4>The Diligent Calculator</h4>
-      <p>High baseline (380 ms), high effort ($\beta = 2.2$), strong retention ($C = 0.35$). Takes significant time when retention dips, building high automaticity through practice.</p>
+      <p>High baseline (380 ms), high effort (\(\beta = 2.2\)), strong retention (\(C = 0.35\)). Takes significant time when retention dips, building high automaticity through practice.</p>
     </div>
-  </div>
 </div>
+
+The [benchmark profile table](../topics/synthetic-clients/record.md#4-benchmark-archetypes-stage-1-demo-profiles) gives the remaining parameters. Position depth and sharpness multipliers remain [future extensions](../topics/synthetic-clients/record.md#5-deferred-context-extensions-post-demo-scope).
 
 </section>

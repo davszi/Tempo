@@ -7,6 +7,9 @@ each action.
 
 ## Current documentation
 
+- [Documentation adoption and audit](topics/documentation/documentation.md): kit 5 pin, checks, publication scope and remaining conformance choices.
+- [Product backlog and acceptance gaps](topics/product/product.md): status of the six product requests and remaining decisions/evidence.
+- [Capability map](CAPABILITY_MAP.md): supporting-tooling inventory and new needs.
 - [Frontend dashboard](topics/frontend/frontend.md): scope, design source, component ownership and validation.
 - [TEMPO end-to-end flow](topics/whole-flow/whole-flow.md) connects the catalog, practice, scheduling, and offline data.
 - [TEMPO database schema](topics/database-schema/database-schema.md) describes opening lines, practice events, and player progress.

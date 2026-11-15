@@ -27,8 +27,8 @@ The hidden memory model is chosen in the generation config:
 
 | `memory` | Model | Per client | After a clean session | After a lapse |
 |---|---|---|---|---|
-| `multiplicative` (default) | `simulator/memory/multiplicative.py` | decay C | stability × (1 + 1.5·e^(2(1−R))) | stability × 0.3, at least 1 day |
-| `fsrs` | `simulator/memory/fsrs.py` | 21 FSRS-6 weights, w20 = C | FSRS-6 recall update with the line's difficulty | FSRS-6 forget update, at least 1 day |
+| `multiplicative` (default) | `simulator/memory/multiplicative.py` | decay C | stability × (1 + 1.5·e^(2(1−R))) | min(previous stability, max(1 day, stability × 0.3)) |
+| `fsrs` | `simulator/memory/fsrs.py` | 21 FSRS-6 weights, w20 = C | short-term update when elapsed time < 1 day; otherwise recall update with the line's difficulty | short-term or forget update, clamped to min(previous stability, max(1 day, updated stability)) |
 
 Both use the forgetting curve of the synthetic clients record, section 3.2.
 The FSRS-6 weights are the defaults with log-normal noise (sd 0.15) on w0–w16,
@@ -37,9 +37,43 @@ config apart from `memory`, both models give the same clients, sides and
 repertoires. Selecting `fsrs` leaves the multiplicative model unchanged: its
 generator output is byte-identical before and after `fsrs` was added.
 
+The byte-identity claim is the check recorded in the 2026-11-14 experiment,
+using the same catalog for both configurations; it is not a fresh run on
+the current working tree. The published A2/B2 and A1/A1c/B1 runs used
+different catalog groupings (91 and 82 families respectively), so their
+results do not isolate the memory-model change alone.
+
+## Simulator, app and accepted specification
+
+The package is an offline data generator and trainer, not the app's runtime
+planner. `backend/ml_engine.py` uses py-fsrs `Scheduler`; it selects the
+oldest due line and uses a grading baseline of 0 ms unless configured.
+`tempo_ml.simulator.practice` instead uses grade-based noisy intervals and
+each synthetic client's known physical baseline. The app stores move events
+in SQLite, while the package writes the review-session CSV schema.
+
+Learning also differs: the package records and grades each guided session,
+updates hidden memory, then tests the line after the session duration plus
+three minutes. In the app, finishing Learning initializes a due card but
+does not grade it or initialize its stability; the first Repeating session
+does that (`backend/ml_controller.py`, `initialize_progress` and
+`complete_review`). The package samples any eligible catalog line, with
+unique names within a client's repertoire; the app admits only lines that
+no other catalog line extends. The package permits at most five attempts
+per move, whereas the app supports retries and explicitly stopped reviews.
+These are implemented differences, not accepted changes to the product
+requirements. Their effect on transfer from synthetic training to the app
+has not been measured.
+
+The accepted cognitive and dataset specifications remain in their owning
+records. Package-specific additions and unresolved retry semantics are
+identified in the [synthetic clients record](../synthetic-clients/record.md#6-implementation-and-open-choices).
+Human calibration is specified for a later stage; no implemented calibration
+pipeline or human validation is established by these synthetic experiments.
+
 ## Multiplicative memory: arms A2 and B2
 
-Current run: [FSRS-6 on the cleaned catalog, pass/fail vs true recall
+Recorded run: [FSRS-6 on the cleaned catalog, pass/fail vs true recall
 (2026-11-13)](../../../ml/experiments/2026-11-13-fsrs-synthetic-v2/SUMMARY.md),
 arms A2 and B2 of the [retraining plan](retraining-plan.md). It holds two
 trained weight sets:
@@ -55,7 +89,8 @@ clients agree):
 1. Training halves the error against the true chance: defaults 27.7 pp,
    A2 14.1 pp, B2 13.8 pp. Calibration (RMSE(bins)) goes from 19.2 to 2.6 pp.
 2. Training on the true chance adds 0.3 pp over pass/fail, so pass/fail, the
-   target available for real players, is enough.
+   target available for real players, performed nearly as well in this run.
+   This does not establish its sufficiency for real players.
 3. In days to a 90% pass chance, A2 and B2 schedule a median 0.14 and
    0.10 days early, and 45–47 days early on lines whose true time is 30 days
    or more.
@@ -87,8 +122,9 @@ reviews pass; 60 hold-out clients agree):
    A1c (95% interval 0.0004 to 0.0012).
 3. A1 scores 0.7135 on exact elapsed time but 0.6127 on calendar days, the
    clock py-fsrs trains on; there A1c scores 0.6117 and the two do not differ
-   (interval includes zero). The trainer does not matter; training and
-   scheduling must use the same clock.
+   (interval includes zero). This comparison did not establish a trainer
+   advantage on the calendar-day clock; training and scheduling must use
+   compatible elapsed-time conventions.
 4. Trained weights call about 89% of reviews early; on lines whose true time
    is 30 days or more, the median error is −21 days for A1c and −11 for B1.
 
@@ -133,11 +169,16 @@ Learning sessions so that w0–w3 can be learned.
 
 ## Limits
 
-- Synthetic clients only. Under FSRS memory the model is correctly specified
-  per move, so those results are optimistic; under multiplicative memory it
-  is not FSRS at all. Which resembles real players is open.
-- Trained weights describe synthetic clients. They show that the method
-  works and must not ship as real-player weights; retrain on real data.
+- Synthetic clients only. Under FSRS memory the per-move forgetting curve
+  has the FSRS-6 form, but hidden stability also has a lapse floor and is
+  updated with the whole session's grade. A line passes with probability
+  R^M rather than R. These runs therefore do not demonstrate exact recovery
+  of an unmodified FSRS process. Multiplicative memory is not FSRS.
+  Which resembles real players is open.
+- Trained weights describe synthetic clients. They improve the recorded
+  synthetic prediction metrics, not demonstrated human retention. They must
+  not ship as real-player weights; retrain on real data. The choice of which
+  synthetic weights the demo loads remains a separate open decision below.
 - The size of the gain depends on how far the synthetic population sits from
   the defaults.
 

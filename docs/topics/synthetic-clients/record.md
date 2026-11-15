@@ -11,6 +11,11 @@
 
 This record specifies the behavioral, cognitive, and latency simulation engine for **Synthetic Clients** in TEMPO. Synthetic clients generate simulated practice histories (repetitions, move accuracy, and move hesitation times) across opening lines to train and calibrate the Review Planner and FSRS without cold-start dependencies on human user data.
 
+Status: the demo specification below is implemented by the offline package
+`ml/tempo_ml/` with the additions and limits in section 6. It defines a
+synthetic model; its realism for human players has not been validated.
+Stage 2 human calibration is future work, not a completed measurement.
+
 ---
 
 ## 2. Settled Decisions (Demo Specification)
@@ -34,7 +39,7 @@ Each synthetic client instance is defined by a vector of cognitive traits:
 $$\theta = \langle \text{baseline\_ms}, \mu, \sigma, \beta, \alpha, F, C \rangle$$
 
 - $\text{baseline\_ms} \in [150, 500]$: Physical motor, visual processing, and interface latency floor (ms).
-- $\mu \in \mathbb{R}$: Median parameter of the raw cognitive hesitation log-normal distribution.
+- $\mu \in \mathbb{R}$: Mean of the logarithm of raw cognitive hesitation measured in seconds (the median raw hesitation is $e^\mu$ seconds).
 - $\sigma > 0$: Shape / dispersion parameter of the raw cognitive hesitation distribution.
 - $\beta \ge 0$: Effort parameter dictating cognitive strain under memory uncertainty.
 - $\alpha \in [0.1, 0.5]$: Practice automaticity rate (how rapidly repetitions eliminate cognitive delay).
@@ -120,3 +125,50 @@ $$\text{total\_hesitation\_ms} = (\text{raw\_hesitation} \times 1000) \times \te
 1. **Depth Multiplier ($m_{\text{depth}}$):**
    $$m_{\text{depth}} = 1.0 + (0.02 \times \text{ply\_number})$$
 2. **Sharpness Multiplier ($m_{\text{sharpness}}$):** Evaluated from tactical volatility (e.g. branching factor and engine evaluation delta across alternatives).
+
+## 6. Implementation and open choices
+
+Source inspection: `ml/tempo_ml/simulator/clients.py` implements traits,
+archetypes, per-line memory and guided/unassisted sessions;
+`recall.py` implements per-attempt latency and recall; `practice.py` owns
+the data-collection policy. The [FSRS training record](../fsrs-training/fsrs-training.md)
+owns hidden stability updates, training, recorded experiments and differences
+from the app's runtime engine.
+
+- Every repertoire move has an independent first-attempt recall draw with
+  the same line-level R. A clean session therefore has probability R^M,
+  where M is the number of the player's moves. Hidden stability and
+  familiarity remain per line, not separate states for each move.
+- Learning follows the arrows: every move is correct and latency uses
+  R = 1. Guided sessions also increment familiarity and update hidden
+  stability. The generator adds an unassisted test after the guided session
+  duration plus three minutes. These are package policy additions to the
+  formulas above, not evidence about human learning.
+- `recall.py`, `play_move`, caps attempts at five by default. If the final
+  draw fails, no successful final attempt is represented; the move/session
+  nevertheless advances and hidden memory updates. The client docstring
+  assumes the move is found on that last attempt, but the implementation
+  does not force that outcome. Whether to force success, keep retrying or
+  represent incomplete sessions remains an unresolved implementation choice;
+  the cap is not part of the accepted demo specification.
+  **Decision needed:** what does exhausting the retry cap mean? Options are
+  to force the final attempt to succeed, continue until a correct draw, or
+  represent an incomplete session. **Provisional recommendation:** represent
+  incomplete sessions explicitly, preserving the bounded attempt count and
+  observed failures rather than claiming an unobserved success. This needs
+  an agreed completion field and rules for grading and memory updates;
+  changing those behaviors, the telemetry schema and affected datasets waits
+  for that decision. Existing experiment outputs retain their original
+  retry semantics.
+- The current CSV omits individual move events; `total_time_ms` includes
+  all attempted moves, including retries. Accuracy counts only first attempts.
+  The [review dataset record](../review-dataset/record.md) owns those fields.
+- Archetype values are benchmark settings, not fitted human cohorts.
+  `TraitDistribution` supplies bounded multivariate-normal sampling as a
+  calibration hook; no parameter-estimation or human-fit validation pipeline
+  is implemented in `ml/tempo_ml/`.
+
+The separate `backend/synthetic_clients.py` is a demo telemetry generator,
+not this package: it counts all plies, uses the backend scheduler and one
+successful retry after a failed first attempt. Do not treat its output as
+one of the package experiment datasets or as a validated human calibration.

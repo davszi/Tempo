@@ -2,7 +2,24 @@
 
 ## Scope
 
-This topic owns the starter's illustrative documentation architecture and acceptance checklist. It makes no claim about application behavior, benchmark results or completed browser checks. The human-facing explanation is `index.md`.
+This topic owns Tempo's documentation authoring example, ownership map and
+acceptance checklist. The human-facing explanation is `index.md`; it illustrates
+the shared kit, not the chess application's runtime architecture or measured
+performance. Current project setup and adoption findings live in
+[documentation adoption](../documentation/documentation.md).
+
+Tempo pins kit 5.0.0. The site's six topic pages are Home, Guide, Synthetic
+Clients, Review Dataset, System Architecture and End-to-End Flow. Records in
+other folders remain Markdown. The project explicitly sets
+`reference_listing = false`, so the upgrade does not publish every tracked
+Markdown file automatically. Existing topic and public anchor identities are
+preserved. Publication remains a separate action after local verification.
+
+The guide's slide example explains the shared reader: below 720 px the face
+uses the kit's compact layout; each chapter has at most 1 opening face, and a
+chapter with nothing to show needs 0 faces. These are authoring constraints,
+not measurements of application performance. The view menu provides
+Presentation options, and All chapters shows faces only when Slides is enabled.
 
 ## Ownership
 
@@ -33,4 +50,8 @@ The numbered HTML flows on the guide are authored directly in `index.md`. They d
 
 ## Example verdict
 
-The starter demonstrates the shared-kit architecture selected for this package. Alternatives in the human page compare ownership and maintenance costs rather than measured timing. A project adopting the starter still owns its integration and review checks.
+The guide demonstrates the shared-kit architecture selected for Tempo.
+Alternatives compare ownership and maintenance costs rather than measured
+timing. The [documentation adoption record](../documentation/documentation.md)
+states the checks actually executed and any remaining decisions; this guide
+does not turn its checklist into a claim that every check has passed.

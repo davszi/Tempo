@@ -18,7 +18,7 @@
   figure { margin: 0; background: #151f2c; border: 1px solid #344456; border-radius: 14px; overflow: hidden; }
   .diagram { overflow-x: auto; }
   .diagram:focus-visible, a:focus-visible { outline: 2px solid #a9e6c6; outline-offset: -2px; }
-  svg { display: block; width: 100%; min-width: 790px; }
+  svg { display: block; width: 100%; min-width: 900px; }
   svg text { fill: #edf3fa; font-size: 14px; font-weight: 650; }
   svg .region { fill: #172535; stroke: #34485e; }
   svg .training { fill: #1c2832; }
@@ -45,34 +45,35 @@
 <main>
   <header>
     <h1>TEMPO System Architecture</h1>
-    <p>The Python application uses SQLite to share practice history between Learning and Repeating. An offline training pipeline supplies the general model used by the review planner.</p>
+    <p>The React browser and Python backend use SQLite to share practice history between Learning and Repeating. Offline FSRS fitting is implemented separately; the app consumes supplied weights rather than importing new experiment output automatically.</p>
   </header>
   <section aria-labelledby="flow-title">
     <h2 id="flow-title">Components and data flow</h2>
-    <p><a href="#component-diagram">Figure 1</a> shows how the controllers exchange data and how the trained model reaches the ML engine.</p>
+    <p><a href="#component-diagram">Figure 1</a> shows component data flow and the separate offline fitting path. Local HTTP is implemented through Vite's API proxy or the backend serving the built frontend. Hosted HTTPS and persistent deployment storage remain proposals.</p>
     <figure id="component-diagram">
       <div class="diagram" role="region" aria-label="Scrollable system architecture diagram" tabindex="0">
         <svg viewBox="0 0 970 422" role="img" aria-labelledby="diagram-title diagram-desc">
-          <title id="diagram-title">TEMPO components and proposed deployment</title>
-          <desc id="diagram-desc">The proposed browser frontend exchanges session and move data over HTTPS with the Practice controller on a single Python application host. The SQLite file is on persistent storage on that host. The Practice controller exchanges line and practice data with SQLite and requests review lines from the ML controller. The ML controller exchanges player data with SQLite and requests suggestions from the ML engine. Offline, synthetic clients generate a CSV. A planned training script will fit a model for the ML engine.</desc>
+          <title id="diagram-title">TEMPO local components and offline FSRS fitting</title>
+          <desc id="diagram-desc">The React browser exchanges session and move data over local HTTP with the Python practice backend. The Practice and ML controllers share a local SQLite file. The ML engine selects due repertoire lines and updates FSRS cards. Offline, the maintained simulator generates CSV data and the Python trainer fits FSRS weights. App weight selection is explicit, not an automatic import of experiment output. Hosted HTTPS remains proposed.</desc>
           <defs>
             <marker id="request-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 8 4 0 8Z" fill="#8fc8f3"/></marker>
             <marker id="response-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 8 4 0 8Z" fill="#d4dce5"/></marker>
             <marker id="transfer-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 8 4 0 8Z" fill="#a9e6c6"/></marker>
           </defs>
+          <rect width="970" height="422" fill="#101822"/>
           <rect class="region" x="16" y="48" width="196" height="118" rx="12"/>
           <rect class="region" x="345" y="16" width="609" height="256" rx="12"/>
           <rect class="region training" x="16" y="302" width="938" height="104" rx="12"/>
           <text class="region-title" x="34" y="72">Player device</text>
           <text class="region-title" x="365" y="44">Single application host · Python backend</text>
-          <text class="region-title" x="34" y="331">Offline training</text>
+          <text class="region-title" x="34" y="331">Offline FSRS fitting · separate package</text>
           <g text-anchor="middle">
             <rect class="node" x="42" y="82" width="150" height="52" rx="8"/><text x="117" y="113">Chess UI in browser</text>
-            <text class="label" x="117" y="153">Planned frontend</text>
-            <text class="label" x="269" y="65">HTTPS · planned</text>
+            <text class="label" x="117" y="153">React frontend</text>
+            <text class="label" x="269" y="65">Local HTTP</text>
             <rect class="node" x="386" y="82" width="150" height="52" rx="8"/><text x="461" y="113">Practice controller</text>
             <rect class="node" x="770" y="82" width="160" height="52" rx="8"/><text x="850" y="113">ML controller</text>
-            <rect class="node" x="386" y="207" width="150" height="48" rx="8"/><text x="461" y="227">SQLite file</text><text class="label" x="461" y="244">Persistent storage</text>
+            <rect class="node" x="386" y="207" width="150" height="48" rx="8"/><text x="461" y="227">SQLite file</text><text class="label" x="461" y="244">Local practice history</text>
             <rect class="node" x="770" y="207" width="160" height="48" rx="8"/><text x="850" y="227">ML engine</text><text class="label" x="850" y="244">FSRS and review planner</text>
 
             <path class="request" d="M192 97H386" marker-end="url(#request-arrow)"/><text class="label" x="289" y="89">Session or move request</text>
@@ -88,44 +89,44 @@
 
             <rect class="node training-node" x="34" y="349" width="152" height="42" rx="8"/><text x="110" y="375">Synthetic clients</text>
             <rect class="node training-node" x="254" y="349" width="182" height="42" rx="8"/><text x="345" y="375">Synthetic history CSV</text>
-            <rect class="node training-node" x="504" y="349" width="176" height="42" rx="8"/><text x="592" y="375">Python training script</text>
-            <rect class="node training-node" x="752" y="349" width="178" height="42" rx="8"/><text x="841" y="375">Trained general model</text>
+            <rect class="node training-node" x="504" y="349" width="176" height="42" rx="8"/><text x="592" y="375">Python FSRS fitter</text>
+            <rect class="node training-node" x="752" y="349" width="178" height="42" rx="8"/><text x="841" y="375">FSRS weights CSV</text>
             <path class="transfer" d="M186 370H254" marker-end="url(#transfer-arrow)"/><path class="transfer" d="M436 370H504" marker-end="url(#transfer-arrow)"/><path class="transfer" d="M680 370H752" marker-end="url(#transfer-arrow)"/>
-            <path class="transfer" d="M850 349V255" marker-end="url(#transfer-arrow)"/><text class="label" x="861" y="292" text-anchor="start">Load model</text>
+            <path class="transfer" d="M850 349V255" marker-end="url(#transfer-arrow)"/><text class="label" x="861" y="292" text-anchor="start">Select weights</text>
           </g>
         </svg>
       </div>
-      <figcaption><strong>Figure 1.</strong> Solid blue arrows are requests, dashed arrows are responses, and green arrows show offline data and model transfers. Diagram source is the architecture topic’s <a href="component-flow.mmd">component flow</a>.</figcaption>
+      <figcaption><strong>Figure 1.</strong> Solid blue arrows are requests, dashed arrows responses, and green arrows offline data or weight transfers. The app's final weight selection is explicit, not automatic. Diagram source is the architecture topic's <a href="component-flow.mmd">component flow</a>; this HTML owns the drawing.</figcaption>
     </figure>
   </section>
   <section aria-labelledby="modes-title">
     <h2 id="modes-title">Learning and Repeating</h2>
     <div class="modes">
-      <article><h3>Learning</h3><p>The player chooses a line. The Practice controller loads it and the board shows the expected move with an arrow. A correct move advances the line. A wrong move keeps the same position for a guided retry. Completing the session adds the line to the player’s repertoire.</p></article>
-      <article><h3>Repeating</h3><p>The planner chooses a due line and the app opens it automatically. The player recalls the moves without hints. A wrong move is taken back immediately so the player can retry from the same position.</p></article>
+      <article><h3>Learning</h3><p>The player chooses a learnable line and the browser supplies its family side. Backend/demo callers may choose White, Black or Both. The board shows the expected move with an arrow. Correct moves advance; wrong moves retain the same position. First completion adds the line to the repertoire; later Learning preserves the schedule.</p></article>
+      <article><h3>Repeating</h3><p>Normal Start review asks the planner for a due line. The current app also allows direct-line reviews and reveals the expected move after the first mistake. These are unresolved deviations from the settled planner-only/no-hints contract. Wrong moves leave the position unchanged for retry. See the <a href="../frontend/frontend.md#unresolved-repeating-behavior">unresolved behavior record</a>.</p></article>
     </div>
   </section>
   <section aria-labelledby="scheduling-title">
     <h2 id="scheduling-title">Review scheduling</h2>
-    <p>An empty repertoire directs the player to Learning. A player who has learned a line can receive a first suggestion from the initial FSRS schedules. The planner picks the most overdue line and uses the earliest learned line to break ties. When nothing is due, the UI shows that state.</p>
-    <p>The first Learning completion makes the line due immediately. After Repeating, the ML engine grades the recorded moves and uses Py-FSRS to calculate stability and the next review date.</p>
+    <p>An empty repertoire directs the player to Learning. Normal review selects the earliest due line, then earliest learned date and lowest line ID to break ties. When nothing is due, the UI shows that state. The selector reads repertoire rows, not past suggestions or the full event history.</p>
+    <p>First Learning creates an unreviewed card due immediately. After Repeating, any wrong attempt gives Again; clean reviews use baseline-adjusted mean time per distinct move. The web baseline is zero and timing includes idle/waiting time. Py-FSRS updates the saved card and due date. Final attempt, completion and schedule save together. A scheduled due date is not an exact target-recall crossing.</p>
   </section>
   <section aria-labelledby="ownership-title">
     <h2 id="ownership-title">Component responsibilities</h2>
     <dl>
-      <dt>Chess UI</dt><dd>Shows the board, line selection, Learning arrows, and Repeating feedback.</dd>
+      <dt>Chess UI</dt><dd>React catalog, lessons, schedule, repertoire and settings; renders API session state and family-side practice.</dd>
       <dt>Practice controller</dt><dd>Loads lines, starts sessions, checks moves, and records practice events.</dd>
       <dt>SQLite</dt><dd>Stores opening lines, real player practice history, and past suggestions.</dd>
-      <dt>ML controller</dt><dd>Fetches the player’s repertoire, practice history, and suggestions, calls the engine, and records the suggested line.</dd>
+      <dt>ML controller</dt><dd>Loads repertoire for selection, records suggestions and completes reviews using saved cards and current session attempts.</dd>
       <dt>ML engine</dt><dd>Chooses a due line, grades completed reviews, and uses Py-FSRS to update stability and the due date.</dd>
-      <dt>Offline data</dt><dd>Generates synthetic reviews for training. The demo uses a supplied FSRS weights file.</dd>
+      <dt>Offline data</dt><dd>The maintained package generates, fits and evaluates FSRS-6. The backend presentation generator is separate. The app uses supplied weights, without live fitting or automatic import.</dd>
     </dl>
     <p style="margin-top: 14px"><a href="system-architecture.md">Read the architecture record</a></p>
   </section>
   <section id="live-demo" aria-labelledby="demo-title">
     <h2 id="demo-title">Run the demo</h2>
     <p>From the repo root in PowerShell, run <code>.\backend\run-demo.cmd</code> for a clean review or <code>.\backend\run-demo.cmd --side black --grade Again</code> to show a wrong move and retry.</p>
-    <p>Open <code>backend/tempo_demo.sqlite</code> in DB Browser for SQLite and filter <code>practice_events</code> and <code>player_lines</code> by the player ID printed by the demo.</p>
+    <p>Open <code>backend/tempo_demo.sqlite</code> in DB Browser for SQLite and filter <code>practice_events</code> and <code>player_lines</code> by the player ID printed by the demo. The terminal uses simulated timing. This explanation follows source inspected at <code>5d6b81c</code> on 2026-11-15; the documentation audit did not rerun application runtime checks.</p>
   </section>
 </main>
 </body>

@@ -11,7 +11,7 @@ dependencies = ["numpy>=1.26"]
 
 [project.optional-dependencies]
 train = ["scipy>=1.11", "pandas>=2.1"]
-# fsrs (py-fsrs) is only used to check the FSRS-6 formulas against the reference package.
+# py-fsrs supplies reference-formula tests and the retained historical A1 optimizer run.
 test = ["pytest>=8", "scipy>=1.11", "pandas>=2.1", "fsrs==6.3.2"]
 
 [tool.setuptools.packages.find]

@@ -2,6 +2,8 @@ title = "Tempo"
 gh_repo = "https://github.com/davszi/Tempo"
 gh_ref = "main"
 chapter_reader = true
+reference_listing = false
+tooling_roots = []
 
 [[nav]]
 label = "Home"

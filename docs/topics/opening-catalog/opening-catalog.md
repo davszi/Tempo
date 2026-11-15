@@ -12,13 +12,22 @@ library's lines come from and how their sides were first classified is in
 
 ## Status
 
-Implemented in the backend and the frontend Learning list on 2026-11-13; see
-[implementation](#implementation). The decisions were made in a catalog design
-review on 2026-11-13 and still await team confirmation; see
-[open questions](#open-questions). The ML opening scripts in `ml/` are
-unchanged and keep their own CSV files.
+Implemented in the backend and frontend Learning flow; see
+[implementation](#implementation). The catalog review was recorded on
+2026-11-13. Same-family parent links and startup migration were settled with
+the user, as recorded in [the worklog](../../worklog.md); the other catalog
+choices still await team confirmation. See [open questions](#open-questions).
+The current `ml/tempo_ml/catalog.py` reads this SQLite catalog; historical
+opening-building scripts and their CSV workflow are described in
+[opening library](../opening-library/opening-library.md).
 
 ## Decisions
+
+The before/after catalog counts and references to the old schema in this
+section describe the 2026-11-13 design review, not the present state of an
+arbitrary local database. [Evidence](#evidence) records the original inputs,
+hashes and checks. The current mechanisms are listed under
+[implementation](#implementation).
 
 ### 1. A family belongs to White or Black
 
@@ -26,10 +35,12 @@ unchanged and keep their own CSV files.
 `both` and empty values are removed.
 
 - A family named "Defense" is a Black opening.
-- Four Knights Game, the one family labelled `both` today (48 lines), becomes
+- Four Knights Game, the one family labelled `both` in that review (48 lines), becomes
   `white`.
-- A player can still practise any line from White, Black or both sides. That
-  choice belongs to the session (`practice_events.side`), not to the catalog.
+- The backend and terminal demo can practise a line from White, Black or both
+  sides. The current browser automatically uses the family side; it exposes
+  no session-side selector. Session perspective belongs to
+  `practice_events.side`, not to the catalog.
   Practising the other side is a learning aid for knowing the replies; it does
   not change which side a line belongs to.
 
@@ -133,7 +144,7 @@ the **same family** whose moves are a prefix of this line's moves. The
 backend recomputes it whenever the catalog changes. Families stay flat; the
 tree runs inside them.
 
-In the demo database, after the merges of decision 3, 1,774 of 2,719 lines
+In the 2026-11-13 demo database, after the merges of decision 3, 1,774 of 2,719 lines
 have a parent and 945 are roots.
 
 **Why:** the tree shows how lines branch, so lines with the same name sit at
@@ -169,7 +180,7 @@ NOT EXISTS (SELECT 1 FROM opening_lines AS c WHERE c.parent_line_id = o.line_id)
   becomes a heading when the catalog gains a longer line. Demo line 982 is such
   a heading and stays reviewable.
 
-In the demo database, 1,889 lines can be learned and 830 are headings.
+In the 2026-11-13 demo database, 1,889 lines can be learned and 830 are headings.
 Learnable lines are 7 to 36 plies long, median 11.
 
 **Why:** the derived rule stays correct when the catalog changes, without a
@@ -186,11 +197,15 @@ such as the Najdorf with 6.Bg5, on its own before its subvariations.
 `Store` rebuilds the two opening tables when it opens a database in an older
 layout: the single-table catalog with an `opening_family` column, or the
 two-table catalog with `side_in_games` and no `parent_line_id`. It keeps every
-line ID and family ID, folds Accepted and Declined families into their gambit,
+line ID and each surviving canonical family's ID, folds Accepted and Declined families into their gambit,
 sets each family's side by decisions 1 and 3, and computes `parent_line_id`.
 Practice history and progress are untouched. The rebuild runs in one
 transaction and rolls back if a reference would break or a family's side
 cannot be decided. It replaces the family-split migration added in `0d2dc08`.
+
+Merged Accepted/Declined families do not keep separate IDs; a new canonical
+family receives an ID. The older single-table catalog has no family IDs to
+preserve. `Store._rebuild_catalog` implements these distinctions.
 
 **Why:** the backend writes practice data into `backend/tempo_demo.sqlite`, so
 contributors' local copies differ from the committed one. Upgrading at start-up
@@ -231,13 +246,14 @@ CREATE INDEX opening_lines_parent ON opening_lines (parent_line_id);
 | `backend/demo.py` | Picks the first learnable line for the terminal demo |
 | `backend/tempo_demo.sqlite` | Upgraded by decision 9: 82 families (43 white, 39 black), 2,719 lines, practice data unchanged |
 | `frontend/src/lib/learning.ts` | `distinguishingMoves` labels same-name lines from the move where they first differ, for example "7…Be6 8.f3" (decision 5) |
-| `frontend/src/components/LearningPage.tsx`, `frontend/src/lib/practiceApi.ts` | The Learning list shows learnable lines only, with their distinguishing moves |
+| `frontend/src/lib/catalog.ts`, `frontend/src/components/LearnPage.tsx`, `frontend/src/components/FamilyPage.tsx`, `frontend/src/lib/practiceApi.ts` | Group the API catalog into families and show learnable lines with distinguishing moves; related lessons use shared opening plies |
 
-Not changed: `ml/ml_1000bots/openings/` reads its own CSV files, not the
-database, and keeps `side_in_games` there. The 300-client generator
-(`ml/tempo_ml/catalog.py`, formerly under `ml/ml_300bots/`) reads the
-database and, since the `ml/` restructure, uses only `family_side`. The opening
-library's `family_side_evidence.csv` remains the source of the game evidence.
+The former `ml/ml_1000bots/openings/` workflow read separate CSV files and kept
+`side_in_games` there. That folder was removed on 2026-11-14 and is retrievable
+at `825e9d8`; it is not a current implementation path. The package generator's
+`ml/tempo_ml/catalog.py` reads every database line and uses `family_side`; it
+does not apply the app's leaf-only Learning restriction. Historical
+game-evidence sources belong to the [opening library record](../opening-library/opening-library.md).
 `backend/synthetic_clients.py` reads the new tables unchanged; with
 `--one-line-per-family` it now draws from 82 families instead of 91.
 `backend/synthetic_reviews.csv` was not regenerated.
@@ -288,6 +304,7 @@ Implementation checks, 2026-11-13, Python 3.13.5 with fsrs installed from
 
 ## Open questions
 
-- The team has to confirm these decisions, as the
-  [opening library open questions](../opening-library/opening-library.md#open-questions)
-  ask for the side labels.
+- The team has to confirm the catalog choices other than the same-family
+  parent-link rule and startup migration, which the worklog records as settled.
+  The [opening library open questions](../opening-library/opening-library.md#open-questions)
+  include confirmation of side labels.

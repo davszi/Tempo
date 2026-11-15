@@ -12,6 +12,35 @@ Source: official project page, https://www.core-network.ai/ai-team-projects/temp
 
 Follow the [task routes](../AGENTS.md#read-before-the-relevant-action) before the action they govern.
 
+## Implementation snapshot and unresolved differences
+
+Source review on 2026-11-15 covers the local integration of `feature/frontend-learning`
+at `c12eb50` with main's ML work at `ea3d01d`. These are implementation facts,
+not additional accepted product decisions:
+
+- The React app calls the Python API for catalog, Learning, Repeating and
+  repertoire data. It includes resumable lessons, a 30-day review schedule,
+  repertoire history and appearance settings. The browser stores a demo player
+  identifier, lesson progress and appearance locally; it does not implement
+  accounts or authentication. [Frontend](topics/frontend/frontend.md) owns the
+  routes, API and storage boundaries.
+- The current browser uses the opening family's side. The backend and terminal
+  demo also support White, Black and Both. The catalog has 2,719 lines in 82
+  families after cleaning and family regrouping; the dated evidence and
+  learnability rule are in [opening catalog structure](topics/opening-catalog/opening-catalog.md).
+- The runtime chooses a due repertoire line with its existing FSRS scheduler.
+  Offline model fitting and the synthetic-client simulator live in `ml/tempo_ml/`.
+  The dated [FSRS experiments](topics/fsrs-training/fsrs-training.md) are synthetic
+  evidence; their diagnostic true-recall weights are not the app's runtime weights.
+- The implementation now permits a selected-line review and reveals the expected
+  move after a review mistake. Both conflict with the settled Repeating behavior
+  in sections 4 and 9 below. The [frontend's unresolved behavior choices](topics/frontend/frontend.md)
+  track the decision needed; this documentation pass does not approve either change.
+
+The [product backlog](topics/product/product.md) separates remaining acceptance
+work from features already implemented. The [documentation adoption record](topics/documentation/documentation.md)
+owns kit version, conformance findings and verification scope.
+
 ## 1. TEMPO in one sentence
 
 TEMPO teaches you an opening with arrows, then tests you without them, and its AI learns your personal memory well enough to choose the right line for you to practise each day.
@@ -212,23 +241,32 @@ npm run dev
 
 With the Python backend running, open `http://127.0.0.1:5173`. Stop the server with Ctrl+C. Run `npm run build` in `frontend/` for TypeScript checking and a production build; `npm run typecheck` checks TypeScript alone. Generated `dist/` and installed `node_modules/` are ignored. Frontend commands do not build the documentation website.
 
-Run `npm test` in `frontend/` for the Learning demo's sample-line, guided-retry and castling checks. This uses Node's built-in test runner and experimental TypeScript stripping on the recorded Node 22 environment.
+Run `npm test` in `frontend/` for the helper and sample-line tests, including memory labels, schedule grouping, variations, guided retry and castling. These are not HTTP or integrated browser tests. The local merge checks used Node.js 24.13.0; earlier records name their original environments.
 
 ### Documentation website
 
-Run from the project root after initializing the submodule. Use Python 3.12 or the later version supported by the pinned kit.
+The project pins Documentation Kit 5.0.0. Run from the project root after
+`git submodule update --init --recursive`. Use Python 3.12 or a later supported
+version and Node.js for formula checking. Keep the documentation environment
+separate from the application environment. On Windows:
 
-```bash
-python -m pip install -r .docs-kit/requirements.txt
-python .docs-kit/docsite.py build --project .
-python .docs-kit/docsite.py build --project . --check
-python .docs-kit/docsite.py lint --project .
+```powershell
+python -m venv .build/docs-env
+.build/docs-env/Scripts/python.exe -m pip install -r .docs-kit/requirements.txt
+.build/docs-env/Scripts/python.exe .docs-kit/docsite.py build --project .
+.build/docs-env/Scripts/python.exe .docs-kit/docsite.py build --project . --check
+.build/docs-env/Scripts/python.exe .docs-kit/docsite.py build --project . --check-reader
+.build/docs-env/Scripts/python.exe .docs-kit/docsite.py lint --project . --strict
 ```
+
+On POSIX, use `.build/docs-env/bin/python` for the same commands. The interpreter
+used for this adoption is recorded in the documentation adoption record; do not
+assume a fresh machine already has the dependencies installed.
 
 For an iteration, append `--page guide` to build; this does not validate unrelated output. For browser review:
 
 ```bash
-python -m http.server 8321 --bind 127.0.0.1 --directory .build/docs
+.build/docs-env/Scripts/python.exe -m http.server 8321 --bind 127.0.0.1 --directory .build/docs
 ```
 
 Open `http://127.0.0.1:8321/html/guide.html` through the approved browser surface. Check the listener's owner before reuse. Review wide, narrow and paired reading; inspect keyboard focus, reduced motion, no-JavaScript fallback and print. Consult the kit README for shared-engine development checks; Node.js is needed only for applicable JavaScript checks, not ordinary content builds.
@@ -236,6 +274,11 @@ Open `http://127.0.0.1:8321/html/guide.html` through the approved browser surfac
 ## Documentation hosting
 
 The [GitHub Pages workflow](../.github/workflows/pages.yml) checks out the pinned Documentation Kit, builds `.build/docs`, and runs strict lint before deploying. It publishes from `main`. The Pages artifact contains the generated documentation site.
+
+`reference_listing = false` preserves the existing publication scope during
+the 5.0 upgrade. Kit 5 can render tracked Markdown as Reference pages automatically;
+that broader listing has not been approved for this site. Existing topic pages
+keep their routes. A local build or commit is not a GitHub Pages deployment.
 
 A repository administrator enables the workflow under **Settings → Pages → Build and deployment → Source → GitHub Actions**. Once the first deployment succeeds, the workflow's `github-pages` environment shows the live URL.
 

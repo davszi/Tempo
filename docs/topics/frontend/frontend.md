@@ -1,76 +1,109 @@
-# Frontend dashboard milestone
+# Frontend application
 
 ## Current Learning and Review flow
 
-The React app uses the Python API in `backend/web.py` for the opening catalog, move checks, Learning completion, and Review. Completing a line saves it to the player's SQLite repertoire. The review planner selects the line, the board hides the move arrow, and completion stores the FSRS grade and next review date. The frontend uses a browser-local demo player ID. The prototype milestones below describe earlier revisions.
+The React application in `frontend/` uses the Python HTTP API in `backend/web.py`. It loads the SQLite opening catalog and browser player's repertoire, starts Learning and Repeating sessions, submits moves, and shows the saved schedule and review history. This describes source at `5d6b81c`, inspected on 2026-11-15; it does not settle product choices left open in [project context](../../PROJECT_CONTEXT.md).
 
-Since 2026-11-13 the Learning list shows only lines the backend marks `learnable`: lines that no other line in their family extends. When several of those lines share a name, each card shows the moves from where it first differs from the others, for example "7…Be6 8.f3", computed by `distinguishingMoves` in `frontend/src/lib/learning.ts`. [Opening catalog structure](../opening-catalog/opening-catalog.md) owns these rules. The change has a unit test in `frontend/tests/learning.test.mjs`. With Node.js 26.13.1, `npm test` passed 4 tests and `npm run build` passed; the live Learning page listed 1,889 lines with distinct labels on same-name lines and no console errors.
+The browser currently lets the player choose a review line and shows an arrow after the first review mistake. Both behaviors conflict with the settled Repeating contract. [Unresolved Repeating behavior](#unresolved-repeating-behavior) records the differences and decision needed.
 
 ## Scope and ownership
 
-Zeel owns the React frontend in `frontend/`. The frontend implements the dashboard, navigation, opening library and a guided Learning demo using sample data. The combined Repeating & reviews destination and settings are placeholders. Backend, database and ML implementation are outside this change.
+Zeel owns the React frontend. The app presents a dashboard, opening families and variations, guided lessons, a review queue, a repertoire and appearance settings. Backend, database and ML mechanisms have their own [architecture](../system-architecture/system-architecture.md), [schema](../database-schema/database-schema.md) and [training](../fsrs-training/fsrs-training.md) records. Setup and run commands belong to [project context](../../PROJECT_CONTEXT.md#build-and-review).
 
-## Learning library and guided board
+## Screens and practice
 
-On 2026-11-12, Zeel supplied an opening-card reference image and requested its layout idea while preserving TEMPO's existing colors and fonts. Learning mode groups board-preview cards under King's Pawn Openings, with White-side labels, learned-line counts, guided-move counts and functional bookmarks. Ruy López, Italian Game and Scotch Game are frontend sample lines, not a query of the database catalog. Retention percentages from the reference image are not included because no model-backed values are available.
+- **Dashboard:** due-review actions, unfinished lessons, and a selectable 30-day schedule with overdue lines grouped into today. It displays saved due dates; it does not simulate future reviews or refitting.
+- **Learning:** search by family, variation or ECO code; filter White, Black or all families; open a family to select a learnable variation. Family previews use a shortest catalog line. Only leaf lines can start Learning; [opening catalog structure](../opening-catalog/opening-catalog.md) owns that rule and distinguishing labels for same-name lines.
+- **Lesson:** the browser automatically uses the family's side. Learning shows an arrow and move notation, accepts click, keyboard and drag interactions, offers promotion pieces, and animates the opponent's reply after a correct move. Wrong moves leave the position unchanged. Completion marks the line learned and refreshes repertoire data. Related variations are ranked by shared opening plies, then length; the next suggestion is the first unlearned line in that order.
+- **Repeating:** the main Start review action asks the planner for a due line. The browser selects its family's side automatically. Per-line Review and Practise actions also start a chosen repertoire line, including one not yet due. A first mistake reveals the expected move with an arrow until a correct retry. A second mistake in the session offers re-learning or continuing; continuing disables further hints. Choosing re-learning closes the review as Again before starting Learning. The backend accepts early closure after any recorded mistake; the browser offers it after the second.
+- **Repertoire:** learned lines and unfinished local lessons, search and side filters, due/fresh/learning tabs, moves, dates, recall, stability and completed review grades. Unstarted lines are browsed through Learning.
+- **Settings:** nine themes and six recoloured Lichess piece sets, with credits. Desktop navigation has a Settings control; mobile navigation includes Settings directly. The current shell has no mobile drawer.
 
-Selecting a card opens a White-side guided lesson. An SVG arrow points from the prescribed piece's source square to its destination, with the same coordinates written next to the board. The learner clicks/taps a piece and destination, or uses Tab and Enter. A wrong move leaves the position unchanged and displays retry feedback. A correct White move includes the scripted Black reply and updates the arrow. Castling updates both king and rook. Restart resets the line. Completion marks the line learned in this Learning visit; returning to the library preserves those marks and bookmarks until the Learning page unmounts or the browser reloads.
+The backend still accepts White, Black or Both sessions. The browser exposes no side choice: `App.startLearning` and `App.startReview` use `family_side`. This UI choice is implemented behavior, not a newly settled product rule.
 
-`chess.js` 1.4.0 validates sample positions and supplies move coordinates. `frontend/src/lib/learning.ts` is a demo adapter only: real session checking, completion records and history remain the backend Practice controller's responsibility. No backend files or authentication flow are changed. Only the White-side sample experience is implemented; no data is persisted or submitted to the backend, and the arrow is confined to Learning mode.
+## Identity and persistence
 
-Validation: `npm test` passed three tests covering every sample line and preview, rejected off-line moves, automatic replies and castling. `npm run build` passed TypeScript and production bundling. Browser checks completed a Ruy López session, rejected e2-e3 without changing position, played Black's reply, updated Learned to 1/1, toggled an Italian bookmark, and advanced using Enter on mobile. Visual checks used 1440-by-1000 desktop and 390-by-844 mobile layouts, with no horizontal page overflow on mobile and no browser console errors. Captures are `.build/frontend-review/learning-library.jpg` and `.build/frontend-review/learning-session.jpg`. These are frontend demo checks, not verification of backend integration or training results.
+`frontend/src/lib/practiceApi.ts` creates a UUID in browser `localStorage` under `tempo-player` and sends it as `player_id` on every POST. This is a local demo identity, not authentication or an account system. Clearing it selects a new player identity; it does not delete the old player's SQLite records.
 
-Navigation update on 2026-11-12: Repeating mode and Review planner share the `practice` destination, labeled Repeating & reviews (Review on mobile). Settings is absent from the main and bottom navigation; the bottom-left profile avatar opens it. Mobile also exposes a profile button in the top bar, and the drawer retains the profile entry. Settings remains directly addressable at `#settings`. `npm run build` passed. Browser checks verified opening Settings from the desktop and drawer profile buttons, the combined mobile review destination, and returning to Dashboard. Preview: `.build/frontend-review/dashboard-profile-navigation.jpg`.
+SQLite owns learned lines, move attempts, completed reviews and schedules. `tempo-lesson-progress` stores unfinished Learning positions in this browser; resuming opens a new backend session with `resume_at`. The backend validates that the position is inside the line and belongs to the selected side. Active sessions remain in backend memory: one per player per app process. Starting another session replaces the previous one; restarting the backend loses active sessions. Leaving a review through ordinary navigation does not complete or grade it.
 
-## Design source
+`tempo-appearance` stores theme and piece choices; `tempo-learning-side` stores the Learning family filter. Local preferences and unfinished lessons do not synchronize across browsers. No password handling is implemented.
 
-Adapted from the user-supplied `Tempo - Chess Learning.zip`, specifically its `src/App.tsx` and `src/index.css`, exported from Figma file `RuaZoTR5SPWuefaVP1TYHO`, Code Layer `2:3`. Dashboard colors, typography, Lucide icons, chess glyphs, cards and chart structure come from that export. The authentication photograph is not used on the dashboard. The original archive stays unchanged in Downloads.
+## HTTP interface
 
-The export's local-storage account/password implementation, lesson logic, review scheduling and Figma-specific development scripts are not included. The app opens directly into the dashboard with sample data. No authentication or backend requests are implemented.
+`backend/web.py:30–69` owns dispatch and request validation; `frontend/src/lib/practiceApi.ts` owns browser requests and response types. All POSTs require a JSON object with a UUID `player_id`; the server normalizes it to hexadecimal. The body must contain 1 to 4,096 bytes. Additional required fields are listed below; unlisted request fields are ignored.
 
-## Requested simplification
+| Method and path | Additional fields | Result and owner |
+|---|---|---|
+| `GET /api/lines` | None; no player ID | Catalog metadata and `learnable`, without moves or player progress; `Store.list_lines` |
+| `POST /api/catalog` | None | Every catalog line, moves, parent, family side, `learnable` and player `learned`; `Store.learning_catalog` |
+| `POST /api/learning` | `line_id`, `side`; optional `resume_at` | New Learning session; `PracticeController.start_learning` |
+| `POST /api/review` | None | Planner-selected session awaiting side, or `learn_first` / `none_due`; `start_repeating` |
+| `POST /api/review/side` | `session_id`, `side` | Select White, Black or Both for a waiting review; `choose_review_side` |
+| `POST /api/review/line` | `line_id` | Chosen learned-line review from family side; `start_review_line`; see the unresolved deviation below |
+| `POST /api/review/abandon` | `session_id` | Close a running review with a recorded mistake, save Again and reschedule; `abandon_review` |
+| `POST /api/move` | `session_id`, `move_index`, `move_uci` | Correctness and updated session; completion may include `fsrs_rating`; a wrong review move includes `expected_move`; `submit_move` |
+| `POST /api/repertoire` | None | Server `now`, `target_recall`, learned lines with dates, stability, current recall and completed review history; `repertoire` |
 
-On 2026-11-12, Zeel also requested removal of Opening lines learned, Reviews due today and the entire Upcoming reviews section. The dashboard now contains the welcome area and Start learning / Start review actions. Removed the unused schedule component, date helpers, progress types, mock practice data and associated styles. The sample profile remains. TypeScript checking and the production build passed via `npm run build`; the refreshed browser confirmed the removed content is absent and the remaining actions render. Preview capture: `.build/frontend-review/dashboard-actions-only.jpg`.
+Session responses contain status, session and line IDs, name, mode, side, available sides, move index, total plies, played moves and a Learning-only `hint`. The move index is zero-based across the full line. The browser chooses a side after a planner response before opening the board. Both-side sessions advance one ply; single-side sessions include the opponent reply automatically.
 
-Follow-up sizing: learning and review actions use a 160px minimum height on desktop and 140px on mobile, larger icons and headings, and increased spacing. Upcoming reviews sizes to its content, with compact day tiles instead of stretching to fill a fixed-height row. The planner link aligns to the right on desktop. `npm run build` passed after this CSS change. Browser checks at 1280-by-850 and 390-by-844 confirmed the intended action heights and no horizontal page overflow; the desktop schedule was approximately 237px tall. These dimensions describe this checked layout, not a performance claim. Preview: `.build/frontend-review/dashboard-sized.jpg`.
+The handler returns JSON errors: 400 for missing/invalid request fields and controller validation failures, 404 for unknown routes or missing lines and sessions. Browser requests use relative `/api/` paths. Vite development and preview proxy them to `http://127.0.0.1:8000`; the Python server can also serve built `frontend/dist`. There is no HTTPS termination or authentication layer in this local server.
 
-On 2026-11-11, Zeel requested removal of the Memory retention chart, Accuracy, Review streak and Skills mastered cards, and the frontend preview banner. Those sections and their unused calculations, mock history and styles were removed. Upcoming reviews now spans the available content width. The welcome card, learned-line and due-review totals, actions and navigation remain.
+## Memory displays and limits
 
-Validation after removal: `npm run build` passed TypeScript checking and the production build. The refreshed live dashboard's accessibility tree confirmed that all five requested items are absent and the remaining dashboard sections are present. A preview capture is saved at `.build/frontend-review/dashboard-simplified.jpg`.
+The repertoire endpoint computes current recall and stability from the saved Py-FSRS card. Both are null before the first review. The browser uses scheduled `next_review_at` for due labels and calendar-day countdowns, presents UTC timestamps in the browser's local time zone, and refreshes repertoire data when memory screens open or sessions complete. Due labels update against the browser clock each minute; recall percentages remain snapshots from the last request.
+
+The UI calls the due-date countdown “days until forgetting.” Its implemented meaning is time until the scheduled review, not time until memory is lost. Do not claim that every due timestamp is the exact instant recall crosses the target: FSRS learning/relearning steps and scheduler settings also affect due dates. The local app passes no custom learning steps or fuzzing settings to Py-FSRS. Exact installed dependency defaults were not inspected in this audit.
+
+## Unresolved Repeating behavior
+
+**Question:** should Repeating retain the settled requirements in [project context](../../PROJECT_CONTEXT.md#9-the-earlier-prototype), or should the merged browser behavior become an explicitly revised contract?
+
+Verified source at `5d6b81c` shows two deviations:
+
+- **Line selection:** `PracticeController.start_review_line` (`backend/practice_controller.py:72–85`) and `/api/review/line` allow a player to choose a learned line. Dashboard cards, the queue, repertoire, family page and Learning completion call this path. Only the normal Start review action records a planner suggestion through `MLController.suggest`.
+- **Hints:** `PracticeController.submit_move` (`backend/practice_controller.py:218–221`) returns the expected move after a wrong Repeating attempt. `LessonPage` (`frontend/src/components/LessonPage.tsx:48–49,87–99`) uses it for the first-mistake arrow and notation. The settled contract says no hints and no arrows.
+
+Options:
+
+- Restore the settled contract: planner selection only for Repeating and retry feedback without revealing the move. Keep line choice and arrows in Learning.
+- Explicitly revise the product contract to permit chosen-line reviews and a first-mistake hint, documenting the effect on graded review telemetry.
+- Keep strict planner-selected Repeating and design a separate optional guided practice flow, deciding whether its telemetry updates the same schedule.
+
+Recommendation: restore the settled contract unless the user explicitly chooses revised behavior. No source change is made by this documentation pass. The implementation decision and any changed review acceptance checks wait on that answer; no inspected record explicitly supersedes the settled contract. The product to-do requesting direct Repeating access is also in conflict and must be resolved with it.
 
 ## Structure
 
-- `frontend/src/App.tsx`: page selection, hash-based navigation, mobile menu and placeholder destinations.
-- `frontend/src/components/`: dashboard, navigation and logo components.
-- `frontend/src/components/LearningPage.tsx` and `ChessBoard.tsx`: opening library, guided session and reusable board with SVG arrows.
-- `frontend/src/data/openings.ts`: sample lines, preview positions and move explanations.
-- `frontend/src/lib/learning.ts`: pure sample position and guided progression functions.
-- `frontend/tests/learning.test.mjs`: sample-line and move-flow tests.
-- `frontend/src/learning.css`: library and learning-session layout using the existing TEMPO theme.
-- `frontend/src/mocks/dashboard.ts`: sample user profile; replace through an agreed backend interface later.
-- `frontend/src/index.css`: styles adapted from the export, plus responsive and keyboard-accessibility fixes.
-- `frontend/vite.config.ts`: standard React and Tailwind Vite plugins; no Figma-hosted runtime integration.
+| Path | Responsibility |
+|---|---|
+| `frontend/src/App.tsx` | Hash routes, catalog/repertoire loading, session start and shared state |
+| `frontend/src/components/Shell.tsx` | Desktop and mobile navigation |
+| `frontend/src/components/DashboardPage.tsx`, `frontend/src/components/ReviewPage.tsx`, `frontend/src/components/RepertoirePage.tsx` | Schedule and player-memory screens |
+| `frontend/src/components/LearnPage.tsx`, `frontend/src/components/FamilyPage.tsx`, `frontend/src/components/LessonPage.tsx`, `frontend/src/components/ChessBoard.tsx` | Opening selection, practice UI and board |
+| `frontend/src/components/SettingsPage.tsx`, `frontend/src/lib/appearance.ts`, `frontend/src/assets/pieces.json` | Appearance and bundled pieces |
+| `frontend/src/lib/practiceApi.ts`, `frontend/src/lib/app.ts`, `frontend/src/lib/progress.ts` | API requests/types, shared context and unfinished lessons |
+| `frontend/src/lib/catalog.ts`, `frontend/src/lib/learning.ts`, `frontend/src/lib/memory.ts` | Catalog grouping/labels, chess positions, due labels and timeline |
+| `frontend/src/styles.css` | App styling, themes and responsive layout |
+| `frontend/tests/learning.test.mjs`, `frontend/tests/variations.test.mjs`, `frontend/tests/memory.test.mjs` | Pure helper and sample-line checks |
+| `frontend/src/data/openings.ts`, `frontend/src/lib/variations.ts` | Earlier fixtures/helpers retained for tests; not current screen data |
+| `frontend/vite.config.ts`, `frontend/package.json`, `frontend/package-lock.json` | Proxy, commands and dependencies |
 
-React 19, TypeScript, Vite 8 and Tailwind CSS 4 follow the exported stack. Node 22.14.0 and npm 11.3.0 are the local environment used for this work. Dependencies and their lockfile belong inside `frontend/`.
+The stack is React 19, TypeScript, Vite 8, Tailwind CSS 4, Lucide and `chess.js` 1.4.0. The lockfile owns exact dependency resolutions.
 
-## Behavior and limits
+## Design source
 
-The source implements dashboard actions that navigate to named placeholder destinations, hash-based back/forward navigation, and a mobile drawer with Escape, focus trapping and focus restoration. Background content is marked inert while the drawer is open. Desktop CSS permits scrolling on short displays instead of clipping the exported fixed-height layout. Mobile uses the exported top bar, drawer and bottom navigation. These behaviors still require runtime verification.
-
-All displayed progress is illustrative, not a record of Zeel's actual play. The planner and move-checking boundaries still require team agreement. Google Fonts supplies DM Sans and Manrope, with system fallbacks if unavailable.
+The initial dashboard adapted the user-supplied `Tempo - Chess Learning.zip`, from Figma file `RuaZoTR5SPWuefaVP1TYHO`, Code Layer `2:3`, preserving its colors, typography and icon/card structure. The export's authentication photograph, browser password/account implementation and Figma-specific scripts were excluded. The later rebuild at `c12eb50` uses `prototype/tempo.html` as its design source and connects the screens to the backend. These historical sources do not establish current pixel-level fidelity to Figma.
 
 ## Validation
 
-On 2026-11-11, source inspection confirmed that the adapted frontend contains no `localStorage`, password handling or `fetch` calls. No backend, database or ML source files were changed.
+The 2026-11-15 audit compared source at `5d6b81c` with these records. It ran no app tests, builds, servers or browser sessions. Runtime behavior and visual rendering were not reverified in this documentation pass.
 
-`npm install` could not resolve the npm registry inside the sandbox. An approved `npm install --fetch-retries=0 --fetch-timeout=30000` reached the registry but stalled during file creation. A separate Node directory-creation check also stalled. Windows Defender Operational events with ID 1123 confirmed that `C:\Program Files\nodejs\node.exe` was blocked from modifying this OneDrive checkout. Both stalled processes were interrupted. Security settings were not changed.
+Historical checks remain in [the worklog](../../worklog.md):
 
-The user chose to allow Node through Controlled Folder Access and will confirm when that is done. Resume with dependency installation, `npm run build`, and desktop/mobile browser review. No successful installation, TypeScript check, production build, running server or visual-fidelity result is claimed yet. Run commands are in the project context.
+- The 2026-11-11 installation was initially blocked by Windows Controlled Folder Access; after the user allowed Node, dependencies installed and the build passed. Dashboard/navigation review included desktop/mobile, Escape/focus behavior in the then-existing drawer, no observed overflow and no console errors. Those drawer checks do not describe the current shell.
+- The 2026-11-12 sample Learning demo passed three tests and a build, with browser checks of a White-side Ruy López lesson, local bookmarks and keyboard use. Dashboard simplification and sizing checks also predate the current schedule/repertoire screens.
+- The 2026-11-13 catalog integration on Node.js 26.13.1 passed four tests and a build. The then-current Learning list showed 1,889 learnable lines and distinguishing labels without observed console errors.
+- The `c12eb50` rebuild entry records controller checks on a database copy, all three terminal-demo sides, 12 frontend tests, a build and browser checks at 1440 by 900 and 375 by 812. These covered Black-side Learning, review mistakes/Again, re-learning, saved-lesson resume, drag interaction and theme changes, with no observed console errors or horizontal overflow.
+- The `5d6b81c` merge entry records `npm ci` with zero reported vulnerabilities, 12 tests and a successful build on Node.js 24.13.0. Backend, ML, documentation and browser checks were not rerun for the merge.
 
-### Successful follow-up, 2026-11-11
-
-The preceding paragraph records the initial blocker; it is now resolved. After the user confirmed Node was allowed, `npm install --fetch-retries=0 --fetch-timeout=30000` completed and npm reported zero vulnerabilities. `npm run build` passed TypeScript checking and the Vite 8.3.8 production build. Generated output is ignored in `frontend/dist/`; versions are retained in `frontend/package-lock.json`.
-
-`npm run dev` serves the app at `http://127.0.0.1:5173/`. The current package script already fixes the port and enables strict-port behavior. Appending CLI port arguments failed because of npm argument parsing; the plain command succeeded. The server was relaunched outside the sandbox so the browser could connect. Preview session 67340 is retained for the user; Ctrl+C stops it.
-
-Browser review confirmed the dashboard, learning destination placeholder, browser-back return, mobile menu opening, Escape dismissal with focus restored to the menu button, mobile Reviews destination and return to dashboard. Checked desktop layout and a 390-by-844 mobile viewport; DOM inspection reported no horizontal page overflow at that mobile size. No browser console errors were reported. A preview capture is retained at `.build/frontend-review/dashboard.jpg` (ignored). These are focused smoke checks, not exhaustive accessibility or cross-browser certification. Pixel-level comparison with a live Figma dashboard was unavailable; the exported dashboard source supplied the design reference.
+`npm test` currently selects three files with 12 pure helper/sample tests. The older variation tests exercise `lib/variations.ts`; the current lesson uses `closestLines` in `lib/catalog.ts`. That suite alone does not verify the HTTP interface, browser persistence or integrated review behavior.

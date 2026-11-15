@@ -14,7 +14,9 @@ math = true
 
 ## 1. Review Session Dataset Schema
 
-<p class="bs-lead">Every opening session logs structured telemetry capturing line identity, review state, recall accuracy, elapsed wall-clock time, and FSRS grade.</p>
+<p class="bs-lead">The package exports session summaries with recall accuracy, summed attempt latency and an FSRS grade; move events and hidden memory stay separate.</p>
+
+The [dataset record](../topics/review-dataset/record.md#2-review-session-dataset-schema) defines this CSV interface. The rows below are illustrative, including the human example; they are not evidence of collected human telemetry.
 
 ```csv
 agent_name,opening_name,review_status,t_days,grade,total_time_ms,accuracy
@@ -29,8 +31,12 @@ human_tester_01,French Defense: Winawer,review,5.1,4,1980,1.0
 - **`review_status`:** `new` (first seen), `learning` (assisted with arrows), `review` (unassisted test), or `relearning` (post-lapse recovery).
 - **`t_days`:** Days elapsed since previous review of this opening line.
 - **`grade`:** Standard FSRS 4-point rating (`1: Again`, `2: Hard`, `3: Good`, `4: Easy`).
-- **`total_time_ms`:** Cumulative session time across all repertoire moves (including physical baseline).
+- **`total_time_ms`:** Sum of all attempt latencies, including retries and physical baseline; it is not an independently measured session wall-clock duration.
 - **`accuracy`:** First-attempt accuracy ratio across the line ($1.0$ for clean runs).
+
+Opening names are unique within each simulated client's sampled repertoire, which lets the trainer use `(agent_name, opening_name)` as its card key. Names are not globally unique; a human-data export still needs a line-identity decision. The backend uses `line_id`. Hidden values such as stability and $p_{\mathrm{clean}}$ belong to `ground_truth.csv`, outside this telemetry schema.
+
+Guided `new` and `learning` sessions have perfect accuracy and receive latency-based grades. They update model state but do not contribute to training loss. The same loss exclusion applies to unassisted rows with `t_days < 1`.
 
 </section>
 
@@ -38,30 +44,20 @@ human_tester_01,French Defense: Winawer,review,5.1,4,1980,1.0
 
 ## 2. Automated Session Grading Function
 
-<p class="bs-lead">A player who hesitates for 8 seconds before making the right move was on the verge of forgetting it. Hesitation latency directly informs the grade.</p>
+<p class="bs-lead">Any first-attempt error gives Again; otherwise mean cognitive delay selects Easy, Good or Hard under TEMPO's grading policy.</p>
 
-To grade fairly across lines of varying depth, total time is normalized across the number of repertoire moves ($M$):
+For a clean session, the model divides total latency by the number of repertoire moves ($M$) and subtracts the client's physical baseline. This normalizes the latency comparison; it does not make the entire grading process independent of line length.
 
 $$\text{Average Delay per Move } \bar{\Delta} = \frac{\text{total\_time\_ms}}{M} - \text{baseline\_ms}$$
 
-```python
-def calculate_session_grade(blunder_count: int, total_time_ms: int, num_moves: int, baseline_ms: int) -> int:
-    # 1. Any lapse in Repeating Mode triggers an immediate Again
-    if blunder_count > 0:
-        return 1  # AGAIN
+| Condition | Grade |
+|---|---|
+| Any first-attempt error | 1 — Again |
+| Clean; mean cognitive delay below 500 ms | 4 — Easy |
+| Clean; mean cognitive delay from 500 through 1800 ms | 3 — Good |
+| Clean; mean cognitive delay above 1800 ms | 2 — Hard |
 
-    # 2. Normalize cognitive delay over line depth
-    avg_move_time = total_time_ms / num_moves
-    cognitive_delay = avg_move_time - baseline_ms
-
-    # 3. Grade based on cognitive hesitation
-    if cognitive_delay < 500:
-        return 4  # EASY: effortless automaticity
-    elif cognitive_delay <= 1800:
-        return 3  # GOOD: standard recall
-    else:
-        return 2  # HARD: labored retrieval, memory is tenuous
-```
+These thresholds are the package's [implemented grading policy](../topics/review-dataset/record.md#32-decision-logic), not a validated diagnosis of a person's memory. The [synthetic-client explanation](synthetic-clients.html#memory-dynamics) shows why longer lines have a lower clean-session probability under independent recall draws. The app's separate backend grading path is described in the [FSRS training record](../topics/fsrs-training/fsrs-training.md).
 
 </section>
 
@@ -69,25 +65,24 @@ def calculate_session_grade(blunder_count: int, total_time_ms: int, num_moves: i
 
 ## 3. Stage 2: Human Calibration Pipeline
 
-<p class="bs-lead">Empirical gameplay logs from human team members are analyzed to tune synthetic parameters, creating digital twin cohorts.</p>
+<p class="bs-lead">Human calibration is a future specification; the package currently supplies trait-sampling hooks, without a fitted human cohort or validation result.</p>
 
-```
-[Human Gameplay Logs]
-       │
-       ▼
-[Parameter Extraction] ──► Baseline: 5th percentile reaction time
-                       ──► Hesitation: Log-normal MLE fit (μ, σ)
-                       ──► Automaticity: Latency decay slope (α)
-                       ──► Retention: Power-law forgetting curve (F, C)
-       │
-       ▼
-[Persona Clustering]   ──► Cluster players into Fast, Balanced, Diligent cohorts
-       │
-       ▼
-[Calibrated Agents]    ──► Synthetic clients sample from real human distributions
-```
+[Figure 1](#fig-calibration) shows the specified calibration direction. Every stage awaits implementation and human evidence; the arrows do not describe an executed pipeline.
+
+<figure id="fig-calibration">
+<div class="bs-flow" role="img" aria-label="Future human calibration: collect human move telemetry, estimate latency and memory traits, then fit cohorts for synthetic trait sampling. No stage has a human-fit result.">
+<div class="bs-node bs-violet"><span class="bs-label">Future input</span><b>Human telemetry</b><p>Move times, first-attempt errors and review history</p></div>
+<div class="bs-arrow"><span>estimate</span></div>
+<div class="bs-node bs-orange"><span class="bs-label">Future fit</span><b>Timing and memory traits</b><p>Baseline, hesitation, practice and forgetting parameters</p></div>
+<div class="bs-arrow"><span>group / sample</span></div>
+<div class="bs-node bs-teal"><span class="bs-label">Future output</span><b>Calibrated cohorts</b><p>Trait distributions checked against human data</p></div>
+</div>
+<figcaption><strong>Figure 1.</strong> Source-authored diagram of the <a href="../topics/review-dataset/record.md#4-stage-2-human-calibration-pipeline">future calibration specification</a>; no human fit or validation is reported.</figcaption>
+</figure>
+
+The specified estimates include a 5th-percentile baseline, log-normal hesitation parameters, a practice-decay rate and a forgetting curve. Positive cognitive delays must be converted from milliseconds to seconds before taking logarithms. Handling non-positive delays, separating practice and strain effects, and estimating effort remain unspecified. A fit to observed delay alone cannot identify raw hesitation parameters.
 
 ### Statistical Validation:
-Calibrated synthetic data is checked against human telemetry using **two-sample Kolmogorov-Smirnov (KS) tests** on reaction times and $\chi^2$ frequency tests on grade distributions, guaranteeing that synthetic training data accurately mirrors real human learners.
+The record specifies **two-sample Kolmogorov-Smirnov (KS) tests** as a future method. A $\chi^2$ test for discrete grade frequencies was an earlier page proposal and remains an unresolved choice, including its sampling assumptions and acceptance criteria. Neither test guarantees realistic learners. No human-fit or goodness-of-fit result is established by the recorded synthetic experiments; see [calibration limits](../topics/review-dataset/record.md#42-cohort-personas--distribution-sampling).
 
 </section>

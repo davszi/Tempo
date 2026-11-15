@@ -15,13 +15,19 @@ The app's catalog is `backend/tempo_demo.sqlite`
 from the ML work; the team has not accepted them yet (see
 [open questions](#open-questions)).
 
+The source, classifier, side evidence and checks below describe the retired
+library build, not runnable tools in the current checkout. Read those files
+at commit `825e9d8` under `ml/ml_1000bots/openings/`. The current backend
+catalog has 2,719 lines in 82 families after the regrouping at `d2e5903`;
+its schema and implemented side choices belong to the linked catalog record.
+
 ## Source
 
 | Item | Value |
 |---|---|
 | Source | [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings), files `a.tsv` to `e.tsv` from `master`, fetched 2026-11-11 |
 | Licence | CC0 (public domain) |
-| Local copy | `ml/ml_1000bots/openings/lichess_openings.tsv`, 3,865 lines plus header, sha256 `ea20307b7d5edba152ca69f2f9c8f92cb2260169d53e3596ea6fadbeca916b18` |
+| Historical local copy (commit `825e9d8`) | `ml/ml_1000bots/openings/lichess_openings.tsv`, 3,865 lines plus header, sha256 `ea20307b7d5edba152ca69f2f9c8f92cb2260169d53e3596ea6fadbeca916b18` |
 | Columns | `eco`, `name`, `pgn` (no side information) |
 
 Opening names and moves are used as Lichess publishes them; they were not
@@ -29,13 +35,13 @@ checked against other opening references.
 
 ## Classification
 
-`python ml/ml_1000bots/openings/classify.py` writes
+In that historical checkout, `python ml/ml_1000bots/openings/classify.py` wrote
 `ml/ml_1000bots/openings/lichess_openings_classified.csv` (sha256
 `c0e7abf9b5eb39d5f20f5ef213887cd3280e8ed2ccf39beee4f4c7f9b2591d28`, the committed file and the output of `classify.py`; the value `f6c311…` recorded at commit `5cbe0a6` does not match the committed bytes).
-The classifier keeps `white_moves >= 4` (at least seven plies) and removes
-1,146 lines from the source. The output and `backend/tempo_demo.sqlite`
-each contain 2,719 lines across 91 opening families. The original TSV and
-the existing `tempo_v1` training dataset are unchanged.
+The classifier kept `white_moves >= 4` (at least seven plies) and removed
+1,146 lines from the source. The output and the backend catalog at the time
+each contained 2,719 lines across 91 opening families. That filter did not
+modify the original TSV or the existing `tempo_v1` training dataset.
 
 The column meanings are documented at the top of `classify.py`. In short:
 
@@ -63,7 +69,8 @@ for every base opening in `classify.py`:
 - `both` only for the Four Knights Game, which needs 3.Nc3 from White and
   3...Nf6 from Black.
 
-Result: 69 white, 70 black and 1 both family.
+Historical hand-label result over the 140 source families: 69 white,
+70 black and 1 both family. These are not the current backend family counts.
 
 **Rejected alternatives:**
 
@@ -107,7 +114,8 @@ The one disagreement is **Benko Gambit Declined** (6 lines, label black, games
 white with ratio 2.34 from 142 pairs). White chooses how to decline, and the
 Benko player must know those lines too.
 
-**Suggested app filter**: for a player practising side X, show lines where
+**Historical suggested app filter (not implemented by the current catalog)**:
+for a player practising side X, show lines where
 `family_side == X` or `side_in_games` is X or `both`.
 
 ### Checks

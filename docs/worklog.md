@@ -2,6 +2,33 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-15 — Adopt kit 5.0 and reconcile Tempo documentation
+
+Upgraded `.docs-kit` from 3.2.1 (`f34cf63`) to 5.0.0 (`25c058d`) through the
+4.0/5.0 migration steps. Preserved the six-page publication scope with
+`reference_listing = false`; added the capability-map route and inventory.
+Reconciled frontend/API/storage, schema, catalog, architecture, end-to-end,
+synthetic-client, review-dataset and ML records with source, then synchronized
+the existing pages and figure sources. Corrected catalog counts, retired
+paths, timing units, historical/current claims and unsupported calibration
+language. Moved the six product requests to an owning record; `OPEN.md` is
+now routes only. Kept settled Repeating decisions intact and recorded the
+implemented hint/selected-line deviations for the owner rather than approving
+them. No app behavior, SQLite data, weights or historical experiment results
+changed. Reason: the user requested kit 5.0 and an audit of all documentation.
+
+Validation: Tempo build, freshness, strict lint and five-page reader parity
+pass; all 47 formulas compile. Read-only SQLite checks confirm 2,719 lines,
+82 families and 1,889 learnable variations. Independent review findings were
+corrected. The shared kit's Python suite ran 347 tests with nine failures,
+four errors and 28 skips on Windows; Node reader, panel, math and source-link
+checks pass. Exact scope, rendered-review findings, reproduction identities
+and remaining owner choices are in the
+[documentation adoption record](topics/documentation/documentation.md).
+Existing slide faces and unapproved file retirements remain explicit follow-up,
+not a claim of complete kit-design conformance. No push or publication was
+performed. The commit hash is assigned by this entry's landing commit.
+
 ## Merge frontend learning into main
 
 On 2026-11-15, merged `feature/frontend-learning` at `c12eb50` into `main` at `ea3d01d`, retaining the frontend and backend integration from the feature branch and the current ML package, FSRS-memory simulator and experiment records from main. Resolved the sole conflict in this worklog by preserving both branches' entries. Reason: land the frontend branch at the user's request. Validation on Node.js 24.13.0: `npm ci` completed with zero reported vulnerabilities; `npm test` passed all 12 tests; `npm run build` passed TypeScript checking and production bundling. Source comparison confirmed backend, frontend and prototype files match the feature branch and ML files match main. Backend, ML and documentation checks were not run because this host has no working Python installation; the prior Pages run already failed at strict lint. No browser review was performed for this merge. The commit hash is assigned by this entry's landing commit.

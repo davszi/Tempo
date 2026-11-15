@@ -3,7 +3,21 @@
     "source": "docs/topics/system-architecture/system-architecture.html",
     "diagram_definition": "docs/topics/system-architecture/component-flow.mmd",
     "revision": "working tree",
-    "date": "2026-11-11",
-    "sha256": "e2b93304e1aa898aa957872ec527a8dd139e2d7765c869c38c32e6f04fbd2cca"
+    "date": "2026-11-15",
+    "sha256": "f057fd808e6f4fc5d2c084bbca814701c819814e63395039d144966faeaf97da",
+    "generation": "Extract first inline SVG from source, add SVG namespace, and insert the original source svg text/class CSS rules in defs without changing selector specificity. Preserve dimensions and geometry.",
+    "inputs": [
+      "docs/topics/system-architecture/system-architecture.md",
+      "docs/topics/frontend/frontend.md",
+      "docs/topics/fsrs-training/fsrs-training.md"
+    ],
+    "recipe": [
+      "html = Path(source).read_text(encoding='utf-8')",
+      "svg = re.search(r'<svg\\b.*?</svg>', html, re.S).group(0)",
+      "svg = svg.replace('<svg ', '<svg xmlns=\"http://www.w3.org/2000/svg\" ', 1)",
+      "styles = '\\n'.join(m.group(0).strip() for m in re.finditer(r'(?m)^  svg (?:text|\\.[^\\n]+)\\s*\\{[^\\n]+\\}', html))",
+      "svg = svg.replace('<defs>', '<defs>\\n<style>' + styles + '</style>', 1) + '\\n'",
+      "Path(output).write_text(svg, encoding='utf-8', newline='\\n')"
+    ]
   }
 }

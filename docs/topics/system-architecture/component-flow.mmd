@@ -1,10 +1,10 @@
 flowchart TD
     subgraph Client["Player device"]
-        UI["Chess UI in browser · Planned"]
+        UI["React chess UI in browser"]
     end
     subgraph Live["Single application host · Python backend"]
         UC["Practice controller"]
-        DB["SQLite file · Persistent storage"]
+        DB["SQLite file · Local practice history"]
         MC["ML controller"]
         ME["ML engine · FSRS and review planner"]
         UC -->|Load opening lines or save practice results| DB
@@ -16,11 +16,11 @@ flowchart TD
         MC -->|Request suggestion with player data| ME
         ME -.->|Selected line ID or no line due| MC
     end
-    UI -->|Planned HTTPS request| UC
+    UI -->|Local HTTP request| UC
     UC -.->|Board state and feedback| UI
-    subgraph Offline["Offline training"]
+    subgraph Offline["Offline FSRS fitting · Separate package"]
         SC["Synthetic clients"] -->|Generate simulated practice| CSV["Synthetic practice history CSV"]
-        CSV -->|Supply training data| TS["Python training script · Planned"]
-        TS -->|Save model| MODEL["Trained general model · Planned"]
+        CSV -->|Supply training data| TS["Python FSRS training script"]
+        TS -->|Save fitted weights| MODEL["FSRS weights CSV"]
     end
-    MODEL -->|Supply trained model| ME
+    MODEL -->|Select weights explicitly; no automatic import| ME

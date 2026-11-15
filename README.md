@@ -6,7 +6,7 @@ TEMPO is a chess opening trainer. Learn a line with hints, then review it from m
 | --- | --- |
 | `frontend/` | React browser app |
 | `backend/` | Python API, SQLite demo data, and FSRS scheduling |
-| `ml/` | Synthetic-client simulator, Lichess opening library, and [FSRS training](docs/topics/fsrs-training/fsrs-training.md) |
+| `ml/` | Synthetic-client simulator, catalog reader, and [FSRS training](docs/topics/fsrs-training/fsrs-training.md) |
 | `docs/` | Architecture and project documentation |
 
 ## Run locally
@@ -34,8 +34,20 @@ Open [Tempo](http://127.0.0.1:5173/). Install dependencies once, then start both
 
 From the repository root, run `.\backend\run-demo.cmd` in PowerShell. To demonstrate a wrong move and retry, run `.\backend\run-demo.cmd --side black --grade Again`. The demo prints the grade, stability, next review time in UTC, and player ID. Use that ID to find records in `practice_events` and `player_lines` in `backend/tempo_demo.sqlite`.
 
-The tracked SQLite seed contains 2,719 Lichess lines across 91 opening families. Each line reaches at least White's fourth move. The app loads the 21 fitted FSRS weights from `backend/fitted_global.csv`. The presentation telemetry in `backend/synthetic_reviews.csv` is separate from the training dataset in `ml/data/tempo_v1/`.
+The tracked SQLite seed contains 2,719 Lichess lines across 82 opening families;
+1,889 terminal variations can be learned. Each line reaches at least White's
+fourth move. The app loads 21 fitted FSRS weights from `backend/fitted_global.csv`.
+Those are the historical first-run weights, not automatically replaced by the
+newer experiments. `backend/synthetic_reviews.csv` is presentation telemetry;
+current generated training data lives under ignored `ml/data/` paths named
+by each experiment's manifest. See [ML setup](ml/README.md).
 
 The browser app and terminal demo write practice history to the database. To keep the tracked seed pristine, copy it to a scratch location and pass the copy with `--database`.
 
 See the [project documentation](docs/PROJECT_CONTEXT.md) for architecture and documentation build instructions.
+
+The browser implementation currently exposes a review hint and selected-line
+reviews, contrary to the settled Repeating contract. The
+[frontend record](docs/topics/frontend/frontend.md#unresolved-repeating-behavior)
+tracks that unresolved decision. This is a local demo with a browser-stored
+player ID, not an authenticated account system.

@@ -1,0 +1,2 @@
+# Keep the bytes of manifest-hashed documentation figures stable across hosts.
+docs/figures/*.svg text eol=lf
