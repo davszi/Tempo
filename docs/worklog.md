@@ -2,6 +2,76 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-15 Curate topics and enable Reference
+
+The user requested removal of the starter Guide, kit 5's Reference section,
+a full merge/split/order pass, HTML counterparts for the topics, a local
+preview and publication. They explicitly chose curated topic pages in the
+main menu, with plans and experiment detail in Reference.
+
+The [reading index](index.md#reading-order) records the six-topic order:
+App & practice, System architecture, Catalog & data, Synthetic players,
+Review data & grading, then FSRS training. The browser overview joins the
+player journey; library provenance, catalog rules and schema share one
+human overview while keeping separate canonical records. Producer model,
+telemetry/grading and fitting remain distinct. Human calibration remains a
+future chapter; backlog, setup, plans and results remain supporting records.
+The Guide page and record were removed. No replacement documentation topic
+was created. Historical worklog links to retired sections now point at their
+committed versions; their historical statements are preserved.
+
+Six curated pages plus Home are built, alongside 24 automatic Reference
+pages. A tracked-Markdown inventory found 31 existing files: seven authored
+entry pages and 24 Reference sources, with no missing HTML counterparts.
+The 11 topic records are files, not 11 required main-menu topics. Existing
+source and experiment paths, public section anchors and legacy generated
+heading aliases were retained. Current overview links lead to rendered
+Reference pages. The reading index links to the published overview routes
+so it works as a source record as well as a Reference page.
+
+App and ML contributors independently inspected the other side's content
+against records and source at `dab04ac`. Missing legacy heading aliases and
+one baseline-provenance omission were corrected before landing. Canonical
+records received figure and number provenance before the new overview
+material. The catalog tree uses verified seed rows, not an invented example.
+Current app deviations and synthetic-only limitations remain explicit;
+this presentation change grants no new product or experiment acceptance.
+
+Executed documentation checks in the existing Python 3.12.14 project
+environment, with Node 24.13.0 for KaTeX:
+
+- Full build, non-mutating freshness and strict lint passed. All 47 formulas
+  on three pages compile. Lint reports zero warnings; the existing automatic
+  `CLAUDE.md` page has an informational filename-title fallback note.
+- Reader parity passed on all six reader pages, preserving words, code,
+  links, media, public anchors, folds, tables and SVG geometry.
+- All 31 public HTML routes returned HTTP 200 from the owned local preview
+  server; the retired Guide route returned 404.
+- All six overviews were inspected in wide (1440 x 1000), phone (390 x 844)
+  and equal-column reader layouts. Browser measurements found no document
+  overflow or broken images. Architecture/schema drawings use labelled
+  local scrolling to retain legible labels. Narrow training tables now
+  scroll locally with focusable labelled regions. Keyboard scrolling was
+  exercised, and Escape closed the phone menu and returned focus to its
+  opener. A training citation opened its actual Reference page and fragment.
+- The by-eye pass found cramped technical table names and clipped flow
+  labels; those were corrected. Intermediate table wrappers swallowed
+  adjacent Markdown, and a Windows default-encoding read damaged punctuation;
+  both were caught in rendering and corrected using explicit UTF-8 and blank
+  block boundaries. Formula, link and rendering checks were repeated after
+  those corrections.
+- The new diagrams replace the architecture/flow text-tile slide faces;
+  their prior open design choice is resolved by this ordinary-figure layout.
+
+No app, training or benchmark run was required or executed. App source,
+seed data, weights, experiment artifacts and the kit pin are unchanged.
+The shared engine was not edited; its previously recorded Windows suite
+failures remain historical limitations, not a fresh successful suite run.
+No-JavaScript, reduced-motion and print output were not re-exercised in the
+browser for this content pass. Exhaustive keyboard/touch coverage is not
+claimed. The local server on loopback port 18321 is retained for the user's
+preview; port 8321 belongs to another project and was left alone.
+
 ## 2026-11-15 Relocate the kit audit
 
 At the user's request, removed `docs/topics/documentation/documentation.md`
@@ -187,7 +257,7 @@ their original scope.
 - [Publication and formula enforcement](PROJECT_CONTEXT.md#documentation-publication-choices).
 - [ML evidence gaps](topics/fsrs-training/fsrs-training.md#historical-evidence-gaps) and [record cleanup](topics/fsrs-training/fsrs-training.md#retained-retraining-plan-and-ml-setup-guide).
 - [Standalone schema HTML](topics/database-schema/database-schema.md#standalone-schema-html) and [architecture HTML](topics/system-architecture/system-architecture.md#standalone-architecture-html).
-- [Guide faces](topics/guide/guide.md#slide-design-review), [architecture faces](topics/system-architecture/system-architecture.md#slide-design-review) and [flow faces](topics/whole-flow/whole-flow.md#slide-design-review).
+- [Guide faces](https://github.com/davszi/Tempo/blob/dab04ac60686267372bd087d9a6e591fda71b5a1/docs/topics/guide/guide.md#slide-design-review), [architecture faces](https://github.com/davszi/Tempo/blob/dab04ac60686267372bd087d9a6e591fda71b5a1/docs/topics/system-architecture/system-architecture.md#slide-design-review) and [flow faces](https://github.com/davszi/Tempo/blob/dab04ac60686267372bd087d9a6e591fda71b5a1/docs/topics/whole-flow/whole-flow.md#slide-design-review).
 
 The commit hash is assigned by this entry's landing commit.
 

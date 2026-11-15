@@ -202,6 +202,33 @@ exploratory artifacts needs a retained rerun; this audit does not manufacture
 evidence or authorize that experiment. The full current experiment tables
 remain distinct from the unretained exploratory observations.
 
+## Page presentation and numeric sources
+
+The authored `index.md` explains the offline/runtime boundary, fitting,
+metrics and the two dated synthetic studies separately. Its inline lane
+diagram is source-authored from this record's simulator/app comparison;
+the fitting flow uses the arm definitions and held-out-client protocols.
+No diagram implies that diagnostic weights are deployed.
+
+| Displayed result or configuration | Source and scope |
+|---|---|
+| FSRS-6; A2/B2 and A1/A1c/B1 arm names | Arm tables in this record and the dated experiment protocols |
+| Test groups of 60 clients; additional 60 hold-out clients per study | Dated experiment protocols; synthetic data only |
+| A2/B2: defaults/A2/B2 truth RMSE 27.7/14.1/13.8 pp; calibration RMSE 19.2/2.6/2.1 pp; log-loss 0.723/0.562/0.560 | `ml/experiments/2026-11-13-fsrs-synthetic-v2/SUMMARY.md`, Results, test-clients table |
+| A2/B2: median days error +0.00/-0.14/-0.10 days; long-interval medians -38.6/-47.0/-45.0 days for true interval at least 30 days | Same run, Results, days metric and interval tables |
+| A1 study: exact-clock log-loss defaults/A1/A1c/B1 = 0.8307/0.7135/0.6084/0.6091; truth RMSE 32.5/24.7/12.2/12.3 pp | `ml/experiments/2026-11-14-fsrs-memory/SUMMARY.md`, Results, exact-clock test table |
+| Calendar-day log-loss A1/A1c = 0.6127/0.6117 | Same run, Results, clock comparison |
+| 90% threshold; error = predicted minus true days; negative means early | Retained retraining plan, Days metric; this record's result/limit sections |
+| 91 versus 82 families in the dated runs | Each run's Inputs; Historical evidence gaps above |
+| Runtime old first-fit weights from 800 synthetic clients; py-fsrs 6.3.2 | Earlier 1,000-client simulator section above |
+| B2 and A1c reached the 300-iteration limit | Each experiment's optimizer observations; no convergence inferred |
+
+The dated experiment summaries and complete result artifacts are retained
+unchanged; the page's selected tables are a new view of those historical
+results, not replacement evidence or a rerun. Figure/chapter numbers and
+dated run names are presentation identifiers. Setup commands come from
+`ml/README.md`, not from the retired variant paths in the plan.
+
 ## Retained retraining plan and ML setup guide
 
 ### Finished retraining plan

@@ -186,3 +186,23 @@ non-significant test alone as realism. No numerical tolerance is proposed
 without human evidence. Implementing qualification checks or declaring
 calibrated cohorts validated waits for agreement on the data split,
 sampling assumptions, methods and acceptance criteria.
+
+## Page presentation and numeric sources
+
+The authored page separates the implemented session export and grading from
+future human calibration. Inline source-authored diagrams in `index.md` use
+section 3.2 for the grading branches and section 4 for the future pipeline;
+neither claims a completed human calibration.
+
+| Displayed numbers or construction | Canonical source |
+|---|---|
+| Seven telemetry columns; grade values 1/2/3/4; accuracy 0 through 1; t_days at least 0 | Section 2.1 |
+| Guided accuracy 1; rows below 1 day excluded from loss | Section 2.1 implementation clarification |
+| Again after any first-attempt error; Easy below 500 ms; Good 500 through 1800 ms; Hard above 1800 ms | Section 3.2 |
+| Stage 2; chi-squared exponent 2 | Section 4 and its unresolved validation-method clarification |
+| 5th-percentile physical baseline estimate | Section 4.1, Physical Baseline; future calibration specification, not a completed measurement |
+| CSV illustration: 2.4 days / grade 3 / 3420 ms / accuracy 1.0; 0.5 days / grade 1 / 8940 ms / accuracy 0.75; 5.1 days / grade 4 / 1980 ms / accuracy 1.0 | Existing page's labelled illustrative rows; invented examples, not observations or grade-calculation tests, because move counts and baselines are not supplied |
+
+The illustrative CSV block is retained verbatim during the presentation
+update. Its identifiers and numbers do not establish collected human data.
+Figure and chapter numbers are presentation identifiers.

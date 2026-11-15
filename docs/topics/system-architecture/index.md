@@ -1,117 +1,113 @@
 +++
-title = "TEMPO System Architecture"
+title = "System Architecture"
 slug = "system-architecture"
+description = "Trace browser requests, Python controllers, SQLite storage and the boundary to offline training."
 toc = []
 components = ["toc", "nav", "filelinks"]
 page_css = ["build-sheet.css"]
 +++
 
-# TEMPO System Architecture
+# System Architecture
 
 <section class="card" id="components">
 
-<!-- slide -->
-<p class="slide-eyebrow">Deployment</p>
-<p class="slide-title">One Python host runs the practice backend</p>
-<p class="slide-lead">The React browser app calls the Python backend over local HTTP; SQLite holds shared practice history.</p>
-<div class="slide-main">
-  <div class="slide-row">
-    <div class="slide-tile"><h4>Player device</h4><p>React browser chess interface</p></div>
-    <div class="slide-tile is-term"><h4>Application host</h4><p>Practice controller, ML controller, and ML engine</p></div>
-    <div class="slide-tile"><h4>Local storage</h4><p>SQLite lines, progress, and practice history</p></div>
-  </div>
-</div>
-<p class="slide-scope">Implemented local app · hosted HTTPS remains proposed · offline fitting is separate</p>
-<!-- /slide -->
+<span id="tempo-system-architecture"></span>
 
-## Components and deployment
+<span id="components-and-deployment"></span>
 
-<p class="bs-lead">The browser, Python controllers and SQLite implement a local practice app; offline FSRS fitting runs separately.</p>
+## A local browser app shares one SQLite practice record
 
-<a href="#architecture-diagram">Figure 1</a> shows the component boundaries and data exchanged between them. The Python server uses loopback HTTP; Vite proxies API requests during development, or the backend serves the built frontend. Hosted HTTPS and persistent deployment storage remain proposals. The <a href="../topics/system-architecture/system-architecture.md#components-and-deployment">architecture record</a> owns these boundaries and source references.
+<p class="bs-lead">The browser sends moves over HTTP; Python controllers coordinate practice, scheduling and persistence.</p>
+
+<a href="#architecture-diagram">Figure 1</a> separates requests, responses and offline transfers. The browser owns display and input; the backend checks moves and writes outcomes.
 
 <figure id="architecture-diagram">
 <div role="region" aria-label="Scrollable TEMPO component diagram" tabindex="0" style="overflow-x:auto">
 <div style="min-width:900px">
-<img src="../figures/tempo-system-architecture.svg" alt="The React browser calls the local Python backend over HTTP. Practice and ML controllers share a SQLite file. Synthetic generation and FSRS fitting run offline, and weight selection for the app is separate." style="display:block;width:100%;min-width:900px;height:auto">
+<img src="../figures/tempo-system-architecture.svg" alt="The React browser calls the local Python backend over HTTP. Practice and ML controllers share SQLite. Synthetic generation and FSRS fitting run offline; selecting runtime weights is a separate explicit transfer." style="display:block;width:100%;min-width:900px;height:auto">
 </div>
 </div>
-<figcaption><strong>Figure 1.</strong> Solid blue arrows show requests, dashed arrows responses, and green arrows offline data or weight transfers. The final weight transfer is an explicit configuration choice, not an automatic import. Source: the architecture topic's <a href="../topics/system-architecture/component-flow.mmd">component flow</a> and <a href="../topics/system-architecture/system-architecture.html#component-diagram">source-authored drawing</a>.</figcaption>
+<figcaption><strong>Figure 1.</strong> Solid blue arrows show requests, dashed arrows responses, and green arrows offline data or weight transfers. The final weight transfer is an explicit configuration choice. Source: the architecture topic's <a href="../topics/system-architecture/component-flow.mmd">component flow</a> and <a href="../topics/system-architecture/system-architecture.html#component-diagram">source-authored drawing</a>.</figcaption>
 </figure>
 
-| Component | Responsibility |
+| Component | Current responsibility |
 |---|---|
-| React browser and HTTP handler | Render catalog, lessons and schedules; exchange JSON session state. The Python handler can serve the built frontend. |
-| Practice controller | Loads the line, starts practice, checks submitted moves, and records events. |
-| ML controller | Loads repertoire and review data from SQLite, calls the ML engine, and saves its result. |
-| ML engine | Loads supplied FSRS weights, selects the earliest due repertoire line, grades the review, and delegates card updates and recall estimates to Py-FSRS. |
-| SQLite | Stores opening lines, player progress, and practice history. |
-| Offline pipeline | The maintained `ml/tempo_ml/` package generates data, fits FSRS-6 and evaluates weights. The backend presentation generator is separate. |
+| React browser | Catalog, lessons, schedules and appearance; submits moves and renders returned session state. |
+| HTTP handler | Routes JSON requests, validates demo player UUIDs, and can serve the built frontend. |
+| Practice controller | Owns active sessions, checks attempts, records events and coordinates session completion. |
+| ML controller | Reads repertoire/card state and review attempts; records suggestions and saves schedule updates. |
+| ML engine | Selects due lines, grades attempts and uses Py-FSRS for card updates and recall estimates. |
+| SQLite store | Catalog, practice events and per-player repertoire/schedule state. |
 
-The selector reads repertoire rows. It stores suggestions but does not use suggestion history or the complete event history to choose a line. A learned planner and live per-player fine-tuning remain intended capabilities; the app does not launch fitting or automatically import the newest experiment.
+The Python server binds loopback HTTP at <code>127.0.0.1:8000</code>. Vite proxies API requests in development and preview; alternatively the backend serves built frontend files. Hosted HTTPS and persistent deployment storage remain proposals. This local server does not provide authentication.
+
+The <a href="whole-flow.html">App & Practice overview</a> explains screens and the player journey. The <a href="opening-catalog.html">Catalog & Data overview</a> locates persisted records. Full boundaries and source paths remain in the <a href="docs.topics.system-architecture.system-architecture.md.html#components-and-deployment">architecture record</a>.
 
 </section>
 
 <section class="card" id="practice">
 
-<!-- slide -->
-<p class="slide-eyebrow">Practice</p>
-<p class="slide-title">Learning and Repeating share the same practice history</p>
-<p class="slide-lead">Learning adds repertoire lines; completed reviews update their FSRS cards. The browser uses each opening family's side.</p>
-<div class="slide-main">
-  <div class="slide-row">
-    <div class="slide-tile is-term"><h4>Learning</h4><p>Choose a line and follow move hints.</p></div>
-    <div class="slide-tile"><h4>Repeating</h4><p>Normal Start review opens a due line and records the outcome.</p></div>
-  </div>
+<span id="learning-and-repeating"></span>
+
+## A review turns recorded attempts into one saved schedule update
+
+<p class="bs-lead">Selection reads repertoire rows; completion reads the current session's attempts and saved FSRS card.</p>
+
+<a href="#runtime-review">Figure 2</a> follows those two requests. Storing a suggestion does not mean the selector learns from suggestion history.
+
+<figure id="runtime-review">
+<div class="bs-flow">
+<div class="bs-node"><span class="bs-label">Start review</span><b>Load repertoire</b><small>The ML controller reads this player's lines and due dates.</small></div>
+<div class="bs-arrow"><span>select due</span></div>
+<div class="bs-node"><span class="bs-label">ML engine</span><b>Choose one line</b><small>Earliest due date; ties use learned date, then line ID. No due line returns none_due.</small></div>
+<div class="bs-arrow"><span>record</span></div>
+<div class="bs-node"><span class="bs-label">Practice controller</span><b>Open session</b><small>A line_suggested event records the normal planner-selected path. The browser supplies the family side.</small></div>
 </div>
-<p class="slide-scope">First review due immediately · direct-line reviews and mistake hints remain unresolved deviations</p>
-<!-- /slide -->
+<div class="bs-flow">
+<div class="bs-node"><span class="bs-label">Finish review</span><b>Read attempts & card</b><small>Attempts belong to this player, line and session; the card comes from player_lines.</small></div>
+<div class="bs-arrow"><span>grade</span></div>
+<div class="bs-node"><span class="bs-label">ML engine + Py-FSRS</span><b>Update card</b><small>Any wrong attempt gives Again. Otherwise timing determines the grade. FSRS returns a new card and due time.</small></div>
+<div class="bs-arrow"><span>commit</span></div>
+<div class="bs-node"><span class="bs-label">One transaction</span><b>Save completion</b><small>The final attempt, completed review event and updated progress commit together.</small></div>
+</div>
+<figcaption><strong>Figure 2.</strong> Arrows show calls and data flow within review start and completion. Empty repertoire returns learn_first. Source: <a href="docs.topics.system-architecture.system-architecture.md.html#human-overview-and-figure-sources">controller and engine provenance</a>; diagram authored in this page.</figcaption>
+</figure>
 
-## Learning and Repeating
+The selector uses repertoire rows, not the complete practice-event or suggestion history. Per-player card state evolves with reviews; learned selection and live fine-tuning remain intended capabilities.
 
-- **Learning:** The player chooses a learnable line. The browser supplies the family side; backend/demo callers can choose White, Black or Both. TEMPO shows the expected move and adds a new line to the repertoire on completion. Re-learning preserves its existing schedule.
-- **Repeating:** Normal Start review picks the earliest due line, then earliest learned date and line ID to break ties. The browser supplies the family side. The engine grades completion and calculates the next due date.
-- **First review:** A newly learned line is due immediately in the current backend. TEMPO directs players with an empty repertoire to Learning.
+Review timing is server elapsed time and includes request/UI waiting and idle time. The web baseline is zero. Clean reviews use Easy below 500 ms, Good from 500 through 1,800 ms and Hard above 1,800 ms after baseline adjustment. These are implemented rules, not validated human-memory cutoffs. <a href="review-dataset.html">Review Data & Grading</a> explains their calibration limits.
 
-The settled contract requires planner-selected reviews without hints or arrows. The current browser also lets players select learned lines directly and shows the expected move after the first mistake. Both are <a href="../topics/frontend/frontend.md#unresolved-repeating-behavior">unresolved deviations</a>, not approved changes to the contract. Wrong moves leave the position unchanged in both paths. Direct-line review bypasses the planner suggestion event.
+A due timestamp is a scheduler output, not a guarantee of an exact target-recall crossing. FSRS learning or relearning steps may schedule reviews sooner than stability in days suggests. The <a href="docs.topics.system-architecture.system-architecture.md.html#review-scheduling">scheduling record</a> owns timing and dependency limits.
 
-Active sessions live in the backend process and disappear at restart. Browser-local unfinished Learning progress can start a resumed session; navigating away from Repeating does not complete or grade it. A final correct attempt, review completion and schedule update share one transaction; early close after a recorded mistake also completes the review as Again. See <a href="../topics/system-architecture/system-architecture.md#review-scheduling">review scheduling</a> for timing and grading limits.
+Direct-line reviews bypass selection; review mistake hints also conflict with the accepted contract. These remain <a href="docs.topics.frontend.frontend.md.html#unresolved-repeating-behavior">unresolved implementation deviations</a>. See the <a href="whole-flow.html#learning-to-schedule">practice journey</a> for interruption, re-learning and storage behavior.
 
 </section>
 
 <section class="card" id="live-demo">
 
-<!-- slide -->
-<p class="slide-eyebrow">Live demo</p>
-<p class="slide-title">One practice run produces a grade and saves the next review</p>
-<p class="slide-lead">The demo loads the supplied FSRS weights and walks through Learning and Repeating on a Lichess opening line.</p>
-<div class="slide-main">
-  <div class="slide-row">
-    <div class="slide-tile is-term"><h4>Run</h4><p>Start the Python demo from the repo root.</p></div>
-    <div class="slide-tile"><h4>Read</h4><p>See the grade, stability, and next review time.</p></div>
-    <div class="slide-tile"><h4>Inspect</h4><p>Find the saved review by player ID in SQLite.</p></div>
-  </div>
+<span id="run-the-demo"></span>
+
+## Offline fitting supplies weights through an explicit choice
+
+<p class="bs-lead">The app loads configured FSRS weights; experiments run outside the live practice request.</p>
+
+<a href="#weight-boundary">Figure 3</a> shows where the offline pipeline ends and the runtime begins. New experiment results do not change the app automatically.
+
+<figure id="weight-boundary">
+<div class="bs-flow">
+<div class="bs-node"><span class="bs-label">Offline · ml/tempo_ml</span><b>Generate & fit</b><small>Synthetic clients produce datasets. Training and evaluation create dated experiment outputs.</small></div>
+<div class="bs-arrow"><span>choose</span></div>
+<div class="bs-node"><span class="bs-label">Configuration boundary</span><b>Select weights CSV</b><small>The app uses its configured file. Its supplied default is backend/fitted_global.csv.</small></div>
+<div class="bs-arrow"><span>load</span></div>
+<div class="bs-node"><span class="bs-label">Runtime backend</span><b>Schedule reviews</b><small>Py-FSRS uses the loaded weights and each player's saved card. It does not launch the fitter.</small></div>
 </div>
-<p class="slide-scope">Simulated move timing · supplied FSRS weights · local SQLite database</p>
-<!-- /slide -->
+<figcaption><strong>Figure 3.</strong> Arrows are offline output selection and startup loading, not an automatic model-refresh service. Source: <a href="docs.topics.system-architecture.system-architecture.md.html#components-and-deployment">runtime/offline boundary</a> and <a href="docs.topics.fsrs-training.fsrs-training.md.html">training provenance</a>; diagram authored in this page.</figcaption>
+</figure>
 
-## Run the demo
+The maintained generation, fitting and evaluation package lives in <code>ml/tempo_ml/</code>. The backend's presentation CSV generator is a separate historical path. Neither runs inside a browser review request, and the supplied runtime weights are not automatically replaced by newer experimental weights.
 
-For the full walkthrough from catalog import to the saved review, open the [End-to-End Flow](whole-flow.html).
+For commands and inspection by player ID, use <a href="whole-flow.html#present-and-inspect">Start the app and inspect what practice saves</a>. The terminal demo uses simulated timing; running it does not establish human calibration or live personalization. Continue to <a href="synthetic-clients.html">Synthetic Clients</a> and <a href="fsrs-training.html">FSRS Training</a> for assumptions, methods and dated results.
 
-From the TEMPO repo root in PowerShell, run:
-
-```powershell
-.\backend\run-demo.cmd
-.\backend\run-demo.cmd --side black --grade Again
-```
-
-The first command runs a clean review using Both sides. The second demonstrates a wrong move and retry. Each prints the player ID, grade, stability in days, and next review time in UTC. An early FSRS learning step can schedule a review in minutes even when estimated stability is measured in days.
-
-Open `backend/tempo_demo.sqlite` in **DB Browser for SQLite**. Use **Browse Data** to find `practice_events` and `player_lines`, then filter by the player ID printed in PowerShell.
-
-`backend/fitted_global.csv` supplies the 21 FSRS weights at runtime. The historical `backend/synthetic_reviews.csv` export is recorded as 50,400 sessions from 30 agents on 140 representative lines. It was not regenerated after catalog cleaning and merges, and is separate from the run that produced the supplied weights. The <a href="../topics/system-architecture/system-architecture.md#presentation-demo">demo record</a> and <a href="../topics/fsrs-training/fsrs-training.md">FSRS training record</a> own its provenance and limits.
-
-This explanation follows source inspection at `5d6b81c` on 2026-11-15. The documentation audit did not rerun the app or establish production deployment, human calibration or live personalization.
+This overview uses source inspection at <code>dab04ac</code>; it does not claim a fresh app run or production deployment check.
 
 </section>

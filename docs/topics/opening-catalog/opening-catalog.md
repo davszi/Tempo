@@ -332,3 +332,52 @@ db.close()
   parent-link rule and startup migration, which the worklog records as settled.
   The [opening library open questions](../opening-library/opening-library.md#open-questions)
   include confirmation of side labels.
+
+## Catalog and data overview sources
+
+The requested `opening-catalog.html` combines a human overview of catalog
+provenance, the current line tree and the four-table practice-data model.
+This record still owns catalog rationale; database-schema owns field mappings,
+and opening-library owns the historical classifier and side evidence. The
+latter is retired tooling, not a current catalog import command. Plans,
+checks and full evidence remain in Reference rather than separate main pages.
+
+The source-authored HTML figures in `index.md` are their own generators. The
+relationship diagram uses the schema record and `backend/store.py` at
+`dab04ac`; its arrows mean foreign-key references, with the composite
+`player_lines` key shown explicitly. There is no players table. The runtime
+practice-data sequence uses the schema record and controller sources at the
+same pin.
+
+A read-only SQLite query on 2026-11-15 supplied the illustrated tree example.
+The input SHA-256 is
+`5eb848f110d5f3634344b854038a4482a16c7d2ecc7da782b01c2b326188eaa0`,
+the same seed identified above; app source pin is `dab04ac`. The documentation
+interpreter executed this query without opening the backend or migrating data:
+
+```python
+import sqlite3
+con = sqlite3.connect('file:backend/tempo_demo.sqlite?mode=ro', uri=True)
+rows = con.execute(
+    'SELECT o.line_id, o.parent_line_id, o.name, o.moves_uci, '
+    'NOT EXISTS (SELECT 1 FROM opening_lines c '
+    'WHERE c.parent_line_id=o.line_id) AS learnable '
+    'FROM opening_lines o WHERE o.line_id=2642 OR o.parent_line_id=2642 '
+    'ORDER BY o.line_id').fetchall()
+print(rows)
+con.close()
+```
+
+Verified output: 2642, Ruy Lopez: Steinitz Defense, is a root heading. Its four
+children are learnable leaves: 2643 Center Gambit, 2644 Nimzowitsch Attack,
+2645 Semi-Duras Variation, and 2683 Berlin Defense, Tarrasch Trap. Each shares
+2642's prefix `e2e4 e7e5 g1f3 b8c6 f1b5 d7d6 d2d4`. Names do not define
+parentage: even the Tarrasch Trap's stored name differs, while its moves have
+this same-family prefix. No new chess classification is inferred.
+
+Numeric ledger: 2,719 lines, 82 families and 1,889 learnable leaves reuse the
+read-only seed verification above; 830 headings is 2,719 minus 1,889,
+already recorded in decision 8. Four tables and their primary/foreign keys
+come from database-schema. Example line IDs and the four-child claim come
+from the exact query above. These are seed facts, not counts guaranteed for
+every user's modified database. No experimental result is changed.

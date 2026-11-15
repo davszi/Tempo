@@ -55,13 +55,21 @@ drawing source and checking consumers, or retain its synchronization duty.
 Recommend retirement only after the owner approves those exact changes;
 the figure source and existing route must remain available until then.
 
-## Slide design review
+## Human overview and figure sources
 
-The existing faces `system-architecture#components`, `#practice` and `#live-demo` remain in place. The
-[2026-11-15 rendered review](../../worklog.md#2026-11-15-relocate-the-kit-audit) records their
-title-first emphasis, broad empty bands and text-heavy layouts. Kit 5
-asks for a real visual per face. Options: redraw the faces, remove
-those with nothing visual to add, or explicitly retain them as a
-temporary exception. Recommend a separate approved design pass.
-Redrawing or removing these faces waits on that decision; passing lint
-does not establish design conformance.
+The architecture overview keeps component/deployment and runtime/offline
+boundaries. The App & Practice page owns the reader-facing practice journey
+and practical walkthrough; canonical source records remain separate. The
+requested presentation cleanup removes the former text-tile slide faces;
+`components`, `practice`, `live-demo` and `architecture-diagram` anchors stay.
+The standalone HTML and generated component SVG are unchanged.
+
+The new source-authored HTML runtime flow in `index.md` is its own generator.
+Its inputs are `backend/ml_controller.py`, `backend/ml_engine.py` and
+`backend/practice_controller.py` at `dab04ac`: repertoire selection, attempt
+grading and FSRS card update, with the final attempt/completion/schedule
+transaction. The runtime/offline comparison is based on those sources,
+`backend/web.py` and `ml/tempo_ml/`. The page does not claim a fresh app run.
+Numeric ledger: loopback port 8000 belongs to backend web configuration;
+the retained grade boundaries of 500 and 1,800 ms and zero web baseline are
+configuration rules in Review scheduling above, not measured human cutoffs.

@@ -16,14 +16,14 @@ toc = []
 <h1>Keep the openings you learn</h1>
 <p>TEMPO teaches an opening with guidance, then tests recall. Its goal is a review planner that learns each player's memory and chooses what to practise next.</p>
 <div class="home-cta">
-<a href="whole-flow.html">Open the TEMPO walkthrough</a>
-<a href="guide.html">Explore the visual guide</a>
-<a class="alt" href="../PROJECT_CONTEXT.md">Read the project map</a>
+<a href="whole-flow.html">Start with app &amp; practice</a>
+<a href="opening-catalog.html">Explore catalog &amp; data</a>
+<a class="alt" href="docs.index.md.html">Browse the reading map</a>
 </div>
 </div>
 <div class="home-now-grid">
-<div class="now-card"><strong>Practice and scheduling</strong><span>Follow the walkthrough for the current application, its shared practice history and FSRS review schedule.</span></div>
-<div class="now-card"><strong>Synthetic learning data</strong><span>Explore the simulated players and review records used to study memory before human calibration.</span></div>
+<div class="now-card"><strong>From player to stored history</strong><span>Follow the app journey, then the architecture and catalog that support it.</span></div>
+<div class="now-card"><strong>From simulation to fitted weights</strong><span>Follow synthetic players, review data and FSRS training, with their limits kept visible.</span></div>
 </div>
 </header>
 <section class="home-now" aria-label="Documentation topics">

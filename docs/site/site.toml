@@ -2,7 +2,7 @@ title = "Tempo"
 gh_repo = "https://github.com/davszi/Tempo"
 gh_ref = "main"
 chapter_reader = true
-reference_listing = false
+reference_listing = true
 tooling_roots = []
 
 [[nav]]
@@ -10,26 +10,31 @@ label = "Home"
 file = "index.html"
 
 [[nav]]
-label = "Guide"
-file = "guide.html"
-group = "guide"
-
-[[nav]]
-label = "Synthetic Clients"
-file = "synthetic-clients.html"
-group = "synthetic-clients"
-
-[[nav]]
-label = "Review Dataset"
-file = "review-dataset.html"
-group = "review-dataset"
-
-[[nav]]
-label = "System Architecture"
-file = "system-architecture.html"
-group = "system-architecture"
-
-[[nav]]
-label = "End-to-End Flow"
+label = "App & practice"
 file = "whole-flow.html"
-group = "whole-flow"
+group = "tempo"
+
+[[nav]]
+label = "System architecture"
+file = "system-architecture.html"
+group = "tempo"
+
+[[nav]]
+label = "Catalog & data"
+file = "opening-catalog.html"
+group = "tempo"
+
+[[nav]]
+label = "Synthetic players"
+file = "synthetic-clients.html"
+group = "model"
+
+[[nav]]
+label = "Review data & grading"
+file = "review-dataset.html"
+group = "model"
+
+[[nav]]
+label = "FSRS training"
+file = "fsrs-training.html"
+group = "model"

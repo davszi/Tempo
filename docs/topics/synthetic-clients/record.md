@@ -172,3 +172,21 @@ The separate `backend/synthetic_clients.py` is a demo telemetry generator,
 not this package: it counts all plies, uses the backend scheduler and one
 successful retry after a failed first attempt. Do not treat its output as
 one of the package experiment datasets or as a validated human calibration.
+
+## Page presentation and numeric sources
+
+The authored page presents memory and recall before latency, followed by the
+benchmark profiles. Its existing public section and figure anchors remain.
+Inline diagrams are source-authored in `index.md`: the memory diagram uses
+sections 3.2, 3.3, 3.5 and 6; the latency diagram uses section 3.4. They show
+model construction, not human measurements.
+
+| Displayed numbers or construction | Canonical source |
+|---|---|
+| R at 0 and 1; S at 90% recall; calibration factor 0.9; clean chance R^M | Sections 3.2, 3.3 and 6 |
+| Milliseconds conversion 1000; practice multiplier 1/(1 + alpha n); familiarity +1 / minus 2 with floor 0 | Sections 3.4 and 3.5 |
+| Guided R = 1; test after three minutes; five-attempt cap | Section 6 |
+| Profile baselines 220/300/380 ms; beta 0.4/1.0/2.2; C 0.65/0.50/0.35 | Section 4 |
+
+These are formula constants and configured/modelled values, not measured
+human results. Figure and chapter numbers are presentation identifiers.

@@ -36,13 +36,27 @@ The presentation generator `backend/synthetic_clients.py` reads the catalog read
 
 The maintained generation, training and evaluation pipeline lives in `ml/tempo_ml/`, with configurations in `ml/configs/` and dated results in `ml/experiments/`. [FSRS training](../fsrs-training/fsrs-training.md) owns methods, results, weight provenance and limitations; the package guide owns its commands. The app consumes a configured weights CSV. It does not launch offline fitting, import the newest experiment automatically, or fine-tune on the current player's live history.
 
-## Slide design review
+## Human overview and figure sources
 
-The existing faces `whole-flow#catalog`, `#learning-to-schedule` and `#present-and-inspect` remain in place. The
-[2026-11-15 rendered review](../../worklog.md#2026-11-15-relocate-the-kit-audit) records their
-title-first emphasis, broad empty bands and text-heavy layouts. Kit 5
-asks for a real visual per face. Options: redraw the faces, remove
-those with nothing visual to add, or explicitly retain them as a
-temporary exception. Recommend a separate approved design pass.
-Redrawing or removing these faces waits on that decision; passing lint
-does not establish design conformance.
+The requested App & Practice overview at `whole-flow.html` combines the
+player journey with a concise frontend overview. The frontend record remains
+the canonical owner of screens, API contracts, browser persistence and
+unresolved Repeating choices; architecture owns runtime mechanisms. This
+presentation cleanup replaces the former text-tile slide faces with ordinary
+chapter figures, preserving `catalog`, `learning-to-schedule` and
+`present-and-inspect` anchors. No new slide faces are introduced.
+
+The source-authored HTML diagrams in `index.md` are their own generators.
+The practice sequence uses `backend/practice_controller.py`,
+`backend/ml_controller.py` and `frontend/src/App.tsx` at `dab04ac`; the storage
+boundary uses `frontend/src/lib/practiceApi.ts`, `progress.ts`, `appearance.ts`,
+`backend/practice_controller.py` and the schema record. It distinguishes
+browser-local unfinished lessons from active process-local sessions and
+SQLite progress. No screenshot or new runtime measurement is claimed.
+
+Numeric ledger for the redesigned overview: the 30-day timeline is an
+implemented display horizon, owned by frontend Screens and practice; local
+ports 8000 and 5173 and installation/start commands are configuration owned by
+project context Build and review. No historical experiment counts or timing
+grades are remeasured or newly derived here. The historical sections above
+retain their original scope and source pins.

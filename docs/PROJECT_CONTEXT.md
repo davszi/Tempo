@@ -201,8 +201,11 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 - `.docs-kit/`: initialize the shared-kit Git submodule at the project's reviewed revision.
 - `docs/site/site.toml`: site identity, source repository/ref and navigation.
 - `docs/topics/home/index.md`: rendered landing page and automatic site map.
-- `docs/topics/guide/guide.md`: canonical starter architecture and adoption checklist.
-- `docs/topics/guide/index.md`: human-facing visual authoring guide.
+- `docs/index.md`: curated reading order and the boundary between overview pages and canonical Reference records.
+- `docs/topics/whole-flow/index.md`: App & practice, combining the player journey and browser overview.
+- `docs/topics/system-architecture/index.md`: technical component and deployment boundaries.
+- `docs/topics/opening-catalog/index.md`: Catalog & data, combining catalog rules, schema and historical provenance for readers.
+- `docs/topics/synthetic-clients/index.md`, `docs/topics/review-dataset/index.md`, `docs/topics/fsrs-training/index.md`: producer model, telemetry/grading contract and parameter fitting, respectively.
 - `docs/topics/fsrs-training/fsrs-training.md`: synthetic-client simulator, FSRS training method and results.
 - `docs/topics/opening-library/opening-library.md`: opening library and side classification.
 - `ml/README.md`, `ml/pyproject.toml`: install and run commands for the `tempo_ml` package.
@@ -268,22 +271,25 @@ machine still needs its environment installed. Manifest-hashed SVG figures
 use LF checkout through `.gitattributes`; their sources and identities live
 in `docs/figures/manifest.json`.
 
-For an iteration, append `--page guide` to build; this does not validate unrelated output. For browser review:
+For an iteration, append `--page system-architecture` to build; this does not validate unrelated output. For browser review:
 
 ```bash
 .build/docs-env/Scripts/python.exe -m http.server 8321 --bind 127.0.0.1 --directory .build/docs
 ```
 
-Open `http://127.0.0.1:8321/html/guide.html` through the approved browser surface. Check the listener's owner before reuse. Review wide, narrow and paired reading; inspect keyboard focus, reduced motion, no-JavaScript fallback and print. Consult the kit README for shared-engine development checks; Node.js is needed only for applicable JavaScript checks, not ordinary content builds.
+Open `http://127.0.0.1:8321/html/system-architecture.html` through the approved browser surface. Check the listener's owner before reuse. Review wide, narrow and paired reading; inspect keyboard focus, reduced motion, no-JavaScript fallback and print. Consult the kit README for shared-engine development checks; Node.js is needed only for applicable JavaScript checks, not ordinary content builds.
 
 ## Documentation hosting
 
 The [GitHub Pages workflow](../.github/workflows/pages.yml) checks out the pinned Documentation Kit, builds `.build/docs`, and runs strict lint before deploying. It publishes from `main`. The Pages artifact contains the generated documentation site.
 
-`reference_listing = false` preserves the existing publication scope during
-the 5.0 upgrade. Kit 5 can render tracked Markdown as Reference pages automatically;
-that broader listing has not been approved for this site. Existing topic pages
-keep their routes. A local build or commit is not a GitHub Pages deployment.
+`reference_listing = true` enables kit 5's automatic Reference section, as
+requested on 2026-11-15. Tracked Markdown records, project setup and experiment
+summaries are listed there using the kit's normal eligibility rules. The
+starter Guide page and its source record have been removed. Home and six
+curated TEMPO overviews form the main navigation; [the reading index](index.md#reading-order)
+defines their order and which canonical records each overview explains. A local build or commit is
+not a GitHub Pages deployment.
 
 A repository administrator enables the workflow under **Settings → Pages → Build and deployment → Source → GitHub Actions**. Once the first deployment succeeds, the workflow's `github-pages` environment shows the live URL.
 
@@ -291,10 +297,10 @@ A repository administrator enables the workflow under **Settings → Pages → B
 
 ### Reference publication
 
-Options: retain six-page scope, enable automatic references with reviewed
-exclusions, or register selected records. Recommend selected records only
-after reviewing content/routes. No migration step is blocked because the
-current scope is preserved.
+Decided on 2026-11-15: enable the default automatic Reference listing and
+remove the starter Guide. No project-specific exclusions are configured;
+the build manifest lists the exact eligible sources. The prior opt-out is
+superseded. The user explicitly authorized checking and publishing this change.
 
 ### Requiring formula checks on every host
 
@@ -307,4 +313,4 @@ local formula success is not a claim that every host enforces it.
 
 ## Documentation index
 
-[Documentation reading index](index.md) · [Starter topic record](topics/guide/guide.md) · [Open work](open/OPEN.md) · [Worklog](worklog.md).
+[Documentation reading index](index.md) · [Open work](open/OPEN.md) · [Worklog](worklog.md).
