@@ -90,32 +90,46 @@ The backend demo uses the same header with different move counting, retry and sc
 
 <section class="card" id="grading">
 
-## Correctness decides failure before the mean time per move decides a clean grade
+## A finished review is graded from its accuracy and its mean time per move
 
-<p class="bs-lead">Any first-attempt error gives Again. A clean session is graded only by its mean time per move, the one timing the app can measure for a real player. The intervals that split it into Easy, Good and Hard are still being established.</p>
+<p class="bs-lead">The player always plays the line to the end: a wrong move is taken back and retried. The grade then uses two measurements of the whole review, how many moves were right first time and how long the line took per move. One slip no longer means Again; the boundaries are still being established.</p>
 
 <figure id="fig-grading">
-<div class="bs-grid g2" role="img" aria-label="Any first-attempt error gives Again. For a clean session, the mean time per move is compared with two intervals that are still to be established: fast gives Easy, normal gives Good, slow gives Hard.">
-<div class="bs-part bs-orange"><h3>Any first-attempt error?</h3><p><strong>Yes → 1 · Again</strong></p><p>Retry time does not turn a failed first attempt into clean recall.</p></div>
-<div class="bs-part bs-teal"><h3>No → mean time per move</h3><p><strong>Fast → 4 · Easy</strong></p><p><strong>Normal → 3 · Good</strong></p><p><strong>Slow → 2 · Hard</strong></p><p>The boundaries between fast, normal and slow are open.</p></div>
+<div class="bs-flow" role="img" aria-label="The player finishes the line, retrying wrong moves. Accuracy, the share of moves right on the first attempt, and the mean time per move go into the grading function, which returns Again, Hard, Good or Easy; the boundaries are open.">
+<div class="bs-node bs-violet"><span class="bs-label">Review</span><b>Play the line to the end</b><p>A wrong move is taken back and retried until it is right.</p></div>
+<div class="bs-arrow"><span>measure</span></div>
+<div class="bs-node bs-orange"><span class="bs-label">Two inputs</span><b>Accuracy and time</b><p>Share of moves right first time; total time ÷ moves.</p></div>
+<div class="bs-arrow"><span>grade</span></div>
+<div class="bs-node bs-teal"><span class="bs-label">Grade</span><b>Again, Hard, Good or Easy</b><p>Low accuracy gives Again; among accurate reviews, time decides. Boundaries open.</p></div>
 </div>
-<figcaption><strong>Figure 2.</strong> Source-authored branches of the <a href="docs.topics.review-dataset.record.md.html#32-decision-logic">session grading rule</a> decided on 2026-11-16. No interval values are shown because none has been set.</figcaption>
+<figcaption><strong>Figure 2.</strong> Source-authored path of the <a href="docs.topics.review-dataset.record.md.html#3-the-session-grading-function">session grading rule</a> decided on 2026-11-16. No boundary values are shown because none has been set.</figcaption>
 </figure>
 
-[Figure 2](#fig-grading) puts correctness first. Time distinguishes grades only after every first attempt is correct. For a clean session the rule divides the total time by the number of repertoire moves $M$:
+[Figure 2](#fig-grading) shows the two measurements the grade is built from:
 
-$$\bar{T} = \frac{\text{total\_time\_ms}}{M}$$
+$$\text{accuracy} = \frac{\text{moves right on the first attempt}}{M}, \qquad \bar{T} = \frac{\text{total\_time\_ms}}{M}$$
 
-| Condition | Grade |
-|---|---|
-| Any first-attempt error | 1 — Again |
-| Clean; mean time per move below the Easy boundary | 4 — Easy |
-| Clean; mean time per move between the two boundaries | 3 — Good |
-| Clean; mean time per move above the Hard boundary | 2 — Hard |
+$M$ is the number of moves the player plays in the line. Both numbers are already saved for every review. The total time includes retries, so a review with mistakes is also slower per move.
 
-**Why no baseline any more.** The earlier rule subtracted each player's physical move time (`baseline_ms`) and graded only the hesitation that remained, against fixed thresholds. Both are removed: the app cannot know a real player's baseline, so the simulated players and the app now grade by the same measurable quantity. A player's physical speed is part of the time that is graded.
+**What changed.** Before, one wrong move made the whole review Again, however well the rest of the line went. Now accuracy decides: a single slip in an otherwise fluent 12-move line is weak evidence that the line is forgotten. The earlier rule also subtracted each player's physical move time (`baseline_ms`) and graded only the remaining hesitation against fixed thresholds; both are removed, because the app cannot know a real player's baseline.
 
-**Not implemented yet.** The simulator and the app keep the earlier rule until the intervals are set, so every recorded synthetic dataset and result was graded with it. The [grading record](docs.topics.review-dataset.record.md.html#3-the-session-grading-function) tracks that status.
+<div class="scroll" role="region" aria-label="Grading structure with open boundaries; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
+<div style="min-width:620px">
+
+| Review | Grade | Still open |
+|---|---|---|
+| Accuracy below the Again boundary | 1 — Again | the accuracy boundary |
+| Some mistakes, accuracy above that boundary | 2 — Hard or 3 — Good | whether mistakes cap the grade, and at which |
+| Every move right, fast | 4 — Easy | the Easy time boundary |
+| Every move right, normal time | 3 — Good | |
+| Every move right, slow | 2 — Hard | the Hard time boundary |
+
+</div>
+</div>
+
+The table is a starting point for the open choices, not a decided rule. One more choice is open: whether to count mistakes rather than use the accuracy share, because one mistake costs a short line much more accuracy than a long one (see below).
+
+**Not implemented yet.** The simulator and the app keep the earlier rule (any mistake gives Again) until these choices are made, so every recorded synthetic dataset and result was graded with it. Implementing the new rule also changes what training treats as a pass and what the hidden memory does after a review with mistakes; the [grading record](docs.topics.review-dataset.record.md.html#3-the-session-grading-function) lists those consequences.
 
 ### Where the time per move comes from
 
@@ -137,7 +151,7 @@ $$\bar{T} = \text{baseline\_ms} + \frac{1}{M}\sum_{i=1}^{M} 1000\,H_i\,e^{\beta(
 - **Physical speed counts.** The baseline is added to every move, so a faster-handed player gets faster grades.
 - **Weak memory slows the player.** Lower recall $R$ raises the time through $e^{\beta(1-R)}$, most for high-effort players (large $\beta$).
 - **Practice speeds the player up.** Each clean session adds one to reps and a blunder removes two; the hesitation is divided by $1+\alpha\cdot\text{reps}$.
-- **Speed and luck.** $\mu$ sets the player's typical pace, and each session draws new hesitations; averaging $M$ moves steadies longer lines. A blunder gives Again whatever the time.
+- **Speed and luck.** $\mu$ sets the player's typical pace, and each session draws new hesitations; averaging $M$ moves steadies longer lines. After a mistake, the retries add their time too.
 
 <div class="scroll" role="region" aria-label="Expected mean time per move by profile; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
 <div style="min-width:620px">
@@ -174,9 +188,25 @@ Every bot gets its own traits: a random draw around its profile's average, with 
 
 Only three bots touched a limit: one at the lowest practice rate and two with zero effort. Under the new rule the baseline is part of the graded time, as it already is for real players in the web app ([System Architecture](system-architecture.html#practice)).
 
-### Establishing the intervals
+### Establishing the boundaries
 
-The intervals are open work. A first synthetic check regraded the 76,287 clean reviews of the November 13 run:
+The boundaries are open work. Two synthetic checks on the November 13 run give a starting point.
+
+**Accuracy.** Of its 123,891 reviews, 61.6% had no mistake, 24.3% one, 9.3% two, 3.3% three and 1.5% four or more. Under the earlier rule all 38.4% with a mistake were Again. How much accuracy one mistake leaves depends on the line's length:
+
+<div class="scroll" role="region" aria-label="Accuracy after one mistake by line length; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
+<div style="min-width:560px">
+
+| Moves in the line | 2–3 | 4–5 | 6–7 | 8–9 | 10 or more |
+|---|---|---|---|---|---|
+| Typical accuracy after one mistake | 0.67 | 0.80 | 0.83 | 0.88 | 0.91 |
+
+</div>
+</div>
+
+An accuracy boundary such as 0.8 would therefore make one slip Again on a short line but not on a long one; counting mistakes would treat them alike.
+
+**Time.** Regrading the 76,287 fully accurate reviews by mean time per move:
 
 <div class="scroll" role="region" aria-label="Grade shares under the earlier rule and a candidate; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
 <div style="min-width:640px">
@@ -190,7 +220,7 @@ The intervals are open work. A first synthetic check regraded the 76,287 clean r
 </div>
 </div>
 
-Kept unchanged, the earlier boundaries would make Easy rare, because they were set for hesitation without the physical move. The candidate raises both by 300 ms, about the bots' median baseline (302 ms); it keeps the overall mix close to the earlier one and changes 6.5% of clean grades. This only relates the candidate to the earlier rule; where human recall really changes needs mean times per move from real players in the app. The [evidence section](docs.topics.review-dataset.record.md.html#35-evidence-for-choosing-the-intervals) gives the per-profile shares.
+Kept unchanged, the earlier boundaries would make Easy rare, because they were set for hesitation without the physical move. The candidate raises both by 300 ms, about the bots' median baseline (302 ms); it keeps the overall mix close to the earlier one and changes 6.5% of clean grades. This only relates the candidate to the earlier rule; where human recall really changes needs mean times per move from real players in the app. The [evidence section](docs.topics.review-dataset.record.md.html#35-evidence-for-choosing-the-boundaries) gives the per-profile shares and the accuracy figures.
 
 The [synthetic-client explanation](synthetic-clients.html#memory-dynamics) shows why longer lines have a lower clean-session probability under independent recall draws. The app's separate backend grading path is explained in [System Architecture](system-architecture.html#practice).
 

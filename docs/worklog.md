@@ -2,6 +2,25 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-16 Grade from accuracy and total time
+
+Decided at the project's request: the grading function takes two inputs,
+the session's accuracy (share of moves right on the first attempt) and its
+total time as mean time per move; one wrong move no longer gives Again by
+itself, and the player finishes the line as before. Updated section 3 of
+the [review dataset record](topics/review-dataset/record.md): both
+decisions with rationale, the open choices (accuracy boundary for Again,
+whether mistakes cap the grade, time boundaries, counting mistakes versus
+accuracy), a non-decided starting structure, the deliberate implementation
+lag, and consequences for training's pass label, the hidden truth and both
+memory models. Section 3.5 adds accuracy evidence from the 2026-11-13 run's
+123,891 Repeating sessions: 38.4% had a mistake, and one mistake leaves a
+median accuracy from 0.67 on 2–3 move lines to 0.91 on 10 or more. The
+Review data and grading chapter is restructured from it; the Open route
+and the System architecture note follow. No code, app or data changed.
+Documentation build, freshness check and strict lint pass with kit 5.0.0.
+The commit hash is assigned by this entry's landing commit.
+
 ## 2026-11-16 Worked example of the two hidden memory models
 
 Requested to explain the multiplicative versus FSRS hidden memory difference

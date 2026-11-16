@@ -16,7 +16,7 @@ This topic record specifies:
 
 Status: the schema and the earlier grading rule are implemented in
 `ml/tempo_ml/simulator/grading.py`; the grading specification changed on
-2026-11-16 and its intervals are open (section 3). Stage 2 below is a future specification;
+2026-11-16 to accuracy and total time, with its boundaries open (section 3). Stage 2 below is a future specification;
 the package implements trait sampling hooks, not human parameter estimation,
 clustering or goodness-of-fit validation. Synthetic-only experiment results
 are owned by the [FSRS training record](../fsrs-training/fsrs-training.md).
@@ -75,62 +75,93 @@ stay as recorded.
 
 ## 3. The Session Grading Function
 
-In TEMPO Repeating Mode, mistakes are immediately retracted without playing
-out. The grading function maps move accuracy and time into the 4-point FSRS
+In TEMPO Repeating Mode a wrong move is taken back and the player retries
+until the move is right, so every review is played to the end of the line.
+The grading function maps the finished session into the 4-point FSRS
 grading scale.
 
-**Decision (2026-11-16): grade by mean time per move.** A clean session is
-graded by its mean time per move alone. The earlier rule subtracted the
-player's physical baseline (`baseline_ms`) and compared the remaining
-hesitation with fixed thresholds; both are removed from this specification.
-Rationale: the app cannot know a real player's baseline (the web app already
-grades with a baseline of zero), so the bots and the app should grade by the
-same measurable quantity. Alternative not taken: estimating each player's
-baseline from their fastest moves (section 4.1); that needs human data that
-does not exist yet.
+**Decision (2026-11-16): grade from accuracy and total time.** The grading
+function has two inputs: the session's **accuracy** (the share of the line's
+moves right on their first attempt) and its **total time**, turned into the
+mean time per move. One wrong move no longer gives Again by itself; how
+accurate the whole line was decides. Rationale: a single slip in a long,
+otherwise fluent line is weak evidence that the line is forgotten, and the
+player finishes the line anyway. This replaces the earlier rule that any
+first-attempt error gives Again.
 
-**Open: the grade intervals.** The two boundaries between Easy, Good and
-Hard on the mean time per move are not set; section 3.5 holds the evidence
-gathered so far. The route is in [open work](../../open/OPEN.md).
+**Decision (2026-11-16): no baseline.** The time input is the mean time per
+move alone. The earlier rule subtracted the player's physical baseline
+(`baseline_ms`) and compared the remaining hesitation with fixed thresholds;
+both are removed. Rationale: the app cannot know a real player's baseline
+(the web app already grades with a baseline of zero), so the bots and the
+app should grade by the same measurable quantities. Alternative not taken:
+estimating each player's baseline from their fastest moves (section 4.1);
+that needs human data that does not exist yet.
 
-**Implementation status.** Not changed yet, deliberately, until the
-intervals are set: `ml/tempo_ml/simulator/grading.py` and the app
-(`backend/ml_engine.py`, see [system architecture](../system-architecture/system-architecture.md#initial-card-grading-and-update))
-still apply the earlier rule. All recorded synthetic datasets and results
-were graded with it.
+**Open: how accuracy and time combine, and the boundaries.** Not set:
 
-### 3.1 Mean time per move
+- the accuracy below which a session is Again;
+- whether a session with mistakes can still be Easy or Good, or is capped
+  at a lower grade;
+- the two time boundaries between Easy, Good and Hard;
+- whether to count mistakes instead of using the accuracy share, because
+  one mistake costs a short line much more accuracy than a long one
+  (section 3.5).
 
-For a clean session, divide the total time by the number of repertoire moves
-($M$) so the intervals compare an average per move rather than the duration
-of the whole line:
+Section 3.5 holds the evidence gathered so far. The route is in
+[open work](../../open/OPEN.md).
 
-$$\bar{T} = \frac{\text{total\_time\_ms}}{M}$$
+**Implementation status.** Not changed yet, deliberately, until these are
+set: `ml/tempo_ml/simulator/grading.py` and the app (`backend/ml_engine.py`,
+see [system architecture](../system-architecture/system-architecture.md#initial-card-grading-and-update))
+still apply the earlier rule (any first-attempt error gives Again; baseline
+subtracted). All recorded synthetic datasets and results were graded with
+it.
 
-$\bar{T}$ includes everything a move takes: thinking and the physical move.
-This does not make the whole grading distribution independent of line
-length: every move must be correct, so a line's clean-session probability
-is R^M in the synthetic model.
+**Consequences when implemented.** Recorded here so the change is planned
+with them:
+
+- Training's pass label (grade > 1) would no longer mean a clean line. The
+  hidden truth used for B arms and the days metric is the clean-session
+  chance R^M; it would have to become the chance of reaching the new
+  non-Again accuracy (fsrs-training record).
+- Both hidden memory models treat any blunder as a lapse
+  (synthetic-client record, section 7). A session with mistakes but a
+  non-Again grade needs a defined memory update; FSRS memory would apply its
+  recall update for that grade.
+- Generated datasets and trained weights would be regenerated.
+
+### 3.1 The two inputs
+
+$$\text{accuracy} = \frac{\text{moves right on the first attempt}}{M}, \qquad \bar{T} = \frac{\text{total\_time\_ms}}{M}$$
+
+Both are already exported per session (`accuracy`, `total_time_ms`,
+section 2.1). $\bar{T}$ includes everything the line took: thinking, the
+physical moves, and the time spent on retries after a mistake, so mistakes
+also slow the mean time. A line's chance of being fully accurate still
+falls with length: every move must be right, R^M in the synthetic model.
 
 ### 3.2 Decision logic
 
-With two boundaries $t_{\text{easy}} < t_{\text{hard}}$ still to be
-established:
+The structure below shows the two inputs and the open boundaries. It is a
+starting point for the open choices above, not a decided rule:
 
 ```text
-if any move's first attempt was wrong:
-    grade = 1  # AGAIN (lapse), whatever the time
-elif mean_time_per_move < t_easy:
-    grade = 4  # EASY (fluent, automatic recall)
-elif mean_time_per_move <= t_hard:
-    grade = 3  # GOOD (normal recall)
+if accuracy < a_again:                 # a_again open
+    grade = 1  # AGAIN: too much of the line was wrong
+elif accuracy < 1:
+    grade = 2 or 3  # HARD or GOOD: some mistakes; cap open
+elif mean_time_per_move < t_easy:      # t_easy open
+    grade = 4  # EASY: fully accurate and fluent
+elif mean_time_per_move <= t_hard:     # t_hard open
+    grade = 3  # GOOD: fully accurate, normal time
 else:
-    grade = 2  # HARD (clean, but slow)
+    grade = 2  # HARD: fully accurate, but slow
 ```
 
 #### Rationale:
-- **Lapse Priority (Grade 1):** TEMPO's grading policy assigns *Again* after any first-attempt failure in Repeating Mode. This is the project's mapping from move attempts to a session rating; FSRS receives that rating rather than imposing this mapping itself.
-- **Time as memory strength:** For clean sessions, a short mean time per move marks automatic recall (*Easy*) and a long one laboured recall (*Hard*). Physical move speed is now part of that time.
+- **Accuracy first:** how much of the line was recalled is the main evidence of memory; FSRS receives the resulting rating rather than imposing this mapping itself.
+- **Time as fluency:** among accurate sessions, a short mean time per move marks automatic recall (*Easy*) and a long one laboured recall (*Hard*). Physical move speed is part of that time.
 
 ### 3.3 Where the time per move comes from (synthetic clients)
 
@@ -155,8 +186,9 @@ Each factor moves the time:
   record, section 3.5).
 - μ sets the player's typical speed; H's random draw makes the time vary
   between sessions, less so on longer lines because M draws are averaged.
-- A blunder gives Again whatever the time. Learning sessions are timed
-  with R = 1.
+- After a mistake the retry attempts add their time to the total, so a
+  session with mistakes also has a longer mean time. Learning sessions are
+  timed with R = 1.
 
 Illustration (formula arithmetic, not a measurement): the expected mean time
 per move, baseline_ms + 1000·exp(μ + σ²/2)·exp(β(1−R))/(1 + α·reps), at each
@@ -195,9 +227,9 @@ In that run one client's α sat on the lower limit 0.1 and two clients' β on
 0; no baseline reached a limit. The typical hesitation e^μ is 549, 819 and
 1350 ms at the three profile means.
 
-### 3.5 Evidence for choosing the intervals
+### 3.5 Evidence for choosing the boundaries
 
-Measured on 2026-11-16 from the 76,287 clean Repeating sessions of the
+**Time boundaries.** Measured on 2026-11-16 from the 76,287 clean Repeating sessions of the
 2026-11-13 multiplicative-memory run (`ml/data/fsrs-synthetic-v2/train/`,
 all 300 clients; times and grades recomputed from `sessions.csv`,
 `ground_truth.csv` and `clients.csv`). Share of Easy / Good / Hard:
@@ -218,6 +250,17 @@ the earlier rule, not where human recall changes. Setting the intervals
 needs real mean times per move from the app. Changing the rule also changes
 the grades in generated data, so datasets and trained weights would be
 regenerated.
+
+**Accuracy in the synthetic data.** From the same run's 123,891 Repeating
+sessions (all 300 clients, including the same-day tests; graded by the
+earlier rule): mistakes per review were 0 in 61.6%, 1 in 24.3%, 2 in 9.3%,
+3 in 3.3% and 4 or more in 1.5%. Accuracy was at least 0.9 in 65.2% of
+reviews, at least 0.8 in 83.7%, at least 0.75 in 90.2% and at least 0.5 in
+99.1%. A single mistake leaves a median accuracy of 0.83, but 0.67 on 2–3
+move lines, 0.80 on 4–5, 0.83 on 6–7, 0.88 on 8–9 and 0.91 on 10 or more:
+an accuracy boundary would treat one slip on a short line as far worse than
+on a long one. Under the earlier rule every one of the 38.4% of reviews with
+a mistake is Again. Synthetic only; human accuracy is unmeasured.
 
 With FSRS hidden memory the grade also changes the memory update
 (synthetic-client record, section 7); with multiplicative memory it does not.
@@ -389,11 +432,12 @@ neither claims a completed human calibration.
 |---|---|
 | Seven telemetry columns; grade values 1/2/3/4; accuracy 0 through 1; t_days at least 0 | Section 2.1 |
 | Guided accuracy 1; rows below 1 day excluded from loss | Section 2.1 implementation clarification |
-| Again after any first-attempt error; grade by mean time per move; intervals open | Section 3 decision and 3.2 |
+| Grade from accuracy and mean time per move; no baseline; accuracy and time boundaries open | Section 3 decisions, 3.1 and 3.2 |
 | Time-per-move formula; reps +1 / −2; expected mean time per move per profile at R = 1, 0.9, 0.7 and reps 0, 5 | Section 3.3; formula arithmetic at the benchmark profiles' mean traits, not measurements |
 | Trait means, standard deviations and allowed ranges; typical hesitation 549 / 819 / 1350 ms; web baseline zero | Section 3.4, from synthetic-client record sections 3.1, 4 and 9 and the system-architecture record |
 | Trait minimum–maximum per profile over 300 clients; one α at 0.1, two β at 0 | Section 3.4; measured on the 2026-11-13 run's generated `clients.csv` |
 | 76,287 clean sessions; grade shares per rule and profile; 6.5% changed; earlier 500 / 1800 ms; candidate 800 / 2100 ms; median baseline 302 ms | Section 3.5; measured on the 2026-11-13 run's generated data |
+| 123,891 Repeating sessions; mistakes per review 0/1/2/3/4+; accuracy shares at 0.9/0.8/0.75/0.5; one-mistake median accuracy overall and by line length; 38.4% with a mistake | Section 3.5; measured on the 2026-11-13 run's generated data |
 | Stage 2; chi-squared exponent 2 | Section 4 and its unresolved validation-method clarification |
 | 5th-percentile physical baseline estimate | Section 4.1, Physical Baseline; future calibration specification, not a completed measurement |
 | CSV illustration: 2.4 days / grade 3 / 3420 ms / accuracy 1.0; 0.5 days / grade 1 / 8940 ms / accuracy 0.75; 5.1 days / grade 4 / 1980 ms / accuracy 1.0 | Existing page's labelled illustrative rows; invented examples, not observations or grade-calculation tests, because move counts and baselines are not supplied |
