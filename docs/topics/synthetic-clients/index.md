@@ -92,36 +92,41 @@ The current implementation caps attempts at five. If the last draw fails, the se
 
 ## Two hidden memory models update the same per-line state
 
-<p class="bs-lead">Both models supply the same recall curve, but their stability updates make different synthetic populations.</p>
+<p class="bs-lead">Both worlds share everything except one rule: how a line's stability changes after a session. Multiplicative memory looks only at recall; FSRS memory also weighs the grade, the line's difficulty and how strong the memory already is.</p>
 
 <figure id="fig-hidden-models">
 <div class="bs-flow">
-<div class="bs-node"><b>Shared inputs</b><small>Line state, elapsed simulation days and the session outcome enter the configured memory model.</small></div>
+<div class="bs-node"><b>Shared session</b><small>Same recall curve, per-move draws, latency, grade, retries and collection policy.</small></div>
 <div class="bs-arrow"><span>choose model</span></div>
-<div class="bs-stack"><div class="bs-part"><h3>Multiplicative</h3><p>Start at one day; clean recall multiplies stability, while a lapse reduces it with a floor.</p></div><div class="bs-part"><h3>FSRS hidden memory</h3><p>Grade initializes stability/difficulty; later updates use short-term or recall/forget equations plus a lapse clamp.</p></div></div>
+<div class="bs-stack"><div class="bs-part"><h3>Multiplicative</h3><p>Start at one day. A clean session multiplies stability by a factor that depends only on recall; a lapse cuts it to 30%.</p></div><div class="bs-part"><h3>FSRS hidden memory</h3><p>The first grade sets stability and difficulty. Later growth depends on grade, difficulty, current stability and recall; a lapse uses the FSRS forget update.</p></div></div>
 <div class="bs-arrow"><span>save state</span></div>
-<div class="bs-node"><b>Next recall curve</b><small>Updated stability, familiarity and last-session time determine the next simulated session.</small></div>
+<div class="bs-node"><b>Next recall curve</b><small>The new stability sets how fast the line fades before the next session.</small></div>
 </div>
 <figcaption><strong>Figure 2.</strong> Arrows show alternative update paths, not two fits run inside the app. Generator: this page's HTML; input: <a href="docs.topics.synthetic-clients.record.md.html#7-offline-simulator-and-hidden-memory">hidden-model implementation</a>.</figcaption>
 </figure>
 
-<a href="#fig-hidden-models">Figure 2</a> locates the choice behind the shared retrievability formula. Stability, familiarity, last session time, lapse state and session count belong to a client/line; FSRS memory also keeps difficulty. Time cannot run backwards.
+<a href="#fig-hidden-models">Figure 2</a> shows where the two worlds split. A session runs the same way in both: each move is recalled with chance R from the curve above, the line passes only if every move is right, and the grade comes from mistakes and hesitation. With the same seed and catalog, even the clients, their sides and their lines are identical. Only the bot's hidden "brain" differs: the rule that turns the session into a new stability.
 
-<div class="scroll" role="region" aria-label="Hidden memory models; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
+<div class="scroll" role="region" aria-label="Hidden memory models compared; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
 <div style="min-width:640px">
 
-| Model | First exposure | Later update |
+| Question | Multiplicative | FSRS hidden memory |
 |---|---|---|
-| Multiplicative | Stability starts at one day. | A clean session multiplies stability by a recall-dependent factor. A lapse takes the smaller of previous stability and its reduced value with a one-day floor. |
-| FSRS hidden memory | The first grade initializes stability and difficulty. | Below one elapsed day it uses short-term stability; later it uses recall/forget updates. A lapse clamps the result to the smaller of previous stability and its updated value with a one-day floor. |
+| What sets the growth after a clean session? | Recall only. Reviewed at R = 90% the stability grows ×2.83; reviewed at R = 50% it grows ×5.08. | Grade, difficulty, current stability and recall, through the FSRS-6 recall update. |
+| Does the grade (Hard, Good, Easy) matter? | No. A slow clean pass and a fast one grow memory equally. | Yes. Easy grows memory more than Good, Hard less, so hesitation changes memory. |
+| Does a line remember being hard? | No. A line that failed often grows as fast as any other after a clean pass. | Yes. Each Again raises the line's difficulty, and higher difficulty slows later growth. |
+| Does growth slow for strong memories? | No. The factor ignores current stability. | Yes. Strong memories grow by a smaller factor. |
+| After a mistake | Stability × 0.3, never below one day unless already lower. | FSRS forget update, with the same one-day clamp. |
+| Per-client parameters | Shared constants; clients differ in forgetting power C. | Each client's own 21 weights, sampled around the FSRS defaults. |
 
 </div>
 </div>
 
+Tested reviews passed 58.2% of the time with multiplicative memory and 38.4% with FSRS memory, on each study's test clients. Which rule difference causes the gap was not measured; the two studies also used different catalog groupings (91 versus 82 families), so their results do not isolate the memory change alone.
 
-Guided Learning updates hidden memory too: multiplicative memory treats it as success; FSRS memory uses its latency-derived grade. FSRS hidden weights are sampled around defaults in a separate random stream, then constrained to allowed bounds. The exported decay coefficient can be clipped while hidden recall and updates still use the client's original trait through R. This limits what the exported vector or bounded fitter can represent outside that range; the <a href="docs.topics.synthetic-clients.record.md.html#7-offline-simulator-and-hidden-memory">record</a> explains the boundary.
+The two worlds answer different questions. FSRS memory follows FSRS-6 for every move, so it checks whether the trainers can recover a model of the right kind; the remaining mismatch is that a line needs all moves, <code>R^M</code>. Multiplicative memory is a separate construction, so it checks how FSRS copes when players do not forget the way FSRS assumes. Which resembles human players remains unknown.
 
-Neither model is an exact ordinary app scheduler. FSRS hidden memory adds the lapse clamp and a session-level grade, while the clean-session chance remains <code>R^M</code>. Multiplicative memory is a separate construction. Which resembles human players remains unknown. The dated studies also changed catalog grouping, so their results do not isolate the memory-model change alone.
+Guided Learning updates hidden memory too: multiplicative memory treats it as success; FSRS memory uses its latency-derived grade. FSRS hidden weights are sampled around defaults in a separate random stream, then constrained to allowed bounds. The exported decay coefficient can be clipped while hidden recall and updates still use the client's original trait through R; the <a href="docs.topics.synthetic-clients.record.md.html#7-offline-simulator-and-hidden-memory">record</a> explains that boundary and gives the exact update formulas.
 
 </section>
 

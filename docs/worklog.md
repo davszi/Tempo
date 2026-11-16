@@ -2,6 +2,21 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-16 Explain how the two hidden memory models differ
+
+Requested to make the multiplicative versus FSRS hidden memory difference
+understandable on the site. Added "How the two updates differ" to section 7
+of the [synthetic-client record](topics/synthetic-clients/record.md): what
+both share, a question-by-question comparison of the stability updates read
+from `memory/multiplicative.py` and `fsrs/model.py`, the multiplicative growth
+factor at R = 0.9 and 0.5 (formula arithmetic), and the two studies' test
+pass rates (58.2% and 38.4%) with the different catalog groupings; the cause
+of the gap was not measured. Rewrote the page's hidden-memory chapter from
+it and added its numbers to the record's numeric-source table. No code,
+data or result changed. Documentation build, freshness check and strict
+lint pass with kit 5.0.0 (lint notes about worklog links predate this
+change). The commit hash is assigned by this entry's landing commit.
+
 ## 2026-11-16 Explain weight-space programming as a separate proposal
 
 The user requested a concept-only proposal and publication. Added

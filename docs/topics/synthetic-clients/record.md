@@ -203,6 +203,31 @@ bounded decay may not represent that trait-C recall curve outside the range.
 This source-derived representability limit was not measured in the historical
 populations.
 
+### How the two updates differ
+
+Everything except the stability update is shared: the recall curve and
+per-move draws (clean-session chance R^M), latency, grading, retries and the
+collection policy. With the same seed and catalog the clients, sides and
+repertoires are identical (2026-11-14 experiment). The two update rules, read
+from `memory/multiplicative.py` and `fsrs/model.py` (`recall_stability`,
+`forget_stability`, `next_difficulty`):
+
+| Question | Multiplicative | FSRS hidden memory |
+|---|---|---|
+| What sets the growth after a clean session? | R only: the factor 1 + 1.5·exp(2(1−R)) | Grade, difficulty D, current S and R: S·(1 + e^w8·(11 − D)·S^(−w9)·(e^(w10(1−R)) − 1)·hard·easy) |
+| Does the grade (Hard, Good, Easy) matter? | No; any clean session counts the same | Yes; w15 scales Hard and w16 scales Easy, and the FSRS bounds keep w15 ≤ 1 ≤ w16, so Easy grows memory most and Hard least |
+| Does a line keep a difficulty? | No | Yes; D moves with every grade (Again raises it), and growth shrinks as D rises toward its maximum of 10 |
+| Does growth shrink for strong memories? | No; the factor does not depend on S | Yes, through S^(−w9) |
+| What happens after a lapse? | S × 0.3 | Forget update; both use the same lapse clamp |
+| Are the parameters per client? | Shared constants; clients differ in C | Each client's own sampled 21 weights |
+
+Arithmetic from the multiplicative formula: the factor is 2.83 at R = 0.9 and
+5.08 at R = 0.5. Observed pass rates of tested reviews on test clients:
+58.2% with multiplicative memory (2026-11-13 experiment, 91 families) and
+38.4% with FSRS memory (2026-11-14 experiment, 82 families). Which rule
+difference causes the lower FSRS-memory pass rate was not measured, and the
+catalog grouping also differed.
+
 The byte-identity check in the 2026-11-14 experiment found the multiplicative
 generator unchanged when FSRS memory was added, on the same catalog. This
 is historical evidence, not a fresh run. The published A2/B2 and A1/A1c/B1
@@ -348,7 +373,9 @@ model construction, not human measurements.
 | R at 0 and 1; S at 90% recall; calibration factor 0.9; clean chance R^M | Sections 3.2, 3.3 and 6 |
 | Milliseconds conversion 1000; practice multiplier 1/(1 + alpha n); familiarity +1 / minus 2 with floor 0 | Sections 3.4 and 3.5 |
 | Guided R = 1; test after three minutes; five-attempt cap | Section 6 |
+| Hidden-memory growth ×2.83 at R = 0.9 and ×5.08 at R = 0.5; lapse ×0.3 with one-day floor; 21 sampled FSRS weights | Section 7 |
+| Pass rates 58.2% (multiplicative) and 38.4% (FSRS memory); 91 versus 82 families | Section 7, from the 2026-11-13 and 2026-11-14 experiment records |
 | Profile baselines 220/300/380 ms; beta 0.4/1.0/2.2; C 0.65/0.50/0.35 | Section 4 |
 
 These are formula constants and configured/modelled values, not measured
-human results. Figure and chapter numbers are presentation identifiers.
+human results; the two pass rates are synthetic experiment measurements. Figure and chapter numbers are presentation identifiers.
