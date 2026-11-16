@@ -263,7 +263,8 @@ button.item:hover:not(:disabled) { border-color: var(--accent); background: var(
 .alt { font-weight: 500; color: var(--muted); font-size: .86em; }
 .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); gap: 24px; align-items: start; }
 .sticky { position: sticky; top: 24px; }
-.var-list { display: grid; gap: 6px; max-height: calc(100vh - 330px); min-height: 280px; overflow: auto; padding-right: 4px; }
+.var-list { display: grid; align-content: start; gap: 6px; max-height: calc(100vh - 330px); min-height: 280px; overflow: auto; padding-right: 4px; }
+.var-note { margin: 12px 2px 0; }
 .var { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); text-align: left; }
 .var:hover { border-color: var(--accent); }
 .var.on { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); background: var(--pale); }

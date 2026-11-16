@@ -71,6 +71,8 @@ export function FamilyPage({ name }: { name: string }) {
             {line.learned ? <span className="chip"><Check size={12} /> Learned</span> : lineProgress ? <span className="chip warn">{lineProgress.ply}/{lineProgress.total}</span> : null}
             <ChevronRight size={16} /></button>;
         }) : <div className="empty">No variation matches.</div>}</div>
+        {!query && family.lines.length === 1 && <p className="muted small var-note">
+          This is the only {family.name} line in the TEMPO library, so there are no other variations to choose.</p>}
       </section>
     </div>
   </>;
