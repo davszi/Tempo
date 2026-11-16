@@ -2,6 +2,16 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-16 Add accounts: create account, sign in and Google sign-in
+
+Added player accounts. `backend/auth.py` stores users (`users`) and sign-in sessions (`auth_sessions`, created at start-up next to the practice tables). Passwords are stored only as salted scrypt hashes and session tokens only as SHA-256 hashes; the browser holds the token in an HttpOnly, SameSite=Lax cookie for 30 days. `web.py` adds `GET /api/auth/me` and `POST /api/auth/register`, `/login`, `/google` and `/logout`. A signed-in player always practises as their account, whatever `player_id` the page sends; a signed-out request that uses a registered account's ID is refused with 401. A new account always starts empty: progress made as a guest stays with the guest, whose ID the browser keeps aside while signed in and restores on sign-out. Guests can still use the app without an account.
+
+Google sign-in uses Google's own button and checks the returned ID token with Google's tokeninfo endpoint (audience, issuer, verified email, expiry). It is off until the backend gets an OAuth client ID through `--google-client-id` or `TEMPO_GOOGLE_CLIENT_ID`; until then the button explains that it is not set up. A Google sign-in links to an existing account with the same verified email. Password reset by email is not built.
+
+The frontend adds `#/login` and `#/signup` (`AuthPage.tsx`): one centred card in the current theme's colours, with no background image. Create account asks for the password twice. The sidebar shows the account or a Sign in button, and Settings shows the same box on phones.
+
+Checks: 11 new backend tests in `backend/tests/test_accounts.py` (19 backend tests pass with the grading tests); frontend tests, type check and build pass. In the browser on a clean database: a guest created an account (mismatched passwords were refused); signing out returned to Sign in, a wrong password was refused, signing in again worked, the account's data was refused to a signed-out request, the Google button explained it is not set up, and the phone layout had no horizontal overflow. The commit hash is assigned by this entry's landing commit.
+
 ## 2026-11-16 Implement the session grading rule in the app
 
 Implemented section 5.3 of the [session grading record](topics/session-grading/session-grading.md) on `feature/frontend-learning`: a Repeating review is graded from its mistakes and the browser-measured time of its timed moves, with no baseline. `LessonPage.tsx` starts a clock when the player's position is ready and sends each attempt's time with the move (`response_time_ms`). `practice_controller.py` stores that time, or the server's own interval for older clients, and rejects values outside 0 to 3,600,000 ms. `ml_engine.py` grades the first attempt of each move with the record's mistake limits, time bands and 20 s cap, and returns the breakdown with the completed review. Abandoning a review to relearn it is still graded Again, now forced rather than derived. The relearn prompts are unchanged: a choice after 2 wrong attempts, relearning only after 4.

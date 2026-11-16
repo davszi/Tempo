@@ -2,11 +2,12 @@ import { createContext, useContext } from "react";
 import type { OpeningSort, Family, OpeningType } from "./catalog";
 import type { OpeningLine, Repertoire } from "./practiceApi";
 import type { LessonProgress } from "./progress";
+import type { Account } from "./auth";
 
 export type LearningSide = "all" | "white" | "black";
 export const learningSideKey = "tempo-learning-side";
 
-export type Route = { view: "home" | "learn" | "family" | "lesson" | "review" | "repertoire" | "settings"; arg?: string };
+export type Route = { view: "home" | "learn" | "family" | "lesson" | "review" | "repertoire" | "settings" | "login" | "signup"; arg?: string };
 
 /** Everything the pages share: the catalog, the player's repertoire and the actions that start practice. */
 export type AppData = {
@@ -31,6 +32,9 @@ export type AppData = {
   startReview: (lineId?: number) => Promise<void>;
   refreshRepertoire: () => Promise<Repertoire | undefined>;
   markLearned: (lineId: number) => void;
+  /** The signed-in account, or null for a guest. */
+  account: Account | null;
+  signOut: () => Promise<void>;
 };
 
 export const AppContext = createContext<AppData | null>(null);

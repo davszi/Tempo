@@ -14,15 +14,18 @@ import { LessonPage } from "./components/LessonPage";
 import { ReviewPage } from "./components/ReviewPage";
 import { RepertoirePage } from "./components/RepertoirePage";
 import { SettingsPage } from "./components/SettingsPage";
+import { AuthPage } from "./components/AuthPage";
+import { fetchAuthState, logout, rememberAccount, type Account } from "./lib/auth";
 
 function readRoute(): Route {
   const [view, ...rest] = window.location.hash.replace(/^#\/?/, "").split("/");
   const arg = rest.length ? decodeURIComponent(rest.join("/")) : undefined;
-  const known = ["home", "learn", "family", "lesson", "review", "repertoire", "settings"] as const;
+  const known = ["home", "learn", "family", "lesson", "review", "repertoire", "settings", "login", "signup"] as const;
   return { view: known.find((name) => name === view) ?? "home", arg };
 }
 const titles: Record<Route["view"], string> = {
   home: "Dashboard", learn: "Learning", family: "Learning", lesson: "Lesson", review: "Repeating", repertoire: "Repertoire", settings: "Settings",
+  login: "Sign in", signup: "Create account",
 };
 
 export default function App() {
@@ -42,7 +45,17 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [toast, setToast] = useState("");
   const [now, setNow] = useState(Date.now);
+  const [account, setAccount] = useState<Account | null>(null);
+  const [googleClientId, setGoogleClientId] = useState<string | null>(null);
   const progress = useProgress();
+
+  // Who is signed in (the session lives in a cookie), then load their data.
+  useEffect(() => {
+    fetchAuthState().then(({ user, google_client_id }) => {
+      setGoogleClientId(google_client_id);
+      if (user) { rememberAccount(user); setAccount(user); setLoadVersion((version) => version + 1); }
+    }).catch(() => { /* backend unreachable: the load banner explains it */ });
+  }, []);
 
   const families = useMemo(() => buildFamilies(catalog), [catalog]);
   const variants = useMemo(() => variantMoves(catalog), [catalog]);
@@ -136,13 +149,40 @@ export default function App() {
     setCatalog((lines) => lines.map((line) => (line.line_id === lineId ? { ...line, learned: true } : line)));
   }, []);
 
+  const signedIn = useCallback((user: Account) => {
+    rememberAccount(user);
+    setAccount(user);
+    setSession(null);
+    setLoadVersion((version) => version + 1);
+    showToast(`Signed in as ${user.name}`);
+    go("#/home");
+  }, [go, showToast]);
+
+  const signOut = useCallback(async () => {
+    try { await logout(); } catch { /* the cookie is cleared on the next sign-in anyway */ }
+    rememberAccount(null);
+    setAccount(null);
+    setSession(null);
+    setRepertoire(null);
+    setLoadVersion((version) => version + 1);
+    showToast("Signed out");
+    go("#/login");
+  }, [go, showToast]);
+
   const dueCount = repertoire ? repertoire.lines.filter((line) => isDue(line, now)).length : 0;
   const data: AppData = {
     catalog, families, variants, lineById, repertoire, progress, now, go, showToast,
     openingSort, setOpeningSort, selectedOpeningTypes, setSelectedOpeningTypes,
     availableOpeningTypes, learningSide, setLearningSide,
-    startLearning, startReview, refreshRepertoire, markLearned, dueCount,
+    startLearning, startReview, refreshRepertoire, markLearned, dueCount, account, signOut,
   };
+
+  if (route.view === "login" || route.view === "signup") {
+    return <AppearanceContext.Provider value={appearance}>
+      <AuthPage mode={route.view} googleClientId={googleClientId} onSignedIn={signedIn} go={go} />
+      <Toast text={toast} />
+    </AppearanceContext.Provider>;
+  }
 
   let page;
   switch (route.view) {
