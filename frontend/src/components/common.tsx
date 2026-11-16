@@ -84,7 +84,7 @@ export function MemRow({ line }: { line: RepertoireLine }) {
     <span><b><LineTitle line={line} /></b><small>{line.opening_family} · {sideName(line.family_side)}</small></span>
     <span className="mem-meter"><Meter line={line} /><small className="muted">{recallText(line)}</small></span>
     <DueChip line={line} />
-    <button className={`btn sm ${due ? "primary" : "ghost"}`} onClick={() => void startReview(line.line_id)}>{due ? "Review" : "Practise"}</button></div>;
+    <button className={`btn sm ${due ? "primary" : "upcoming-review"}`} onClick={() => void startReview(line.line_id)}>Review</button></div>;
 }
 
 export const finalPosition = (line: OpeningLine | RepertoireLine, ply?: number) => {

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Square } from "chess.js";
-import { ArrowLeft, ArrowUpRight, BookOpen, Check, ChevronRight, Lightbulb, Play, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, Check, ChevronRight, Lightbulb, Play, RotateCcw, Undo2 } from "lucide-react";
 import { useApp } from "../lib/app";
 import { closestLines, lineLabel } from "../lib/catalog";
 import { positionAt } from "../lib/learning";
@@ -9,7 +9,6 @@ import { practiceRequest, type Grade, type RepertoireLine, type Session } from "
 import { ChessBoard } from "./ChessBoard";
 import { LineTitle, fmtDate, plural, sideName } from "./common";
 
-const OPPONENT_DELAY_MS = 450;
 const MISTAKES_PER_RELEARN_PROMPT = 2;
 const promotions = { q: "Queen", r: "Rook", b: "Bishop", n: "Knight" } as const;
 const gradeClass: Record<Grade, string> = { Again: "g1", Hard: "g2", Good: "g3", Easy: "g4" };
@@ -27,27 +26,29 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
   const line = lineById.get(initial.line_id);
   const family = families.find((item) => item.name === line?.opening_family);
   const [session, setSession] = useState(initial);
-  const [shown, setShown] = useState(initial.move_index);       // ply on the board; lags while the opponent "replies"
   const [selected, setSelected] = useState<Square | null>(null);
   const [promotion, setPromotion] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingFinalMove, setPendingFinalMove] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ text: string; tone: "" | "ok" | "bad" }>(() =>
     learning && initial.move_index > 0 && progress[initial.line_id] ? { text: "Welcome back. You're continuing where you left off.", tone: "ok" } : { text: "", tone: "" });
   const [mistakes, setMistakes] = useState(0);
   const [hintMove, setHintMove] = useState<string | null>(null);   // Repeating: the move shown once after a mistake
   const [showRelearnChoice, setShowRelearnChoice] = useState(false);
   const [shake, setShake] = useState(0);
-  const [result, setResult] = useState<{ grade: Grade; before: RepertoireLine | undefined; after?: RepertoireLine } | null>(null);
+  const [reviewAfter, setReviewAfter] = useState<RepertoireLine | null>();
   const before = useRef(repertoire?.lines.find((item) => item.line_id === initial.line_id));
-  const timer = useRef<number | undefined>(undefined);
-  useEffect(() => () => window.clearTimeout(timer.current), []);
 
+  const shown = session.move_index;
   const finished = session.status === "complete";
-  const game = useMemo(() => positionAt(session.played_moves, shown), [session, shown]);
-  const animating = shown < session.move_index;
-  const yourTurn = !finished && !animating && !showRelearnChoice;
+  const game = useMemo(() => {
+    const position = positionAt(session.played_moves, shown);
+    if (pendingFinalMove) position.move(pendingFinalMove);
+    return position;
+  }, [session.played_moves, shown, pendingFinalMove]);
+  const yourTurn = !finished && !showRelearnChoice && !pendingFinalMove;
   const hint = learning ? session.hint : hintMove;
-  const arrow = yourTurn && hint ? { from: hint.slice(0, 2) as Square, to: hint.slice(2, 4) as Square } : null;
+  const arrow = yourTurn && hint ? { from: hint.slice(0, 2) as Square, to: hint.slice(2, 4) as Square, promotion: hint[4] } : null;
   const nextSan = useMemo(() => {
     if (!hint) return null;
     try { return positionAt(session.played_moves, session.move_index).move(hint).san; } catch { return hint; }
@@ -55,32 +56,38 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
   const lastMove = game.history({ verbose: true }).at(-1);
   const side = session.side ?? "white";
   const total = session.total_plies;
+  const firstPlayerPly = side === "black" ? 1 : 0;
+  const lastPlayedPly = session.move_index - 1;
+  const previousPlayerPly = side === "both" || lastPlayedPly % 2 === firstPlayerPly ? lastPlayedPly : lastPlayedPly - 1;
 
   const closest = useMemo(() => line && family ? closestLines(line, family.lines) : [], [line, family]);
   const nextLine = closest.find((item) => !item.line.learned && item.line.line_id !== initial.line_id)?.line;
 
   async function submit(move: string) {
     const previous = session.move_index;
+    // Confirm the final player move on the server while showing it on the board.
+    const remaining = total - previous;
+    if ((remaining === 1 || (side !== "both" && remaining === 2)) &&
+        move === line?.moves_uci.split(" ")[previous]) {
+      setPendingFinalMove(move);
+    }
     setBusy(true);
     setSelected(null);
     setPromotion("");
     try {
       const next = await practiceRequest<Session>("move", { session_id: session.session_id, move_index: previous, move_uci: move });
+      setPendingFinalMove(null);
       setSession(next);
       if (next.correct) {
         setHintMove(null);
         setFeedback(mistakes && !learning ? { text: "Good, keep going.", tone: "ok" } : { text: "", tone: "" });
-        // Learning: show your move first, then the opponent's reply. Repeating stays instant, because reply time is graded.
-        if (learning && next.move_index > previous + 1) {
-          setShown(previous + 1);
-          timer.current = window.setTimeout(() => setShown(next.move_index), OPPONENT_DELAY_MS);
-        } else setShown(next.move_index);
         if (learning && next.status === "play") saveProgress(next.line_id, { ply: next.move_index, total: next.total_plies, side, at: Date.now() });
         if (next.status === "complete") await complete(next);
       } else wrongMove(next);
     } catch (failure) {
       showToast((failure as Error).message);
     } finally {
+      setPendingFinalMove(null);
       setBusy(false);
     }
   }
@@ -107,9 +114,8 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
       showToast(`Added to your repertoire: ${line ? lineLabel(line) : done.name}`);
       await refreshRepertoire();
     } else {
-      const fresh = await practiceRequest<{ lines: RepertoireLine[] }>("repertoire");
-      void refreshRepertoire();
-      setResult({ grade: done.fsrs_rating ?? "Again", before: before.current, after: fresh.lines.find((item) => item.line_id === done.line_id) });
+      const fresh = await refreshRepertoire();
+      setReviewAfter(fresh?.lines.find((item) => item.line_id === done.line_id) ?? null);
     }
   }
 
@@ -130,6 +136,15 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
     if (game.get(from)?.type === "p" && to.endsWith(game.turn() === "w" ? "8" : "1")) setPromotion(move);
     else void submit(move);
   }
+
+  async function replayLearning(replayFrom?: number) {
+    setBusy(true);
+    try {
+      await startLearning(session.line_id, replayFrom === undefined ? { restart: true } : { replayFrom });
+    } finally {
+      setBusy(false);
+    }
+  }
   function clickSquare(square: Square) {
     if (!yourTurn || busy) return;
     const piece = game.get(square);
@@ -137,36 +152,39 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
     else if (selected) attemptMove(selected, square);
   }
 
-  const status = finished ? "Line complete." : showRelearnChoice ? "Choose how to continue."
-    : animating ? "Opponent is replying…"
+  const status = finished ? "Line complete." : pendingFinalMove ? "Finishing line…" : showRelearnChoice ? "Choose how to continue."
     : learning ? `${game.turn() === "w" ? "White" : "Black"} to move. Follow the arrow, drag the piece or click it and then its square.`
     : `${game.turn() === "w" ? "White" : "Black"} to move. Recall the move: no hints.`;
   const title = line ? (lineLabel(line) === "Main line" ? line.opening_family : `${line.opening_family}: ${lineLabel(line)}`) : session.name;
 
   let panel;
   if (finished && learning) {
-    panel = <div className="card"><div className="done-icon"><Check size={26} /></div><h2>Learned and added to your repertoire.</h2>
-      <p className="muted" style={{ margin: "8px 0 0" }}>{title} as {sideName(side)}. Its first recall test is ready now, then TEMPO spaces the reviews out.</p>
+    panel = <div className="card learning-complete">
+      <div className="learning-complete-header">
+        <div className="done-icon" aria-hidden="true"><Check size={22} /></div>
+        <div><h2>Line learned</h2><p className="muted">Ready to review.</p></div>
+      </div>
       <div className="done-actions">
-        <button className="btn primary full" onClick={() => void startReview(session.line_id)}><RotateCcw size={16} /> Test it now without hints</button>
-        {nextLine && <button className="btn ghost full" onClick={() => void startLearning(nextLine.line_id)}><Play size={16} /> Learn next: <LineTitle line={nextLine} /></button>}
+        <button className="btn primary full" onClick={() => void startReview(session.line_id)}><RotateCcw size={16} /> Review without hints</button>
+        {nextLine && <button className="btn ghost full" onClick={() => void startLearning(nextLine.line_id)}><Play size={16} /><span>Learn next: <LineTitle line={nextLine} /></span></button>}
         <button className="btn quiet full" onClick={() => onExit(`#/family/${encodeURIComponent(line?.opening_family ?? "")}`)}>Back to {line?.opening_family ?? "openings"}</button>
       </div></div>;
   } else if (finished) {
-    const grade = result?.grade;
-    const after = result?.after;
-    const recallBefore = result?.before?.recall;
+    const grade = session.fsrs_rating ?? "Again";
+    const after = reviewAfter;
+    const recallBefore = before.current?.recall;
     panel = <div className="card"><p className="eyebrow">REVIEW SAVED</p>
-      {grade ? <>
+      <>
         <span className={`grade ${gradeClass[grade]}`}>{grade}</span>
         <p className="muted" style={{ margin: "12px 0 0", fontSize: 14 }}>{mistakes ? `${plural(mistakes, "mistake")} in this line. Any mistake means Again, even when fixed on retry.` : gradeReason[grade]}</p>
         <div className="facts">
           <div className="fact"><span>Recall before</span><b>{recallBefore == null ? "first test" : `${Math.round(recallBefore * 100)}%`}</b></div>
-          <div className="fact"><span>Memory strength</span><b>{result?.before?.stability_days != null ? `${result.before.stability_days.toFixed(1)} → ` : ""}{after?.stability_days != null ? `${after.stability_days.toFixed(1)} d` : "—"}</b></div>
+          <div className="fact"><span>Memory strength</span><b>{before.current?.stability_days != null ? `${before.current.stability_days.toFixed(1)} → ` : ""}{after?.stability_days != null ? `${after.stability_days.toFixed(1)} d` : "—"}</b></div>
           <div className="fact"><span>Next review</span><b>{after ? fmtDate(after.next_review_at) : "—"}</b></div>
           <div className="fact"><span>At</span><b>{after ? new Date(after.next_review_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "—"}</b></div>
         </div>
-      </> : <p className="muted">Saving…</p>}
+      </>
+      {after === undefined && <p className="muted small">Loading updated schedule...</p>}
       <div className="done-actions">
         <button className="btn primary full" onClick={() => void startReview()}><Play size={16} /> Next review</button>
         {grade === "Again" && <button className="btn ghost full" onClick={() => void startLearning(session.line_id, { restart: true })}><BookOpen size={16} /> Learn this line again</button>}
@@ -187,16 +205,14 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
       <div className="bar"><i style={{ width: `${shown / total * 100}%` }} /></div>
       {learning ? (yourTurn && nextSan ? <div className="next-move"><span className="icon"><ArrowUpRight size={24} /></span><div><span>YOUR NEXT MOVE</span><h2>{nextSan}</h2>
           <small className="muted">{hint!.slice(0, 2)} → {hint!.slice(2, 4)}</small></div></div>
-        : <div className="next-move"><span className="icon"><Sparkles size={22} /></span><div><span>OPPONENT</span><h2>Thinking…</h2></div></div>)
+        : null)
         : <div className="next-move"><span className="icon">{hintMove ? <Lightbulb size={22} /> : <RotateCcw size={22} />}</span><div>
           <span>{hintMove ? "ONE-TIME HINT" : "NO HINTS"}</span><h2>{hintMove ? nextSan : "Recall the move"}</h2>
           <small className="muted">{mistakes ? `${plural(mistakes, "mistake")} so far` : "Mistakes: none yet"}</small></div></div>}
       <h3 style={{ marginBottom: 10 }}>The line so far</h3>
       <div className="moves">{game.history().map((move, index) => <span key={index} className="mv">{index % 2 === 0 && <small>{index / 2 + 1}.</small>}{move}</span>)}
         {shown === 0 && <span className="muted small">No moves yet.</span>}</div>
-      {learning && <><hr className="divider" /><div className="row">
-        <button className="btn sm ghost" disabled={busy} onClick={() => void startLearning(session.line_id, { restart: true })}><RotateCcw size={15} /> Restart line</button>
-        <span className="muted small">Progress is saved automatically.</span></div></>}
+      {learning && <><hr className="divider" /><span className="muted small">Progress is saved automatically.</span></>}
     </div>;
   }
 
@@ -206,9 +222,16 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
     <div className="session-head"><div><p className="eyebrow">{learning ? "GUIDED LEARNING" : "REPEATING · NO HINTS"} · {sideName(side)}</p><h1>{title}</h1></div>
       <span className="badge">{shown} / {total} half-moves</span></div>
     <div className="session">
-      <div className="board-col"><div className="board-frame">
+      <div className="board-col">
+        {learning && <div className="lesson-controls" role="group" aria-label="Learning controls">
+          <button type="button" className="btn quiet" title="Replay previous move" aria-label="Replay previous move"
+            disabled={busy || previousPlayerPly < firstPlayerPly} onClick={() => void replayLearning(previousPlayerPly)}><Undo2 size={18} /></button>
+          <button type="button" className="btn quiet" title="Restart lesson" aria-label="Restart lesson"
+            disabled={busy || (!finished && session.move_index <= firstPlayerPly)} onClick={() => void replayLearning()}><RotateCcw size={18} /></button>
+        </div>}
+        <div className="board-frame">
         <ChessBoard fen={game.fen()} flipped={side === "black"} arrow={arrow} lastMove={lastMove} selected={selected} shake={shake}
-          disabled={busy || !yourTurn || !!promotion} onSquareClick={finished ? undefined : clickSquare}
+          disabled={busy || !yourTurn || !!promotion} onSquareClick={clickSquare}
           onPieceDrop={finished ? undefined : (from, to) => { setSelected(null); if (yourTurn && !busy) attemptMove(from, to); }}
           canDrag={(square) => yourTurn && !busy && game.get(square)?.color === game.turn()} /></div>
         <p className={`feedback ${feedback.tone}`} role="status">{feedback.text || status}</p>

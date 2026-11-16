@@ -1,7 +1,10 @@
 import { createContext, useContext } from "react";
-import type { Family } from "./catalog";
+import type { OpeningSort, Family, OpeningType } from "./catalog";
 import type { OpeningLine, Repertoire } from "./practiceApi";
 import type { LessonProgress } from "./progress";
+
+export type LearningSide = "all" | "white" | "black";
+export const learningSideKey = "tempo-learning-side";
 
 export type Route = { view: "home" | "learn" | "family" | "lesson" | "review" | "repertoire" | "settings"; arg?: string };
 
@@ -9,6 +12,13 @@ export type Route = { view: "home" | "learn" | "family" | "lesson" | "review" | 
 export type AppData = {
   catalog: OpeningLine[];
   families: Family[];
+  openingSort: OpeningSort;
+  setOpeningSort: (band: OpeningSort) => void;
+  selectedOpeningTypes: OpeningType[];
+  setSelectedOpeningTypes: (types: OpeningType[]) => void;
+  availableOpeningTypes: OpeningType[];
+  learningSide: LearningSide;
+  setLearningSide: (side: LearningSide) => void;
   variants: Map<number, string>;
   lineById: Map<number, OpeningLine>;
   repertoire: Repertoire | null;
@@ -17,9 +27,9 @@ export type AppData = {
   dueCount: number;
   go: (hash: string) => void;
   showToast: (text: string) => void;
-  startLearning: (lineId: number, options?: { restart?: boolean }) => Promise<void>;
+  startLearning: (lineId: number, options?: { restart?: boolean; replayFrom?: number }) => Promise<void>;
   startReview: (lineId?: number) => Promise<void>;
-  refreshRepertoire: () => Promise<void>;
+  refreshRepertoire: () => Promise<Repertoire | undefined>;
   markLearned: (lineId: number) => void;
 };
 

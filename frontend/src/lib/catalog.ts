@@ -16,6 +16,51 @@ export type Family = {
 const moves = (line: { moves_uci: string }) => line.moves_uci.split(" ");
 const treeOrder = (a: OpeningLine, b: OpeningLine) => a.moves_uci.localeCompare(b.moves_uci) || a.name.localeCompare(b.name);
 
+export type OpeningSort = "easy" | "popular";
+
+export const openingTypes = [
+  ["gambit", "Gambits"], ["defense", "Defenses"],
+  ["attack", "Attacks"], ["system", "Systems"], ["open", "Open Games"],
+  ["semi-open", "Semi-Open Games"], ["closed", "Closed Games"],
+  ["flank", "Flank Openings"],
+] as const;
+export type OpeningType = typeof openingTypes[number][0];
+export const allOpeningTypes = openingTypes.map(([type]) => type);
+
+const namePatterns = {
+  gambit: /\bgambits?\b/i,
+  defense: /\bdefen[cs]es?\b/i,
+  attack: /\battacks?\b/i,
+  system: /\bsystems?\b/i,
+};
+
+export function playerMoveCount(line: OpeningLine) {
+  const plies = moves(line).length;
+  return line.family_side === "white" ? Math.ceil(plies / 2) : Math.floor(plies / 2);
+}
+
+export function linesByType(family: Family, types: readonly OpeningType[]) {
+  if (types.length === allOpeningTypes.length) return family.lines;
+  const byId = new Map(family.all.map((line) => [line.line_id, line]));
+  return family.lines.filter((line) => types.some((type) => {
+    if (type === "open" || type === "semi-open" || type === "closed" || type === "flank") {
+      const [white, black] = moves(line);
+      if (type === "open") return white === "e2e4" && black === "e7e5";
+      if (type === "semi-open") return white === "e2e4" && !!black && black !== "e7e5";
+      if (type === "closed") return white === "d2d4" && black === "d7d5";
+      return white !== "e2e4" && white !== "d2d4";
+    }
+    const pattern = namePatterns[type];
+    if (pattern.test(family.name)) return true;
+    let ancestor: OpeningLine | undefined = line;
+    while (ancestor) {
+      if (pattern.test(ancestor.name)) return true;
+      ancestor = ancestor.parent_line_id === null ? undefined : byId.get(ancestor.parent_line_id);
+    }
+    return false;
+  }));
+}
+
 /** The variation part of a line name: "Alekhine Defense: Four Pawns Attack" becomes "Four Pawns Attack". */
 export function lineLabel(line: { name: string; opening_family: string }) {
   const family = line.opening_family;

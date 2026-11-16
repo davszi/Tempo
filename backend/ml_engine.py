@@ -27,7 +27,7 @@ class MLEngine:
         if not all(map(isfinite, weights)):
             raise ValueError("Each FSRS weight must be finite")
 
-        scheduler = Scheduler(parameters=weights)
+        scheduler = Scheduler(parameters=weights, learning_steps=(), relearning_steps=())
         if tuple(scheduler.parameters) != weights:
             raise ValueError("FSRS adjusted the supplied weights. Check the parameter bounds")
         return cls(scheduler, baseline_ms=baseline_ms)
@@ -38,7 +38,7 @@ class MLEngine:
         if scheduler is None:
             from fsrs import Scheduler
 
-            scheduler = Scheduler()
+            scheduler = Scheduler(learning_steps=(), relearning_steps=())
         self.scheduler = scheduler
         self.baseline_ms = baseline_ms
 

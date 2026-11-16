@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, BookOpen, Check, ChevronRight, Play, RotateCcw, Search } from "lucide-react";
 import { useApp } from "../lib/app";
-import { lineLabel } from "../lib/catalog";
+import { linesByType, lineLabel, playerMoveCount } from "../lib/catalog";
 import { positionAt } from "../lib/learning";
 import { ChessBoard } from "./ChessBoard";
 import { LineTitle, MoveChips, SideDot, plural, sideName } from "./common";
 
 /** One opening family: the chosen line on a board on the left, every learnable variation on the right. */
 export function FamilyPage({ name }: { name: string }) {
-  const { families, progress, repertoire, go, startLearning, startReview } = useApp();
+  const { families, progress, repertoire, go, startLearning, startReview, openingSort, availableOpeningTypes, selectedOpeningTypes, setSelectedOpeningTypes } = useApp();
   const family = families.find((item) => item.name === name);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -18,21 +18,29 @@ export function FamilyPage({ name }: { name: string }) {
     return families.length ? <div className="empty"><h3>Opening not found</h3><button className="btn ghost" onClick={() => go("#/learn")}>Back to openings</button></div>
       : <div className="empty">Loading openings…</div>;
   }
+  const matching = linesByType(family, selectedOpeningTypes);
+  const lines = openingSort === "easy" ? [...matching].sort((a, b) => playerMoveCount(a) - playerMoveCount(b)) : matching;
+  if (!lines.length) {
+    return <div className="empty"><h3>No matching variations</h3>
+      {selectedOpeningTypes.length < availableOpeningTypes.length &&
+        <button className="btn ghost" onClick={() => setSelectedOpeningTypes(availableOpeningTypes)}>Select all available types</button>}
+      <button className="btn ghost" onClick={() => go("#/learn")}>Back to openings</button></div>;
+  }
   const term = query.trim().toLowerCase();
-  const list = family.lines.filter((line) => !term || lineLabel(line).toLowerCase().includes(term) || line.eco.toLowerCase().includes(term)
+  const list = lines.filter((line) => !term || lineLabel(line).toLowerCase().includes(term) || line.eco.toLowerCase().includes(term)
     || positionAt(line.moves_uci.split(" "), line.moves_uci.split(" ").length).history().join(" ").toLowerCase().includes(term));
-  const selected = family.lines.find((line) => line.line_id === selectedId) ?? family.lines.find((line) => !line.learned) ?? family.lines[0];
+  const selected = lines.find((line) => line.line_id === selectedId) ?? lines.find((line) => !line.learned) ?? lines[0];
   const moves = selected.moves_uci.split(" ");
   const position = positionAt(moves, moves.length);
   const saved = progress[selected.line_id];
   const inRepertoire = repertoire?.lines.some((line) => line.line_id === selected.line_id);
-  const learnedCount = family.lines.filter((line) => line.learned).length;
-  const inProgress = family.lines.filter((line) => progress[line.line_id]).length;
+  const learnedCount = lines.filter((line) => line.learned).length;
+  const inProgress = lines.filter((line) => progress[line.line_id]).length;
 
   return <>
     <button className="back" onClick={() => go("#/learn")}><ArrowLeft size={16} /> All openings</button>
     <header className="page-head fam-head"><div><p className="eyebrow">OPENING FAMILY · {family.eco}</p><h1>{family.name}</h1>
-      <p className="lead">{plural(family.lines.length, "line")} to learn · {learnedCount} learned{inProgress ? ` · ${inProgress} in progress` : ""}</p></div>
+      <p className="lead">{plural(lines.length, "line")} to learn · {learnedCount} learned{inProgress ? ` · ${inProgress} in progress` : ""}</p></div>
       <span className="side-badge"><SideDot side={family.side} />You play {sideName(family.side)} in this opening</span></header>
     <div className="fam-layout">
       <section className="card fam-stage" aria-label="Selected line">
