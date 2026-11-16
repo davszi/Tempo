@@ -24,6 +24,10 @@ export const login = (email: string, password: string) => authRequest<{ user: Ac
 export const googleSignIn = (credential: string) =>
   authRequest<{ user: Account }>("google", { credential });
 export const logout = () => authRequest<{ user: null }>("logout", {});
+export const updateProfile = (name: string, email: string) => authRequest<{ user: Account }>("profile", { name, email });
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  authRequest<{ user: Account }>("password", { current_password: currentPassword, new_password: newPassword });
+export const deleteAccount = (password: string, confirm: string) => authRequest<{ user: null }>("delete", { password, confirm });
 
 const GUEST_KEY = "tempo-guest-player";
 

@@ -83,6 +83,47 @@ class EmailAccounts(unittest.TestCase):
         self.assertEqual((mine, guests), (0, 1))
 
 
+class AccountSettings(unittest.TestCase):
+    def setUp(self):
+        self.accounts = Accounts(fresh_store(), now=lambda: NOW)
+        self.user, self.token = self.accounts.register("Priya", "a@b.co", "longenough")
+        self.uid = self.user["user_id"]
+
+    def test_edit_profile_changes_name_and_email_but_not_to_a_taken_email(self):
+        updated = self.accounts.update_profile(self.uid, "Priya K", "New@B.co")
+        self.assertEqual((updated["name"], updated["email"]), ("Priya K", "new@b.co"))
+        self.accounts.register("Other", "other@b.co", "longenough")
+        with self.assertRaises(AccountExists):
+            self.accounts.update_profile(self.uid, "Priya K", "other@b.co")
+        with self.assertRaises(ValueError):
+            self.accounts.update_profile(self.uid, " ", "new@b.co")
+
+    def test_change_password_needs_the_current_one(self):
+        with self.assertRaises(PermissionError):
+            self.accounts.change_password(self.uid, "wrong-one", "brandnewpass")
+        with self.assertRaises(ValueError):
+            self.accounts.change_password(self.uid, "longenough", "short")
+        self.accounts.change_password(self.uid, "longenough", "brandnewpass")
+        self.accounts.login("a@b.co", "brandnewpass")
+        with self.assertRaises(PermissionError):
+            self.accounts.login("a@b.co", "longenough")
+
+    def test_delete_account_needs_the_password_and_removes_everything(self):
+        with self.accounts.store.transaction(write=True) as db:
+            line_id = db.execute("SELECT line_id FROM opening_lines LIMIT 1").fetchone()[0]
+            db.execute("""INSERT INTO player_lines (player_id, line_id, learned_at, next_review_at, fsrs_state)
+                          VALUES (?, ?, '2026-11-15T10:00:00+00:00', '2026-11-16T10:00:00+00:00', '{}')""", (self.uid, line_id))
+        with self.assertRaises(PermissionError):
+            self.accounts.delete_account(self.uid, password="wrong-one")
+        self.accounts.delete_account(self.uid, password="longenough")
+        self.assertFalse(self.accounts.is_registered(self.uid))
+        self.assertIsNone(self.accounts.user_for_token(self.token))
+        with self.accounts.store.transaction() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM player_lines WHERE player_id = ?", (self.uid,)).fetchone()[0], 0)
+        with self.assertRaises(PermissionError):
+            self.accounts.login("a@b.co", "longenough")
+
+
 class GoogleAccounts(unittest.TestCase):
     def info(self, **changes):
         return {"aud": "client-1", "iss": "https://accounts.google.com", "sub": "g-123", "email": "priya@gmail.com",
@@ -109,6 +150,15 @@ class GoogleAccounts(unittest.TestCase):
         google_user, _ = accounts.google("token")
         self.assertEqual(google_user["user_id"], email_user["user_id"])
         self.assertTrue(google_user["google"])
+
+    def test_a_google_only_account_sets_a_first_password_and_deletes_by_typing_delete(self):
+        accounts = self.make(self.info())
+        user, _ = accounts.google("token")
+        with self.assertRaises(ValueError):
+            accounts.delete_account(user["user_id"], confirm="delete")
+        self.assertTrue(accounts.change_password(user["user_id"], None, "firstpassword")["has_password"])
+        accounts.delete_account(user["user_id"], password="firstpassword")
+        self.assertFalse(accounts.is_registered(user["user_id"]))
 
     def test_rejects_tokens_for_another_app_unverified_or_expired(self):
         for bad in (self.info(aud="someone-else"), self.info(email_verified="false"),

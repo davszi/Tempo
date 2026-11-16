@@ -104,7 +104,7 @@ svg.i { width: 18px; height: 18px; flex-shrink: 0; }
 .avatar { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--soft); color: var(--accent); font-weight: 700; }
 .profile b { display: block; font-size: 13px; }
 .profile small { color: var(--muted); font-size: 11px; }
-.main { min-width: 0; padding: 40px 44px 80px; max-width: 1320px; width: 100%; }
+.main { min-width: 0; width: 100%; max-width: 1680px; margin: 0 auto; padding: 40px clamp(18px, 3vw, 48px) 80px; }
 .bottom-nav { display: none; }
 
 .eyebrow { margin: 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
@@ -263,7 +263,7 @@ button.item:hover:not(:disabled) { border-color: var(--accent); background: var(
 .alt { font-weight: 500; color: var(--muted); font-size: .86em; }
 .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); gap: 24px; align-items: start; }
 .sticky { position: sticky; top: 24px; }
-.var-list { display: grid; align-content: start; gap: 6px; max-height: calc(100vh - 330px); min-height: 280px; overflow: auto; padding-right: 4px; }
+.var-list { display: grid; align-content: start; gap: 6px; max-height: calc(100vh - 330px); overflow: auto; padding-right: 4px; }
 .var-note { margin: 12px 2px 0; }
 .var { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); text-align: left; }
 .var:hover { border-color: var(--accent); }
@@ -497,14 +497,27 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .auth-link:hover { text-decoration: underline; }
 @media (max-width: 480px) { .auth-card { padding: 24px 18px; } }
 
-/* account box: sidebar foot on desktop, top of Settings on phones */
-.account-box { display: flex; align-items: center; gap: 10px; padding: 10px 8px 0; border-top: 1px solid var(--line); }
-.account-box .avatar { flex-shrink: 0; }
-.account-name { flex: 1; min-width: 0; }
-.account-name b { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.account-name small { display: block; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.account-mobile { display: none; }
-@media (max-width: 860px) {
-  .account-mobile { display: block; margin-bottom: 18px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
-  .account-mobile .account-box { border-top: 0; padding: 0; }
-}
+/* profile: an icon at the foot of the sidebar, a Profile section in Settings */
+.profile-icon { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 6px 0; border: 0; border-top: 1px solid var(--line); background: none; }
+.profile-icon .avatar { width: 40px; height: 40px; transition: box-shadow .15s; }
+.profile-icon:hover .avatar, .profile-icon:focus-visible .avatar { box-shadow: 0 0 0 3px var(--soft), 0 0 0 4px var(--accent); }
+.avatar.big { width: 56px; height: 56px; font-size: 22px; }
+.settings-heading { margin: 26px 0 12px; font-size: 18px; }
+.page-head + .settings-heading { margin-top: 0; }
+.profile-card { display: grid; gap: 4px; }
+.profile-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.profile-head .grow { flex: 1; min-width: 180px; }
+.profile-head h2 { font-size: 20px; overflow-wrap: anywhere; }
+.profile-head p { margin: 4px 0 0; overflow-wrap: anywhere; }
+.profile-sub { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 15px; }
+.profile-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; margin-top: 14px; }
+.profile-form .field input { min-width: 0; }
+.profile-form .form-error, .profile-form .profile-actions { grid-column: 1 / -1; }
+.profile-actions { gap: 10px; }
+.form-error { margin: 0; padding: 9px 12px; border-radius: 10px; background: color-mix(in srgb, var(--again) 12%, transparent); color: var(--again); font-size: 13px; }
+.btn.danger { color: var(--again); }
+.btn.danger:hover:not(:disabled) { border-color: var(--again); color: var(--again); }
+.btn.danger-solid { background: var(--again); color: #fff; }
+.danger-zone { display: grid; gap: 12px; margin-top: 14px; padding: 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--again) 40%, var(--line)); background: color-mix(in srgb, var(--again) 6%, var(--surface)); }
+.danger-zone p { margin: 0; font-size: 14px; }
+@media (max-width: 860px) { .settings-heading { margin-top: 20px; } }

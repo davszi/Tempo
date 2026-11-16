@@ -2,6 +2,12 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-16 Profile settings, Back after sign-in, and full-width pages
+
+Settings now opens with a Profile section: a guest sees Sign in and Create account; a signed-in player can edit their name and email, change their password (an account made with Google sets its first one), sign out, and delete the account after confirming with the password (or by typing DELETE when there is none). Deleting removes the account, its repertoire, its practice history and its sessions. The backend adds `POST /api/auth/profile`, `/api/auth/password` and `/api/auth/delete`, each refused without a session. Settings moved into the main menu with a gear icon; the foot of the sidebar shows only a profile icon that opens Settings at Profile in edit mode. Signing in, signing out and deleting replace the current history entry, and a signed-in player sent to Sign in or Create account goes to the dashboard, so Back no longer returns to those pages. Pages use the full width up to 1,680 px and centre beyond it, and the variation list no longer reserves 280 px of height, so a single variation is followed directly by its note.
+
+Checks: 14 account tests in `backend/tests/test_accounts.py` pass, with the frontend tests, type check and build. In the browser at 1,650 by 950 and at phone width: Back after sign-up returned to the previous page, the profile icon opened Profile in edit mode, a name edit saved, mismatched new passwords were refused and a password change worked, delete refused a wrong password and then removed the account, and no page scrolled sideways.
+
 ## 2026-11-16 Add accounts: create account, sign in and Google sign-in
 
 Added player accounts. `backend/auth.py` stores users (`users`) and sign-in sessions (`auth_sessions`, created at start-up next to the practice tables). Passwords are stored only as salted scrypt hashes and session tokens only as SHA-256 hashes; the browser holds the token in an HttpOnly, SameSite=Lax cookie for 30 days. `web.py` adds `GET /api/auth/me` and `POST /api/auth/register`, `/login`, `/google` and `/logout`. A signed-in player always practises as their account, whatever `player_id` the page sends; a signed-out request that uses a registered account's ID is refused with 401. A new account always starts empty: progress made as a guest stays with the guest, whose ID the browser keeps aside while signed in and restores on sign-out. Guests can still use the app without an account.

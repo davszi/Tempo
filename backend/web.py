@@ -111,6 +111,21 @@ class Handler(SimpleHTTPRequestHandler):
                 self.accounts.logout(self.session_token())
                 self.respond(200, {"user": None}, cookie=self.session_cookie(None))
                 return
+            if self.path in ("/api/auth/profile", "/api/auth/password", "/api/auth/delete"):
+                current = self.accounts.user_for_token(self.session_token())
+                if current is None:
+                    self.respond(401, {"error": "Sign in to change your account"})
+                    return
+                user_id = current["user_id"]
+                if self.path == "/api/auth/profile":
+                    self.respond(200, {"user": self.accounts.update_profile(user_id, data.get("name"), data.get("email"))})
+                elif self.path == "/api/auth/password":
+                    self.respond(200, {"user": self.accounts.change_password(
+                        user_id, data.get("current_password"), data.get("new_password"))})
+                else:
+                    self.accounts.delete_account(user_id, data.get("password"), data.get("confirm"))
+                    self.respond(200, {"user": None}, cookie=self.session_cookie(None))
+                return
             if self.path == "/api/auth/register":
                 user, token = self.accounts.register(
                     data.get("name"), data.get("email"), data.get("password"))

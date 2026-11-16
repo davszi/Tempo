@@ -35,6 +35,10 @@ export type AppData = {
   /** The signed-in account, or null for a guest. */
   account: Account | null;
   signOut: () => Promise<void>;
+  /** Show updated profile details after an edit. */
+  accountChanged: (user: Account) => void;
+  /** Leave the app after the account was deleted. */
+  accountDeleted: () => Promise<void>;
 };
 
 export const AppContext = createContext<AppData | null>(null);

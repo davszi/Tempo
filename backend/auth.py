@@ -185,6 +185,44 @@ class Accounts:
             with self.store.transaction(write=True) as db:
                 db.execute("DELETE FROM auth_sessions WHERE token_hash = ?", (_token_hash(token),))
 
+    # ---- account settings (the caller has already checked the session)
+
+    def update_profile(self, user_id, name, email):
+        name, email = _clean_name(name), _clean_email(email)
+        with self.store.transaction(write=True) as db:
+            taken = db.execute("SELECT 1 FROM users WHERE email = ? AND user_id != ?", (email, user_id)).fetchone()
+            if taken:
+                raise AccountExists("Another account already uses this email")
+            db.execute("UPDATE users SET name = ?, email = ? WHERE user_id = ?", (name, email, user_id))
+            return self.public(db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone())
+
+    def change_password(self, user_id, current_password, new_password):
+        """Change the password; an account made with Google may set its first password without a current one."""
+        _check_password(new_password)
+        with self.store.transaction(write=True) as db:
+            row = db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
+            if row["password_hash"] is not None and not (
+                    isinstance(current_password, str) and password_matches(current_password, row["password_hash"])):
+                raise PermissionError("Your current password isn't right")
+            db.execute("UPDATE users SET password_hash = ? WHERE user_id = ?", (hash_password(new_password), user_id))
+            return self.public(db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone())
+
+    def delete_account(self, user_id, password=None, confirm=None):
+        """Delete the account with its repertoire, practice history and sessions.
+
+        A password account confirms with its password; an account without one confirms by typing DELETE.
+        """
+        with self.store.transaction(write=True) as db:
+            row = db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
+            if row["password_hash"] is not None:
+                if not (isinstance(password, str) and password_matches(password, row["password_hash"])):
+                    raise PermissionError("Your password isn't right")
+            elif confirm != "DELETE":
+                raise ValueError("Type DELETE to confirm")
+            for table, column in (("auth_sessions", "user_id"), ("practice_events", "player_id"),
+                                  ("player_lines", "player_id"), ("users", "user_id")):
+                db.execute(f"DELETE FROM {table} WHERE {column} = ?", (user_id,))
+
     # ---- internal
 
     def _create_user(self, db, name, email, password_hash, google_sub):

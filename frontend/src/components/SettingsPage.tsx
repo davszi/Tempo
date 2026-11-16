@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Crown, Palette, Sparkles } from "lucide-react";
 import { PIECE_CREDITS, PIECE_SETS, THEMES, pieceImage, type Appearance, type PieceSetId } from "../lib/appearance";
 import { positionAt } from "../lib/learning";
@@ -5,7 +6,9 @@ import { ChessBoard } from "./ChessBoard";
 
 const PREVIEW = positionAt("e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 c2c3 g8f6".split(" "), 8);
 
-export function SettingsPage({ appearance, onChange }: { appearance: Appearance; onChange: (next: Appearance) => void }) {
+export function SettingsPage({ appearance, onChange, profile }: {
+  appearance: Appearance; onChange: (next: Appearance) => void; profile?: ReactNode;
+}) {
   const theme = THEMES.find((item) => item.id === appearance.theme) ?? THEMES[0];
   const set = PIECE_SETS.find((item) => item.id === appearance.pieces) ?? PIECE_SETS[0];
   const sample = (pieces: PieceSetId) => ([["wK", "l"], ["bQ", "d"], ["wN", "d"], ["bN", "l"]] as const).map(([code, square]) =>
@@ -17,7 +20,9 @@ export function SettingsPage({ appearance, onChange }: { appearance: Appearance;
   }
   return <>
     <header className="page-head"><p className="eyebrow">SETTINGS</p><h1>Make TEMPO yours.</h1>
-      <p className="lead">Pick a theme and a piece set. The pieces take on the colours of the theme.</p></header>
+      <p className="lead">Your profile, your theme and your piece set.</p></header>
+    {profile && <><h2 className="settings-heading">Profile</h2>{profile}</>}
+    <h2 className="settings-heading">Theme and pieces</h2>
     <section className="card"><div className="appearance">
       <div className="ap-preview"><div className="board-frame"><ChessBoard fen={PREVIEW.fen()} arrow={{ from: "e1", to: "g1" }} /></div>
         <p className="muted small"><b style={{ color: "var(--ink)" }}>{theme.name}</b> theme with <b style={{ color: "var(--ink)" }}>{set.name}</b> pieces · Italian Game</p>

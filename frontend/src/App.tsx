@@ -15,6 +15,7 @@ import { ReviewPage } from "./components/ReviewPage";
 import { RepertoirePage } from "./components/RepertoirePage";
 import { SettingsPage } from "./components/SettingsPage";
 import { AuthPage } from "./components/AuthPage";
+import { ProfileSettings } from "./components/ProfileSettings";
 import { fetchAuthState, logout, rememberAccount, type Account } from "./lib/auth";
 
 function readRoute(): Route {
@@ -101,6 +102,11 @@ export default function App() {
     if (window.location.hash === hash) setRoute(readRoute());
     else window.location.hash = hash;
   }, []);
+  // Swap the current history entry instead of adding one, so Back never returns to Sign in or Create account.
+  const replaceRoute = useCallback((hash: string) => {
+    if (window.location.hash === hash) setRoute(readRoute());
+    else window.location.replace(hash);
+  }, []);
 
   const showToast = useCallback((text: string) => {
     setToast(text);
@@ -155,26 +161,38 @@ export default function App() {
     setSession(null);
     setLoadVersion((version) => version + 1);
     showToast(`Signed in as ${user.name}`);
-    go("#/home");
-  }, [go, showToast]);
+    replaceRoute("#/home");
+  }, [replaceRoute, showToast]);
 
-  const signOut = useCallback(async () => {
-    try { await logout(); } catch { /* the cookie is cleared on the next sign-in anyway */ }
+  const leaveAccount = useCallback((message: string) => {
     rememberAccount(null);
     setAccount(null);
     setSession(null);
     setRepertoire(null);
     setLoadVersion((version) => version + 1);
-    showToast("Signed out");
-    go("#/login");
-  }, [go, showToast]);
+    showToast(message);
+    replaceRoute("#/login");
+  }, [replaceRoute, showToast]);
+
+  const signOut = useCallback(async () => {
+    try { await logout(); } catch { /* the cookie is cleared on the next sign-in anyway */ }
+    leaveAccount("Signed out");
+  }, [leaveAccount]);
+
+  const accountDeleted = useCallback(async () => leaveAccount("Your account was deleted"), [leaveAccount]);
+  const accountChanged = useCallback((user: Account) => setAccount(user), []);
+
+  // A signed-in player who lands on Sign in or Create account (for example with Back) goes to the dashboard.
+  useEffect(() => {
+    if (account && (route.view === "login" || route.view === "signup")) replaceRoute("#/home");
+  }, [account, route.view, replaceRoute]);
 
   const dueCount = repertoire ? repertoire.lines.filter((line) => isDue(line, now)).length : 0;
   const data: AppData = {
     catalog, families, variants, lineById, repertoire, progress, now, go, showToast,
     openingSort, setOpeningSort, selectedOpeningTypes, setSelectedOpeningTypes,
     availableOpeningTypes, learningSide, setLearningSide,
-    startLearning, startReview, refreshRepertoire, markLearned, dueCount, account, signOut,
+    startLearning, startReview, refreshRepertoire, markLearned, dueCount, account, signOut, accountChanged, accountDeleted,
   };
 
   if (route.view === "login" || route.view === "signup") {
@@ -192,7 +210,8 @@ export default function App() {
       : <LearnPage />; break;
     case "review": page = <ReviewPage />; break;
     case "repertoire": page = <RepertoirePage />; break;
-    case "settings": page = <SettingsPage appearance={appearance} onChange={setAppearance} />; break;
+    case "settings": page = <SettingsPage appearance={appearance} onChange={setAppearance}
+      profile={<ProfileSettings key={route.arg ?? "settings"} startEditing={route.arg === "profile"} />} />; break;
     default: page = <DashboardPage />;
   }
 
