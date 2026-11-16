@@ -228,6 +228,39 @@ Arithmetic from the multiplicative formula: the factor is 2.83 at R = 0.9 and
 difference causes the lower FSRS-memory pass rate was not measured, and the
 catalog grouping also differed.
 
+### Worked example: one review under both rules
+
+Computed on 2026-11-16 with the package's own update functions
+(`MultiplicativeStability.after_success/after_lapse` and
+`FSRSMemory.start/update`), not a simulation run. Setup: a balanced client
+(C = 0.5), a 6-move line with stability S = 4 days, reviewed after t days.
+FSRS memory uses the FSRS-6 default weights with w20 = C; a real client's
+own weights are sampled around these (±15% log-normal noise), so its
+numbers differ somewhat. R is per-move recall; the line passes with
+chance R^6.
+
+| Review | R | Pass chance | Multiplicative: new S | FSRS memory: new S | FSRS: new D (from 5) |
+|---|---|---|---|---|---|
+| On time (t = 4), clean, Good, D = 5 | 0.900 | 53% | 11.3 d (×2.83) | 14.3 d (×3.57) | 4.99 |
+| On time, clean, Hard, D = 5 | 0.900 | 53% | 11.3 d (×2.83) | 10.2 d (×2.54) | 6.67 |
+| On time, clean, Easy, D = 5 | 0.900 | 53% | 11.3 d (×2.83) | 23.2 d (×5.81) | 3.31 |
+| On time, clean, Good, hard line D = 9 | 0.900 | 53% | 11.3 d (×2.83) | 7.4 d (×1.86) | 8.99 (from 9) |
+| Late (t = 8), clean, Good, D = 5 | 0.825 | 32% | 12.5 d (×3.13) | 22.5 d (×5.63) | 4.99 |
+| On time, mistake (Again), D = 5 | 0.900 | 53% | 1.2 d (×0.30) | 1.0 d (one-day floor) | 8.34 |
+| Strong line S = 40, on time, Good, D = 5 | 0.900 | 53% | 113.3 d (×2.83) | 109.9 d (×2.75) | 4.99 |
+
+First exposure: multiplicative memory always starts at S = 1 day; FSRS
+memory starts from the first grade, at S = 0.21 / 1.29 / 2.31 / 8.30 days
+and D = 6.41 / 5.11 / 2.12 / 1.00 for Again / Hard / Good / Easy.
+
+Reading the table: multiplicative memory gives every clean on-time review
+the same ×2.83, whatever the grade, the line's history or its strength.
+FSRS memory gives Easy more than twice the growth of Hard, grows a hard
+line (D = 9) less than half as fast, rewards a late but clean review more
+(×5.63 against ×3.13), and after a mistake also raises D, so the next clean
+reviews grow less. For a strong line its factor falls slightly below the
+multiplicative one, through S^(−w9).
+
 The byte-identity check in the 2026-11-14 experiment found the multiplicative
 generator unchanged when FSRS memory was added, on the same catalog. This
 is historical evidence, not a fresh run. The published A2/B2 and A1/A1c/B1
@@ -375,6 +408,7 @@ model construction, not human measurements.
 | Guided R = 1; test after three minutes; five-attempt cap | Section 6 |
 | Hidden-memory growth ×2.83 at R = 0.9 and ×5.08 at R = 0.5; lapse ×0.3 with one-day floor; 21 sampled FSRS weights | Section 7 |
 | Pass rates 58.2% (multiplicative) and 38.4% (FSRS memory); 91 versus 82 families | Section 7, from the 2026-11-13 and 2026-11-14 experiment records |
+| Worked example: C = 0.5, 6 moves, S = 4 and 40 days, t = 4 and 8, D = 5 and 9; resulting R, pass chances, new S, factors and D; first-exposure S and D per grade | Section 7, worked example; computed with the package's update functions and FSRS-6 default weights, not a simulation result |
 | Profile baselines 220/300/380 ms; beta 0.4/1.0/2.2; C 0.65/0.50/0.35 | Section 4 |
 
 These are formula constants and configured/modelled values, not measured

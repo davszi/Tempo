@@ -2,6 +2,20 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-16 Worked example of the two hidden memory models
+
+Requested to explain the multiplicative versus FSRS hidden memory difference
+with an example. Added a worked example to section 7 of the
+[synthetic-client record](topics/synthetic-clients/record.md): one review of
+a 6-move line (C = 0.5, S = 4 days) under both rules, for Good, Hard and
+Easy, a high-difficulty line, a late review, a mistake and a strong line,
+plus the first-exposure states. Numbers come from the package's own update
+functions with FSRS-6 default weights, computed on 2026-11-16; they are not a
+simulation result. The Synthetic players page gains the subsection
+"Example: the same review under both rules". No code, data or result
+changed. Documentation build, freshness check and strict lint pass with kit
+5.0.0. The commit hash is assigned by this entry's landing commit.
+
 ## 2026-11-16 Grade by mean time per move; intervals open
 
 Decided at the project's request: a clean session is graded by its mean time

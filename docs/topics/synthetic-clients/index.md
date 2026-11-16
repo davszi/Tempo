@@ -122,6 +122,38 @@ The current implementation caps attempts at five. If the last draw fails, the se
 </div>
 </div>
 
+### Example: the same review under both rules
+
+Take a balanced player ($C = 0.5$) and a 6-move line whose memory lasts $S = 4$ days. Reviewed on time, after 4 days, each move is recalled with $R = 0.9$, so the whole line passes with chance $0.9^6 \approx 53\%$. What each brain does with the result:
+
+<div class="scroll" role="region" aria-label="Worked example of both memory rules; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
+<div style="min-width:700px">
+
+| What happened in the review | Multiplicative: new memory | FSRS memory: new memory | FSRS: line difficulty (was 5) |
+|---|---|---|---|
+| Clean, graded **Good** | 11.3 days (×2.83) | 14.3 days (×3.57) | stays 5.0 |
+| Clean but slow, graded **Hard** | 11.3 days (×2.83) | 10.2 days (×2.54) | rises to 6.7 |
+| Clean and fast, graded **Easy** | 11.3 days (×2.83) | 23.2 days (×5.81) | falls to 3.3 |
+| Clean, Good, but a line that has often failed (difficulty 9) | 11.3 days (×2.83) | 7.4 days (×1.86) | stays 9.0 |
+| Clean, Good, but reviewed **late** (after 8 days, $R = 0.825$) | 12.5 days (×3.13) | 22.5 days (×5.63) | stays 5.0 |
+| A **mistake** (Again) | 1.2 days (×0.30) | 1.0 day (the one-day floor) | rises to 8.3 |
+| Clean, Good, on a **strong** line ($S = 40$ days) | 113.3 days (×2.83) | 109.9 days (×2.75) | stays 5.0 |
+
+</div>
+</div>
+
+**Multiplicative memory only asks "was it clean, and how hard was it to recall?"** Every clean on-time review grows the memory by the same ×2.83, whether the player was fast or slow, whether the line failed often before, and whether the memory is already strong.
+
+**FSRS memory remembers more about the line and the session.**
+- **Speed matters:** an Easy review grows the memory more than twice as much as a Hard one, so hesitation changes memory.
+- **History matters:** each mistake raises the line's difficulty, and a high-difficulty line grows much more slowly afterwards, so lines that fail tend to keep failing.
+- **Late but clean pays off:** recalling a line that had faded more strengthens it more (×5.63 instead of ×3.57).
+- **Strong memories grow a little less:** the factor shrinks slowly as the memory gets stronger.
+
+The first session differs too: multiplicative memory always starts a new line at 1 day; FSRS memory starts it from the first grade, at 0.21, 1.29, 2.31 or 8.30 days for Again, Hard, Good or Easy.
+
+The example uses the FSRS default weights. Each simulated FSRS player has its own weights sampled around them, so its numbers differ somewhat; the [record's worked example](docs.topics.synthetic-clients.record.md.html#worked-example-one-review-under-both-rules) states how they were computed.
+
 Tested reviews passed 58.2% of the time with multiplicative memory and 38.4% with FSRS memory, on each study's test clients. Which rule difference causes the gap was not measured; the two studies also used different catalog groupings (91 versus 82 families), so their results do not isolate the memory change alone.
 
 The two worlds answer different questions. FSRS memory follows FSRS-6 for every move, so it checks whether the trainers can recover a model of the right kind; the remaining mismatch is that a line needs all moves, <code>R^M</code>. Multiplicative memory is a separate construction, so it checks how FSRS copes when players do not forget the way FSRS assumes. Which resembles human players remains unknown.
