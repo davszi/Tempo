@@ -143,3 +143,60 @@ labels and hidden pass chance; the experiment's `PLAN.md` states what
 counts as a difference. Which approach suits real players depends on
 whether their mistakes cluster, which only real reviews can show
 ([move recall record, section 7.3](move-recall.md#73-checking-the-binomial-assumption-on-real-reviews)).
+
+## 7. Where the pass chance enters
+
+Both approaches predict and are judged by the pass chance; they differ only
+in what the training loss compares.
+
+| Stage | Approach 1: accuracy (A1c-acc) | Approach 2: pass chance (A1c-pass) |
+|---|---|---|
+| Training: what the loss compares | `R` with the accuracy `(M − k)/M` | `p_pass(R, M)` with the pass label |
+| Scheduling: when a line is due | `p_pass(R, M)` falls to 0.9 | the same |
+| Evaluation: what is scored | `p_pass(R, M)` against the pass labels and the hidden pass chance | the same |
+
+Approach 1 never computes the pass chance while it fits; it is trained on
+accuracy and judged on the pass chance. The line-level arms A1 and A1c are
+scored against the same pass labels and hidden pass chance with their
+line-level `R`. The comparison therefore asks whether the information in
+the mistake count gives better pass-chance predictions than training on
+the pass label directly.
+
+**Pass chance, worked once.** A 6-move line has the limit `L(6) = 1`. At
+per-move recall `R = 0.9`: no mistake `0.9^6 = 0.531`, exactly one mistake
+`6 · 0.9^5 · 0.1 = 0.354`, so `p_pass(0.9, 6) = 0.886`.
+
+## 8. Compared with the 2026-11-13 arms A2 and B2
+
+The arms A2 and B2 of the 2026-11-13 experiment
+([FSRS training record](../fsrs-training/fsrs-training.md#multiplicative-memory-arms-a2-and-b2))
+used multiplicative memory and the earlier grading rule, under which a
+pass meant a review without mistakes. In both, FSRS recall meant the whole
+line:
+
+| | A2 | B2 |
+|---|---|---|
+| Target | pass/fail of the review (pass = no mistakes) | hidden true chance of a clean review, `R^M` |
+| Loss | log-loss | MSE |
+| Available for real players | yes | no: `R^M` exists only in the simulator |
+| Information per review | one bit | the hidden chance itself |
+
+Under the earlier rule the clean-review chance `R^M` decays faster on longer
+lines, so one FSRS curve cannot fit all line lengths with one set of
+weights ([move recall record, section 3.2](move-recall.md#32-fsrs-recall-means-one-move)).
+The per-move arms put the line length in `p_pass(R, M)` instead of in the
+weights.
+
+The same review gives each arm a different target. Example: a 6-move line
+with one mistake.
+
+| Arm | Target of this review | What it says |
+|---|---|---|
+| A2 | 0 | failed, although 5 of 6 moves were right |
+| B2 | the hidden `R^6`, for example 0.531 at `R = 0.9` | the true clean chance; simulator only |
+| A1c-pass | 1 | passed, the same label as a review without mistakes |
+| A1c-acc | 5/6 = 0.83 | the share of moves recalled |
+
+The accuracy target is the observable counterpart of B2's hidden target:
+its expected value is the per-move recall `R` (section 3), and it is
+exported for bots and real players alike.

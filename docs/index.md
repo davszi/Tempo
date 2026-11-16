@@ -2,7 +2,7 @@
 
 [Project context](PROJECT_CONTEXT.md) owns purpose, accepted decisions,
 repository orientation and run/build commands. [Task routes](../AGENTS.md)
-identify the adopted shared guides. The seven real topics below each have a
+identify the adopted shared guides. The eight real topics below each have a
 canonical record and a requested explanatory HTML entry page. Reference
 renders supporting records, setup, open work and dated experiment material.
 
@@ -16,7 +16,8 @@ renders supporting records, setup, open work and dated experiment material.
 | 4 | [Synthetic players](https://davszi.github.io/Tempo/html/synthetic-clients.html) | [Synthetic Players](topics/synthetic-clients/record.md): traits, memory models, recall/retry/timing/session generation and separate demo producer |
 | 5 | [Review data & grading](https://davszi.github.io/Tempo/html/review-dataset.html) | [Review Dataset](topics/review-dataset/record.md): observable export, grading inputs, the earlier grade rule, hidden-truth boundary and future human calibration |
 | 6 | [Session grading](https://davszi.github.io/Tempo/html/session-grading.html) | [Session Grading](topics/session-grading/session-grading.md): the decided grading rule (mistake limits, time bands), its rationale, test vectors, implementation targets, open items and validation plan |
-| 7 | [FSRS training](https://davszi.github.io/Tempo/html/fsrs-training.html) | [FSRS Training](topics/fsrs-training/fsrs-training.md): fitting inputs/objectives, optimizer, evaluation/clock/metric contracts, artifacts, dated results and limits |
+| 7 | [Move recall](https://davszi.github.io/Tempo/html/move-recall.html) | [Move Recall Model](topics/move-recall/move-recall.md) and [Training approaches](topics/move-recall/approaches.md): FSRS recall as one move, the pass chance and its 0.9 scheduling target, the training arms and the accuracy and pass-chance targets compared with the earlier arms |
+| 8 | [FSRS training](https://davszi.github.io/Tempo/html/fsrs-training.html) | [FSRS Training](topics/fsrs-training/fsrs-training.md): fitting inputs/objectives, optimizer, evaluation/clock/metric contracts, artifacts, dated results and limits |
 
 ## Actual merges and splits
 

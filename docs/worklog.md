@@ -8,6 +8,18 @@ Implemented section 5.3 of the [session grading record](topics/session-grading/s
 
 Checks: the record's 14 test vectors and the timing edge cases pass in `backend/tests/test_session_grading.py` (8 tests); the frontend passes 15 tests, the type check and the build; scripted checks cover the abandon path and client times on a copy of the demo database. In the browser, on a copy of the presentation database, a review played at human pace was graded Good with its explanation shown, and two and four wrong attempts gave the choice and relearn-only prompts. Open question: relearning a line that another line extends fails, because the catalog only lets longer lines be learned; the review itself is saved as Again. The simulator follows the same rule (section 5.1): `ml/tempo_ml/simulator/grading.py` grades from each move's first attempt with the same limits, bands and cap, a review is a lapse only when it is graded Again, and `ml/tests/test_simulator.py` checks the 14 vectors (46 ML tests pass). The FSRS label docstring now says a pass means "not Again". Not done: the truth columns, regenerated datasets and retrained weights (sections 5.2 and 5.4), and the memory update for passed reviews with mistakes (section 6.1). If a completed review arrives without a grading breakdown, the result screen now states the grade instead of the relearn sentence. The commit hash is assigned by this entry's landing commit.
 
+## 2026-11-16 Explain the per-move training targets on a Move recall page
+
+At the ML owner's request, [training approaches](topics/move-recall/approaches.md)
+gains section 7, where the pass chance enters each per-move arm (training,
+scheduling, evaluation) with one worked pass chance (`p_pass(0.9, 6) =
+0.886`), and section 8, the comparison with the 2026-11-13 arms A2 and B2
+and the target one 6-move review with one mistake gives each arm. A new
+Move recall page explains the move recall record and these sections; the
+reading index, navigation and project context list it. No code, data,
+weights or app behavior changed. Commit hash assigned by its landing
+commit.
+
 ## 2026-11-16 Record the move recall decisions in their own topic
 
 Decided on 2026-11-16 by the ML owner and recorded as a new topic at their
