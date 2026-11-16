@@ -56,6 +56,11 @@ inspection; a successful HTML build is not a completeness or app-acceptance test
 - [Multiplicative-memory study](../ml/experiments/2026-11-13-fsrs-synthetic-v2/SUMMARY.md)
   and [FSRS-memory study](../ml/experiments/2026-11-14-fsrs-memory/SUMMARY.md)
   retain their separate historical inputs, protocols, results and reproduction.
+- [Move recall model](topics/move-recall/move-recall.md) owns the decision
+  that FSRS recall means one player move, the 0.9 pass-chance scheduling
+  target and the training arms; [training approaches](topics/move-recall/approaches.md)
+  describes the accuracy and pass-chance targets. Decided 2026-11-16, not
+  implemented; no page yet.
 - [Capability map](CAPABILITY_MAP.md) identifies supporting tooling.
 - [Worklog](worklog.md) records dated changes and verification, including the
   code-to-documentation audit's scope and limits.

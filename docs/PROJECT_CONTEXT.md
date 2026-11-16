@@ -208,6 +208,7 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 - `docs/topics/catalog-data/index.md`: Catalog & data, combining catalog rules, schema and historical provenance for readers.
 - `docs/topics/synthetic-clients/index.md`, `docs/topics/review-dataset/index.md`, `docs/topics/fsrs-training/index.md`: producer model (including both hidden memory implementations), telemetry/grading contract and parameter fitting/evaluation, respectively.
 - `docs/topics/session-grading/session-grading.md`: the decided session grading rule (mistake limits by line length, time bands), its rationale, implementation targets and validation plan; not implemented yet.
+- `docs/topics/move-recall/move-recall.md`, `approaches.md`: the decided meaning of FSRS recall (one player move), the pass-chance scheduling target, the training arms and the two per-move training approaches; not implemented yet.
 - `docs/topics/fsrs-training/fsrs-training.md`: fitting, evaluation, accepted metric criteria and scoped historical results.
 - `docs/topics/catalog-data/provenance.md`: historical opening-library classifier, inputs and side evidence within Catalog & Data.
 - `docs/development/ml.md`, `ml/pyproject.toml`: install and run commands for the `tempo_ml` package.

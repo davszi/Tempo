@@ -2,6 +2,26 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-16 Record the move recall decisions in their own topic
+
+Decided on 2026-11-16 by the ML owner and recorded as a new topic at their
+request: the [move recall record](topics/move-recall/move-recall.md) and
+[training approaches](topics/move-recall/approaches.md). FSRS memory is the
+only hidden memory model (multiplicative memory to be removed); FSRS recall
+means one player move; a line is due when its pass chance under the
+session grading rule, `p_pass(R, M)`, falls to 0.9, i.e. at a fixed
+per-move target `R*(M)`; four arms are to be retrained on the cluster: A1
+and A1c on line-level pass/fail, A1c-acc on accuracy and A1c-pass on
+pass/fail through `p_pass`; true days follow the 0.9 pass chance. The
+record answers the unresolved choice of the move/line recall proposal. Its
+numbers are design arithmetic under independent moves (C = 0.5, S = 10
+days), reproduced by a retained script (Python 3.13.3, numpy 2.5.4, scipy
+1.18.1): one FSRS curve fitted to new-rule pass chances of 3, 6, 10 and 14
+moves misses by up to 0.136, FSRS recall followed by `p_pass` by 0; one
+review's mistake count carries 1.03–48 times the information of its pass
+bit. No code, data, weights or app behavior changed. Commit hash assigned
+by its landing commit.
+
 ## 2026-11-16 Decide the session grading rule in its own topic
 
 Decided in the 2026-11-16 grading discussion and recorded as a new topic at
