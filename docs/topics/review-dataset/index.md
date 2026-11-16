@@ -152,6 +152,27 @@ $$\bar{\Delta} = \frac{1}{M}\sum_{i=1}^{M} 1000\,H_i\,e^{\beta(1-R)}\frac{1}{1+\
 
 The table is formula arithmetic at each profile's mean traits: the expected delay, not a measurement. Real simulated clients spread around these traits and draw new hesitations every session. The pattern still shows the mechanism: blitzers reach Easy through practice, while diligent players turn Hard when a line has faded. With FSRS hidden memory that grade also changes how fast the line's memory grows; with multiplicative memory it does not ([hidden memory models](synthetic-clients.html#hidden-memory)).
 
+### What the simulated players actually use
+
+Every bot gets its own traits: a random draw around its profile's average, with the spread below, limited to the allowed range. The last three columns are the real lowest and highest values among the 300 bots of the November 13 multiplicative-memory run.
+
+<div class="scroll" role="region" aria-label="Trait values of the simulated players; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
+<div style="min-width:900px">
+
+| Trait | What it does | Average: Blitzer / Balanced / Diligent | Spread (sd) | Allowed | Blitzer bots | Balanced bots | Diligent bots |
+|---|---|---|---|---|---|---|---|
+| `baseline_ms` | Physical floor added to every move | 220 / 300 / 380 ms | 25 ms | 150–500 ms | 151–277 ms | 240–355 ms | 303–467 ms |
+| $\mu$ | Typical hesitation $e^\mu$ seconds: 549 / 819 / 1350 ms at the averages | −0.6 / −0.2 / 0.3 | 0.15 | any | −0.97 to −0.13 | −0.53 to 0.11 | −0.16 to 0.69 |
+| $\sigma$ | How much single hesitations vary | 0.45 / 0.40 / 0.35 | 0.05 | > 0 | 0.33–0.54 | 0.27–0.52 | 0.22–0.49 |
+| $\beta$ | Effort: slowdown when recall is weak | 0.4 / 1.0 / 2.2 | 0.2 | ≥ 0 | 0–0.86 | 0.50–1.44 | 1.66–2.60 |
+| $\alpha$ | Speed-up per practice repetition | 0.35 / 0.25 / 0.20 | 0.04 | 0.1–0.5 | 0.25–0.46 | 0.18–0.37 | 0.10–0.30 |
+| $C$ | Forgetting power | 0.65 / 0.50 / 0.35 | 0.05 | > 0 | 0.54–0.80 | 0.38–0.66 | 0.25–0.49 |
+
+</div>
+</div>
+
+Only three bots touched a limit: one at the lowest practice rate and two with zero effort. **The baseline does not change a bot's clean grade**: it is added to every simulated move and subtracted again before grading, so it only shows in the exported `total_time_ms`. The web app grades real players with a baseline of zero ([System Architecture](system-architecture.html#practice)), so a real player's physical latency stays inside the graded delay.
+
 These thresholds are the package's [implemented grading policy](docs.topics.review-dataset.record.md.html#32-decision-logic), not a validated diagnosis of a person's memory. The [synthetic-client explanation](synthetic-clients.html#memory-dynamics) shows why longer lines have a lower clean-session probability under independent recall draws. The app's separate backend grading path is explained in [System Architecture](system-architecture.html#practice).
 
 </section>

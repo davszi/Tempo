@@ -149,7 +149,35 @@ traits (synthetic-client record, section 4).
 | Diligent | 1435 ms, Good | 1788 ms, Good | 2777 ms, Hard | 1388 ms, Good |
 
 Individual clients' traits are spread around these means and each session
-draws H afresh, so actual grades scatter around these values. With FSRS
+draws H afresh, so actual grades scatter around these values.
+
+**Trait values the synthetic clients use.** Each client of the generator
+(`build_plans`) draws its traits from a normal distribution around its
+profile's mean (synthetic-client record, section 4) with the configured
+standard deviations (section 9), then `clamp_traits` limits them to the
+allowed ranges (section 3.1). The last columns are the minimum and maximum
+over the 300 clients of the 2026-11-13 multiplicative-memory run
+(`ml/data/fsrs-synthetic-v2/train/clients.csv`, hashes in that experiment's
+`dataset_MANIFEST.txt`), measured on 2026-11-16:
+
+| Trait | Meaning | Blitzer / Balanced / Diligent mean | Spread (sd) | Allowed | Blitzer range | Balanced range | Diligent range |
+|---|---|---|---|---|---|---|---|
+| baseline_ms | physical floor added to every move | 220 / 300 / 380 ms | 25 ms | 150–500 ms | 151–277 ms | 240–355 ms | 303–467 ms |
+| μ | log of typical hesitation in seconds; typical hesitation e^μ | −0.6 / −0.2 / 0.3 | 0.15 | any | −0.97 to −0.13 | −0.53 to 0.11 | −0.16 to 0.69 |
+| σ | spread of hesitation draws | 0.45 / 0.40 / 0.35 | 0.05 | > 0 | 0.33–0.54 | 0.27–0.52 | 0.22–0.49 |
+| β | effort: slowdown when recall is weak | 0.4 / 1.0 / 2.2 | 0.2 | ≥ 0 | 0–0.86 | 0.50–1.44 | 1.66–2.60 |
+| α | practice speed-up per repetition | 0.35 / 0.25 / 0.20 | 0.04 | 0.1–0.5 | 0.25–0.46 | 0.18–0.37 | 0.10–0.30 |
+| C | forgetting power | 0.65 / 0.50 / 0.35 | 0.05 | > 0 | 0.54–0.80 | 0.38–0.66 | 0.25–0.49 |
+
+In that run one client's α sat on the lower limit 0.1 and two clients' β on
+0; no baseline reached a limit. The typical hesitation e^μ is 549, 819 and
+1350 ms at the three profile means.
+
+The baseline is added to every simulated move and subtracted again by the
+grade, so it changes the exported `total_time_ms` but not a synthetic clean
+grade. The web app grades with a baseline of zero
+([system architecture](../system-architecture/system-architecture.md)), so
+a real player's physical latency stays inside the graded delay. With FSRS
 hidden memory the grade also changes the memory update (synthetic-client
 record, section 7); with multiplicative memory it does not.
 
@@ -322,6 +350,8 @@ neither claims a completed human calibration.
 | Guided accuracy 1; rows below 1 day excluded from loss | Section 2.1 implementation clarification |
 | Again after any first-attempt error; Easy below 500 ms; Good 500 through 1800 ms; Hard above 1800 ms | Section 3.2 |
 | Hesitation-to-grade formula; reps +1 / −2; expected delays and grades per profile at R = 1, 0.9, 0.7 and reps 0, 5 | Section 3.3; formula arithmetic at the benchmark profiles' mean traits, not measurements |
+| Trait means, standard deviations and allowed ranges; typical hesitation 549 / 819 / 1350 ms; web baseline zero | Section 3.3, from synthetic-client record sections 3.1, 4 and 9 and the system-architecture record |
+| Trait minimum–maximum per profile over 300 clients; one α at 0.1, two β at 0 | Section 3.3; measured on the 2026-11-13 run's generated `clients.csv` |
 | Stage 2; chi-squared exponent 2 | Section 4 and its unresolved validation-method clarification |
 | 5th-percentile physical baseline estimate | Section 4.1, Physical Baseline; future calibration specification, not a completed measurement |
 | CSV illustration: 2.4 days / grade 3 / 3420 ms / accuracy 1.0; 0.5 days / grade 1 / 8940 ms / accuracy 0.75; 5.1 days / grade 4 / 1980 ms / accuracy 1.0 | Existing page's labelled illustrative rows; invented examples, not observations or grade-calculation tests, because move counts and baselines are not supplied |

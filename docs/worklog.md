@@ -2,6 +2,21 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-16 Show the trait values the synthetic clients use
+
+Requested to show baseline_ms and the concrete parameter values the
+simulated players use. Extended section 3.3 of the
+[review dataset record](topics/review-dataset/record.md) with each trait's
+meaning, profile means, configured spread, allowed range, and the minimum
+and maximum over the 300 clients of the 2026-11-13 run's `clients.csv`
+(measured 2026-11-16 from the local generated file, hashes in that
+experiment's dataset manifest): one α at the 0.1 limit, two β at 0. It
+states that the baseline cancels in a synthetic clean grade and that the web
+app grades with a zero baseline. The Review data and grading page gains the
+subsection "What the simulated players actually use". No code, data or
+result changed. Documentation build, freshness check and strict lint pass
+with kit 5.0.0. The commit hash is assigned by this entry's landing commit.
+
 ## 2026-11-16 Explain how hesitation sets the clean-session grade
 
 Requested to show how simulated hesitation times influence the grade. Added
