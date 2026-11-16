@@ -14,8 +14,9 @@ This topic record specifies:
 2. The **Session Grading Function** (translating line accuracy and latency into FSRS grades).
 3. The **Stage 2 Calibration Pipeline** (tuning synthetic client hyperparameters from empirical human testing data).
 
-Status: the schema and grading function are implemented in
-`ml/tempo_ml/simulator/grading.py`. Stage 2 below is a future specification;
+Status: the schema and the earlier grading rule are implemented in
+`ml/tempo_ml/simulator/grading.py`; the grading specification changed on
+2026-11-16 and its intervals are open (section 3). Stage 2 below is a future specification;
 the package implements trait sampling hooks, not human parameter estimation,
 clustering or goodness-of-fit validation. Synthetic-only experiment results
 are owned by the [FSRS training record](../fsrs-training/fsrs-training.md).
@@ -74,84 +75,105 @@ stay as recorded.
 
 ## 3. The Session Grading Function
 
-In TEMPO Repeating Mode, mistakes are immediately retracted without playing out. To evaluate memory consolidation, the grading function maps move accuracy and cognitive latency into the standard 4-point FSRS grading scale.
+In TEMPO Repeating Mode, mistakes are immediately retracted without playing
+out. The grading function maps move accuracy and time into the 4-point FSRS
+grading scale.
 
-### 3.1 Normalization by Line Length
+**Decision (2026-11-16): grade by mean time per move.** A clean session is
+graded by its mean time per move alone. The earlier rule subtracted the
+player's physical baseline (`baseline_ms`) and compared the remaining
+hesitation with fixed thresholds; both are removed from this specification.
+Rationale: the app cannot know a real player's baseline (the web app already
+grades with a baseline of zero), so the bots and the app should grade by the
+same measurable quantity. Alternative not taken: estimating each player's
+baseline from their fastest moves (section 4.1); that needs human data that
+does not exist yet.
 
-For a clean session, normalize latency over the number of repertoire moves
-($M$) so the thresholds use average delay rather than total line duration:
+**Open: the grade intervals.** The two boundaries between Easy, Good and
+Hard on the mean time per move are not set; section 3.5 holds the evidence
+gathered so far. The route is in [open work](../../open/OPEN.md).
 
-$$\text{Average Move Latency } \bar{T} = \frac{\text{total\_time\_ms}}{M}$$
+**Implementation status.** Not changed yet, deliberately, until the
+intervals are set: `ml/tempo_ml/simulator/grading.py` and the app
+(`backend/ml_engine.py`, see [system architecture](../system-architecture/system-architecture.md#initial-card-grading-and-update))
+still apply the earlier rule. All recorded synthetic datasets and results
+were graded with it.
 
-$$\text{Average Cognitive Delay } \bar{\Delta} = \bar{T} - \text{baseline\_ms}$$
+### 3.1 Mean time per move
 
-Where $\text{baseline\_ms}$ represents the client's physical motor and board-scan latency floor.
+For a clean session, divide the total time by the number of repertoire moves
+($M$) so the intervals compare an average per move rather than the duration
+of the whole line:
 
+$$\bar{T} = \frac{\text{total\_time\_ms}}{M}$$
+
+$\bar{T}$ includes everything a move takes: thinking and the physical move.
 This does not make the whole grading distribution independent of line
 length: every move must be correct, so a line's clean-session probability
 is R^M in the synthetic model.
 
-### 3.2 Decision Logic
+### 3.2 Decision logic
+
+With two boundaries $t_{\text{easy}} < t_{\text{hard}}$ still to be
+established:
 
 ```text
-if accuracy < 1.0 (one or more blunders occurred):
-    grade = 1  # AGAIN (Lapse)
+if any move's first attempt was wrong:
+    grade = 1  # AGAIN (lapse), whatever the time
+elif mean_time_per_move < t_easy:
+    grade = 4  # EASY (fluent, automatic recall)
+elif mean_time_per_move <= t_hard:
+    grade = 3  # GOOD (normal recall)
 else:
-    if bar_delta < 500 ms:
-        grade = 4  # EASY (Fluent, automatic recall)
-    elif 500 ms <= bar_delta <= 1800 ms:
-        grade = 3  # GOOD (Normal recall latency)
-    else:
-        grade = 2  # HARD (Clean, but labored retrieval / hesitation)
+    grade = 2  # HARD (clean, but slow)
 ```
 
 #### Rationale:
 - **Lapse Priority (Grade 1):** TEMPO's grading policy assigns *Again* after any first-attempt failure in Repeating Mode. This is the project's mapping from move attempts to a session rating; FSRS receives that rating rather than imposing this mapping itself.
-- **Hesitation as Memory Strength:** For clean sessions, cognitive delay ($\bar{\Delta}$) differentiates effortless automaticity (*Easy*) from vulnerable, high-hesitation recall (*Hard*).
+- **Time as memory strength:** For clean sessions, a short mean time per move marks automatic recall (*Easy*) and a long one laboured recall (*Hard*). Physical move speed is now part of that time.
 
+### 3.3 Where the time per move comes from (synthetic clients)
 
-### 3.3 How hesitation reaches the grade (synthetic clients)
-
-Implemented in `ml/tempo_ml/simulator/grading.py` (`calculate_session_grade`)
-with move times from `simulator/recall.py` (`sample_move_time_ms`); the
+Move times come from `simulator/recall.py` (`sample_move_time_ms`); the
 latency model is section 3.4 of the
-[synthetic-client record](../synthetic-clients/record.md).
-
-In a clean session every move is correct on its first attempt, so each move
-has exactly one sampled time:
+[synthetic-client record](../synthetic-clients/record.md). In a clean session
+every move is correct on its first attempt, so each move has exactly one
+sampled time:
 baseline_ms + 1000·H·exp(β(1−R))/(1 + α·reps), with H ~ Lognormal(μ, σ) in
-seconds. Summing over the M moves, dividing by M and subtracting baseline_ms
-cancels the baseline exactly, so the graded delay is the mean of the M
-hesitation terms:
+seconds. The mean time per move is therefore
 
-$$\bar{\Delta} = \frac{1}{M}\sum_{i=1}^{M} 1000\,H_i\,e^{\beta(1-R)}\frac{1}{1+\alpha\,\text{reps}}$$
+$$\bar{T} = \text{baseline\_ms} + \frac{1}{M}\sum_{i=1}^{M} 1000\,H_i\,e^{\beta(1-R)}\frac{1}{1+\alpha\,\text{reps}}$$
 
-Each factor moves the grade:
+Each factor moves the time:
 
-- Lower recall R raises the delay through exp(β(1−R)); high-effort players
-  (large β) slow down most, pushing a clean pass toward Hard.
-- More practice (reps) divides the delay by 1 + α·reps, pushing toward Easy.
-  reps rises by 1 after a clean session and falls by 2 after a blunder
-  (synthetic-client record, section 3.5).
-- μ sets the player's typical speed; H's random draw makes the grade vary
+- The baseline adds the player's physical move time to every move; under
+  this rule a faster-handed player gets faster grades.
+- Lower recall R raises the time through exp(β(1−R)); high-effort players
+  (large β) slow down most.
+- More practice (reps) divides the hesitation by 1 + α·reps. reps rises by
+  1 after a clean session and falls by 2 after a blunder (synthetic-client
+  record, section 3.5).
+- μ sets the player's typical speed; H's random draw makes the time vary
   between sessions, less so on longer lines because M draws are averaged.
-- The baseline does not affect a clean grade; a blunder gives Again
-  whatever the time. Learning sessions are graded with R = 1.
+- A blunder gives Again whatever the time. Learning sessions are timed
+  with R = 1.
 
-Illustration (formula arithmetic, not a measurement): the expected delay
-1000·exp(μ + σ²/2)·exp(β(1−R))/(1 + α·reps) at each benchmark profile's mean
-traits (synthetic-client record, section 4).
+Illustration (formula arithmetic, not a measurement): the expected mean time
+per move, baseline_ms + 1000·exp(μ + σ²/2)·exp(β(1−R))/(1 + α·reps), at each
+benchmark profile's mean traits (synthetic-client record, section 4).
 
 | Profile | R = 1, reps 0 | R = 0.9, reps 0 | R = 0.7, reps 0 | R = 0.7, reps 5 |
 |---|---|---|---|---|
-| Blitzer | 607 ms, Good | 632 ms, Good | 685 ms, Good | 249 ms, Easy |
-| Balanced | 887 ms, Good | 980 ms, Good | 1197 ms, Good | 532 ms, Good |
-| Diligent | 1435 ms, Good | 1788 ms, Good | 2777 ms, Hard | 1388 ms, Good |
+| Blitzer | 827 ms | 852 ms | 905 ms | 469 ms |
+| Balanced | 1187 ms | 1280 ms | 1497 ms | 832 ms |
+| Diligent | 1815 ms | 2168 ms | 3157 ms | 1768 ms |
 
 Individual clients' traits are spread around these means and each session
-draws H afresh, so actual grades scatter around these values.
+draws H afresh, so actual times scatter around these values.
 
-**Trait values the synthetic clients use.** Each client of the generator
+### 3.4 Trait values of the synthetic clients
+
+Each client of the generator
 (`build_plans`) draws its traits from a normal distribution around its
 profile's mean (synthetic-client record, section 4) with the configured
 standard deviations (section 9), then `clamp_traits` limits them to the
@@ -173,13 +195,32 @@ In that run one client's α sat on the lower limit 0.1 and two clients' β on
 0; no baseline reached a limit. The typical hesitation e^μ is 549, 819 and
 1350 ms at the three profile means.
 
-The baseline is added to every simulated move and subtracted again by the
-grade, so it changes the exported `total_time_ms` but not a synthetic clean
-grade. The web app grades with a baseline of zero
-([system architecture](../system-architecture/system-architecture.md)), so
-a real player's physical latency stays inside the graded delay. With FSRS
-hidden memory the grade also changes the memory update (synthetic-client
-record, section 7); with multiplicative memory it does not.
+### 3.5 Evidence for choosing the intervals
+
+Measured on 2026-11-16 from the 76,287 clean Repeating sessions of the
+2026-11-13 multiplicative-memory run (`ml/data/fsrs-synthetic-v2/train/`,
+all 300 clients; times and grades recomputed from `sessions.csv`,
+`ground_truth.csv` and `clients.csv`). Share of Easy / Good / Hard:
+
+| Rule | Easy | Good | Hard | Blitzer Easy / Hard | Balanced Easy / Hard | Diligent Easy / Hard |
+|---|---|---|---|---|---|---|
+| Earlier rule (baseline removed, 500 / 1800 ms), as recorded in the data | 31.5% | 65.1% | 3.4% | 67.2% / 0.0% | 25.9% / 0.1% | 1.6% / 9.9% |
+| Mean time per move, earlier boundaries 500 / 1800 ms | 5.8% | 85.5% | 8.7% | 17.4% / 0.0% | 0.1% / 0.9% | 0.0% / 25.0% |
+| Mean time per move, candidate 800 / 2100 ms | 35.3% | 60.6% | 4.1% | 79.6% / 0.0% | 26.0% / 0.1% | 0.4% / 12.1% |
+
+Keeping the earlier boundaries would make Easy rare, because they were set
+for hesitation without the physical move. Raising both by 300 ms, about the
+clients' median baseline (302 ms), keeps the overall mix close to the
+earlier one and changes 6.5% of clean grades; the shifts left are the ones
+the new rule intends (fast-handed clients more Easy, slow ones more Hard).
+This is a synthetic comparison only: it shows how the candidate relates to
+the earlier rule, not where human recall changes. Setting the intervals
+needs real mean times per move from the app. Changing the rule also changes
+the grades in generated data, so datasets and trained weights would be
+regenerated.
+
+With FSRS hidden memory the grade also changes the memory update
+(synthetic-client record, section 7); with multiplicative memory it does not.
 
 ---
 
@@ -348,10 +389,11 @@ neither claims a completed human calibration.
 |---|---|
 | Seven telemetry columns; grade values 1/2/3/4; accuracy 0 through 1; t_days at least 0 | Section 2.1 |
 | Guided accuracy 1; rows below 1 day excluded from loss | Section 2.1 implementation clarification |
-| Again after any first-attempt error; Easy below 500 ms; Good 500 through 1800 ms; Hard above 1800 ms | Section 3.2 |
-| Hesitation-to-grade formula; reps +1 / −2; expected delays and grades per profile at R = 1, 0.9, 0.7 and reps 0, 5 | Section 3.3; formula arithmetic at the benchmark profiles' mean traits, not measurements |
-| Trait means, standard deviations and allowed ranges; typical hesitation 549 / 819 / 1350 ms; web baseline zero | Section 3.3, from synthetic-client record sections 3.1, 4 and 9 and the system-architecture record |
-| Trait minimum–maximum per profile over 300 clients; one α at 0.1, two β at 0 | Section 3.3; measured on the 2026-11-13 run's generated `clients.csv` |
+| Again after any first-attempt error; grade by mean time per move; intervals open | Section 3 decision and 3.2 |
+| Time-per-move formula; reps +1 / −2; expected mean time per move per profile at R = 1, 0.9, 0.7 and reps 0, 5 | Section 3.3; formula arithmetic at the benchmark profiles' mean traits, not measurements |
+| Trait means, standard deviations and allowed ranges; typical hesitation 549 / 819 / 1350 ms; web baseline zero | Section 3.4, from synthetic-client record sections 3.1, 4 and 9 and the system-architecture record |
+| Trait minimum–maximum per profile over 300 clients; one α at 0.1, two β at 0 | Section 3.4; measured on the 2026-11-13 run's generated `clients.csv` |
+| 76,287 clean sessions; grade shares per rule and profile; 6.5% changed; earlier 500 / 1800 ms; candidate 800 / 2100 ms; median baseline 302 ms | Section 3.5; measured on the 2026-11-13 run's generated data |
 | Stage 2; chi-squared exponent 2 | Section 4 and its unresolved validation-method clarification |
 | 5th-percentile physical baseline estimate | Section 4.1, Physical Baseline; future calibration specification, not a completed measurement |
 | CSV illustration: 2.4 days / grade 3 / 3420 ms / accuracy 1.0; 0.5 days / grade 1 / 8940 ms / accuracy 0.75; 5.1 days / grade 4 / 1980 ms / accuracy 1.0 | Existing page's labelled illustrative rows; invented examples, not observations or grade-calculation tests, because move counts and baselines are not supplied |

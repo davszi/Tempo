@@ -90,67 +90,68 @@ The backend demo uses the same header with different move counting, retry and sc
 
 <section class="card" id="grading">
 
-## Correctness decides failure before latency decides a clean grade
+## Correctness decides failure before the mean time per move decides a clean grade
 
-<p class="bs-lead">Any first-attempt error gives Again; otherwise mean cognitive delay selects Easy, Good or Hard under TEMPO's grading policy.</p>
+<p class="bs-lead">Any first-attempt error gives Again. A clean session is graded only by its mean time per move, the one timing the app can measure for a real player. The intervals that split it into Easy, Good and Hard are still being established.</p>
 
 <figure id="fig-grading">
-<div class="bs-grid g2" role="img" aria-label="Any first-attempt error gives Again. For a clean session, delay below 500 milliseconds gives Easy, 500 through 1800 gives Good, and above 1800 gives Hard.">
+<div class="bs-grid g2" role="img" aria-label="Any first-attempt error gives Again. For a clean session, the mean time per move is compared with two intervals that are still to be established: fast gives Easy, normal gives Good, slow gives Hard.">
 <div class="bs-part bs-orange"><h3>Any first-attempt error?</h3><p><strong>Yes → 1 · Again</strong></p><p>Retry time does not turn a failed first attempt into clean recall.</p></div>
-<div class="bs-part bs-teal"><h3>No → compare mean delay</h3><p><strong>Below 500 ms → 4 · Easy</strong></p><p><strong>500–1800 ms → 3 · Good</strong></p><p><strong>Above 1800 ms → 2 · Hard</strong></p></div>
+<div class="bs-part bs-teal"><h3>No → mean time per move</h3><p><strong>Fast → 4 · Easy</strong></p><p><strong>Normal → 3 · Good</strong></p><p><strong>Slow → 2 · Hard</strong></p><p>The boundaries between fast, normal and slow are open.</p></div>
 </div>
-<figcaption><strong>Figure 2.</strong> Source-authored branches of the <a href="docs.topics.review-dataset.record.md.html#32-decision-logic">session grading policy</a>. These are configured thresholds, not fitted human-memory boundaries.</figcaption>
+<figcaption><strong>Figure 2.</strong> Source-authored branches of the <a href="docs.topics.review-dataset.record.md.html#32-decision-logic">session grading rule</a> decided on 2026-11-16. No interval values are shown because none has been set.</figcaption>
 </figure>
 
-[Figure 2](#fig-grading) puts correctness first. Latency distinguishes grades only after every first attempt is correct; [Figure 3](#fig-hesitation-grade) shows where that latency comes from.
+[Figure 2](#fig-grading) puts correctness first. Time distinguishes grades only after every first attempt is correct. For a clean session the rule divides the total time by the number of repertoire moves $M$:
 
-
-For a clean session, the model divides total latency by the number of repertoire moves ($M$) and subtracts the client's physical baseline. This normalizes the latency comparison; it does not make the entire grading process independent of line length.
-
-$$\text{Average Delay per Move } \bar{\Delta} = \frac{\text{total\_time\_ms}}{M} - \text{baseline\_ms}$$
+$$\bar{T} = \frac{\text{total\_time\_ms}}{M}$$
 
 | Condition | Grade |
 |---|---|
 | Any first-attempt error | 1 — Again |
-| Clean; mean cognitive delay below 500 ms | 4 — Easy |
-| Clean; mean cognitive delay from 500 through 1800 ms | 3 — Good |
-| Clean; mean cognitive delay above 1800 ms | 2 — Hard |
+| Clean; mean time per move below the Easy boundary | 4 — Easy |
+| Clean; mean time per move between the two boundaries | 3 — Good |
+| Clean; mean time per move above the Hard boundary | 2 — Hard |
 
-### How hesitation decides Easy, Good or Hard
+**Why no baseline any more.** The earlier rule subtracted each player's physical move time (`baseline_ms`) and graded only the hesitation that remained, against fixed thresholds. Both are removed: the app cannot know a real player's baseline, so the simulated players and the app now grade by the same measurable quantity. A player's physical speed is part of the time that is graded.
+
+**Not implemented yet.** The simulator and the app keep the earlier rule until the intervals are set, so every recorded synthetic dataset and result was graded with it. The [grading record](docs.topics.review-dataset.record.md.html#3-the-session-grading-function) tracks that status.
+
+### Where the time per move comes from
 
 <figure id="fig-hesitation-grade">
-<div class="bs-flow" role="img" aria-label="Recall, effort, practice and typical speed set each move's hesitation. The baseline cancels, the mean hesitation over the line's moves is the graded delay, and the thresholds turn it into Easy, Good or Hard.">
-<div class="bs-node bs-violet"><span class="bs-label">Each move</span><b>Hesitation</b><p>Random draw scaled up by weak recall and down by practice.</p></div>
+<div class="bs-flow" role="img" aria-label="Each simulated move takes the player's physical baseline plus a hesitation that weak recall lengthens and practice shortens. The mean over the line's moves is the time that is graded.">
+<div class="bs-node bs-violet"><span class="bs-label">Each move</span><b>Baseline + hesitation</b><p>Physical move time plus a random hesitation, longer when recall is weak, shorter with practice.</p></div>
 <div class="bs-arrow"><span>average over M</span></div>
-<div class="bs-node bs-orange"><span class="bs-label">Clean session</span><b>Mean delay</b><p>The baseline cancels; only hesitation remains.</p></div>
-<div class="bs-arrow"><span>thresholds</span></div>
-<div class="bs-node bs-teal"><span class="bs-label">Grade</span><b>Easy, Good or Hard</b><p>Below 500 ms, 500–1800 ms, above 1800 ms.</p></div>
+<div class="bs-node bs-orange"><span class="bs-label">Clean session</span><b>Mean time per move</b><p>Thinking and the physical move together.</p></div>
+<div class="bs-arrow"><span>intervals</span></div>
+<div class="bs-node bs-teal"><span class="bs-label">Grade</span><b>Easy, Good or Hard</b><p>Boundaries still to be established.</p></div>
 </div>
-<figcaption><strong>Figure 3.</strong> Source-authored path from the <a href="docs.topics.review-dataset.record.md.html#33-how-hesitation-reaches-the-grade-synthetic-clients">simulated move times to the grade</a>. Arrows show computation in the synthetic clients, not measured human timing.</figcaption>
+<figcaption><strong>Figure 3.</strong> Source-authored path from the <a href="docs.topics.review-dataset.record.md.html#33-where-the-time-per-move-comes-from-synthetic-clients">simulated move times to the mean time per move</a>. Arrows show computation in the synthetic clients, not measured human timing.</figcaption>
 </figure>
 
-In a clean session each move is right on its first attempt, so it has exactly one simulated time: the player's baseline plus a hesitation. The grade subtracts the baseline again, so what gets graded is the **average hesitation per move**:
+In a clean session each simulated move is right on its first attempt, so it has exactly one time: the player's baseline plus a hesitation. The mean time per move is
 
-$$\bar{\Delta} = \frac{1}{M}\sum_{i=1}^{M} 1000\,H_i\,e^{\beta(1-R)}\frac{1}{1+\alpha\,\text{reps}}, \qquad H_i\sim\operatorname{Lognormal}(\mu,\sigma)$$
+$$\bar{T} = \text{baseline\_ms} + \frac{1}{M}\sum_{i=1}^{M} 1000\,H_i\,e^{\beta(1-R)}\frac{1}{1+\alpha\,\text{reps}}, \qquad H_i\sim\operatorname{Lognormal}(\mu,\sigma)$$
 
-- **Weak memory slows the player.** Lower recall $R$ raises the delay through $e^{\beta(1-R)}$, most for high-effort players (large $\beta$), pushing a clean pass toward Hard.
-- **Practice speeds the player up.** Each clean session adds one to reps and a blunder removes two; the delay is divided by $1+\alpha\cdot\text{reps}$, pushing toward Easy.
-- **Speed and luck.** $\mu$ sets the player's typical pace, and each session draws new hesitations, so grades vary; averaging $M$ moves steadies longer lines.
-- **Not the baseline.** The physical baseline never changes a clean grade, and a blunder gives Again whatever the time.
+- **Physical speed counts.** The baseline is added to every move, so a faster-handed player gets faster grades.
+- **Weak memory slows the player.** Lower recall $R$ raises the time through $e^{\beta(1-R)}$, most for high-effort players (large $\beta$).
+- **Practice speeds the player up.** Each clean session adds one to reps and a blunder removes two; the hesitation is divided by $1+\alpha\cdot\text{reps}$.
+- **Speed and luck.** $\mu$ sets the player's typical pace, and each session draws new hesitations; averaging $M$ moves steadies longer lines. A blunder gives Again whatever the time.
 
-<div class="scroll" role="region" aria-label="Expected delay and grade by profile; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
+<div class="scroll" role="region" aria-label="Expected mean time per move by profile; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
 <div style="min-width:620px">
 
 | Profile | Fresh line (R = 1) | R = 0.9 | R = 0.7 | R = 0.7 after 5 clean sessions |
 |---|---|---|---|---|
-| Blitzer | 607 ms · Good | 632 ms · Good | 685 ms · Good | 249 ms · Easy |
-| Balanced | 887 ms · Good | 980 ms · Good | 1197 ms · Good | 532 ms · Good |
-| Diligent | 1435 ms · Good | 1788 ms · Good | 2777 ms · Hard | 1388 ms · Good |
+| Blitzer | 827 ms | 852 ms | 905 ms | 469 ms |
+| Balanced | 1187 ms | 1280 ms | 1497 ms | 832 ms |
+| Diligent | 1815 ms | 2168 ms | 3157 ms | 1768 ms |
 
 </div>
 </div>
 
-The table is formula arithmetic at each profile's mean traits: the expected delay, not a measurement. Real simulated clients spread around these traits and draw new hesitations every session. The pattern still shows the mechanism: blitzers reach Easy through practice, while diligent players turn Hard when a line has faded. With FSRS hidden memory that grade also changes how fast the line's memory grows; with multiplicative memory it does not ([hidden memory models](synthetic-clients.html#hidden-memory)).
+The table is formula arithmetic at each profile's mean traits: the expected mean time per move, not a measurement. Real simulated clients spread around these traits and draw new hesitations every session. With FSRS hidden memory the grade also changes how fast the line's memory grows; with multiplicative memory it does not ([hidden memory models](synthetic-clients.html#hidden-memory)).
 
 ### What the simulated players actually use
 
@@ -161,7 +162,7 @@ Every bot gets its own traits: a random draw around its profile's average, with 
 
 | Trait | What it does | Average: Blitzer / Balanced / Diligent | Spread (sd) | Allowed | Blitzer bots | Balanced bots | Diligent bots |
 |---|---|---|---|---|---|---|---|
-| `baseline_ms` | Physical floor added to every move | 220 / 300 / 380 ms | 25 ms | 150–500 ms | 151–277 ms | 240–355 ms | 303–467 ms |
+| `baseline_ms` | Physical move time added to every move | 220 / 300 / 380 ms | 25 ms | 150–500 ms | 151–277 ms | 240–355 ms | 303–467 ms |
 | $\mu$ | Typical hesitation $e^\mu$ seconds: 549 / 819 / 1350 ms at the averages | −0.6 / −0.2 / 0.3 | 0.15 | any | −0.97 to −0.13 | −0.53 to 0.11 | −0.16 to 0.69 |
 | $\sigma$ | How much single hesitations vary | 0.45 / 0.40 / 0.35 | 0.05 | > 0 | 0.33–0.54 | 0.27–0.52 | 0.22–0.49 |
 | $\beta$ | Effort: slowdown when recall is weak | 0.4 / 1.0 / 2.2 | 0.2 | ≥ 0 | 0–0.86 | 0.50–1.44 | 1.66–2.60 |
@@ -171,9 +172,27 @@ Every bot gets its own traits: a random draw around its profile's average, with 
 </div>
 </div>
 
-Only three bots touched a limit: one at the lowest practice rate and two with zero effort. **The baseline does not change a bot's clean grade**: it is added to every simulated move and subtracted again before grading, so it only shows in the exported `total_time_ms`. The web app grades real players with a baseline of zero ([System Architecture](system-architecture.html#practice)), so a real player's physical latency stays inside the graded delay.
+Only three bots touched a limit: one at the lowest practice rate and two with zero effort. Under the new rule the baseline is part of the graded time, as it already is for real players in the web app ([System Architecture](system-architecture.html#practice)).
 
-These thresholds are the package's [implemented grading policy](docs.topics.review-dataset.record.md.html#32-decision-logic), not a validated diagnosis of a person's memory. The [synthetic-client explanation](synthetic-clients.html#memory-dynamics) shows why longer lines have a lower clean-session probability under independent recall draws. The app's separate backend grading path is explained in [System Architecture](system-architecture.html#practice).
+### Establishing the intervals
+
+The intervals are open work. A first synthetic check regraded the 76,287 clean reviews of the November 13 run:
+
+<div class="scroll" role="region" aria-label="Grade shares under the earlier rule and a candidate; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
+<div style="min-width:640px">
+
+| Rule | Easy | Good | Hard |
+|---|---|---|---|
+| Earlier rule, as recorded in the data | 31.5% | 65.1% | 3.4% |
+| Mean time per move, earlier boundaries kept | 5.8% | 85.5% | 8.7% |
+| Mean time per move, candidate 800 / 2100 ms | 35.3% | 60.6% | 4.1% |
+
+</div>
+</div>
+
+Kept unchanged, the earlier boundaries would make Easy rare, because they were set for hesitation without the physical move. The candidate raises both by 300 ms, about the bots' median baseline (302 ms); it keeps the overall mix close to the earlier one and changes 6.5% of clean grades. This only relates the candidate to the earlier rule; where human recall really changes needs mean times per move from real players in the app. The [evidence section](docs.topics.review-dataset.record.md.html#35-evidence-for-choosing-the-intervals) gives the per-profile shares.
+
+The [synthetic-client explanation](synthetic-clients.html#memory-dynamics) shows why longer lines have a lower clean-session probability under independent recall draws. The app's separate backend grading path is explained in [System Architecture](system-architecture.html#practice).
 
 </section>
 

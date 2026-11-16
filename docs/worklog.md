@@ -2,6 +2,25 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-16 Grade by mean time per move; intervals open
+
+Decided at the project's request: a clean session is graded by its mean time
+per move alone. The earlier baseline subtraction and its hesitation
+thresholds are removed from the specification, because the app cannot know
+a real player's baseline. Rewrote section 3 of the
+[review dataset record](topics/review-dataset/record.md) with the decision,
+rationale, the open Easy/Good/Hard intervals and the deliberate
+implementation lag (simulator and app keep the earlier rule until the
+intervals are set). Section 3.5 records a synthetic check on the 76,287
+clean sessions of the 2026-11-13 run: keeping the earlier boundaries on the
+mean time per move gives 5.8% Easy instead of 31.5%; a candidate 800 / 2100
+ms keeps the mix close (35.3% Easy) and changes 6.5% of clean grades. The
+Review data and grading chapter is restructured from it; System
+architecture notes that the app keeps its boundaries for now; an Open route
+tracks the intervals. No code, app or data changed. Documentation build,
+freshness check and strict lint pass with kit 5.0.0. The commit hash is
+assigned by this entry's landing commit.
+
 ## 2026-11-16 Show the trait values the synthetic clients use
 
 Requested to show baseline_ms and the concrete parameter values the
