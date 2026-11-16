@@ -2,6 +2,8 @@
 
 Routes only. The linked owner holds status, acceptance, choices and evidence.
 
+- Weight-space programming concept: [explanatory proposal](weight-space-programming.md) explains direct parameter reading/writing, its limits and its distinction from learned FSRS parameter estimation.
+
 - Possible move/line recall mismatch: [suspected model/target bug](recall-target-mismatch.md) owns the verified distinction, unresolved contract and investigation needed before changing behavior.
 
 - Neural estimation of personal FSRS parameters: [proposal and current-approach assessment](neural-fsrs-weights.md) owns the unaccepted design, baseline prerequisites, comparison and execution decisions.

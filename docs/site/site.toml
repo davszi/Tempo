@@ -6,6 +6,11 @@ reference_listing = true
 tooling_roots = []
 worklog_links_checked_from = "2026-11-16"
 
+[[source_pages]]
+source = "docs/open/weight-space-programming.md"
+slug = "weight-space-programming"
+description = "Concept proposal: directly reading and writing neural weights."
+
 [[nav]]
 label = "Home"
 file = "index.html"

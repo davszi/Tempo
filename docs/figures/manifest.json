@@ -1,4 +1,9 @@
 {
+  "weight-space-programming.svg": {
+    "source": "docs/figures/weight-space-programming.svg",
+    "inputs": ["docs/open/weight-space-programming.md"],
+    "generation": "Source-authored SVG mechanism diagram. Edit the SVG directly to follow the concept record; no measured data or generated model output."
+  },
   "tempo-system-architecture.svg": {
     "source": "docs/topics/system-architecture/system-architecture.html",
     "diagram_definition": "docs/topics/system-architecture/component-flow.mmd",

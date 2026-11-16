@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="410" viewBox="0 0 340 410" style="max-width:400px" role="img" aria-labelledby="title desc">
+  <title id="title">Weight-space programming concept</title>
+  <desc id="desc">A goal and known network architecture inform direct reasoning about weights and biases. The resulting network is executed and its behavior checked. The writer does not use target-model gradient training for the edit.</desc>
+  <defs>
+    <linearGradient id="panel" x2="1" y2="1"><stop stop-color="#172c32"/><stop offset="1" stop-color="#141923"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#61d3bd"/></marker>
+  </defs>
+  <rect width="340" height="410" rx="16" fill="#0e141d"/>
+  <g font-family="system-ui, sans-serif" text-anchor="middle">
+    <g fill="url(#panel)" stroke="#42676b"><rect x="16" y="18" width="308" height="94" rx="10"/><rect x="16" y="158" width="308" height="94" rx="10"/><rect x="16" y="298" width="308" height="94" rx="10"/></g>
+    <g fill="#eef6f7" font-size="18" font-weight="600"><text x="170" y="51">Goal + architecture</text><text x="170" y="191">Reason about parameters</text><text x="170" y="331">Execute + verify</text></g>
+    <g fill="#bed0d5" font-size="15"><text x="170" y="80">Define inputs and desired outputs</text><text x="170" y="220">Write weights and biases directly</text><text x="170" y="360">Check behavior on new cases</text></g>
+  </g>
+  <g stroke="#61d3bd" stroke-width="2" marker-end="url(#arrow)"><path d="M170 118V146"/><path d="M170 258V286"/></g>
+</svg>

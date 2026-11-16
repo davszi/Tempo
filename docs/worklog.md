@@ -2,6 +2,32 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-16 Explain weight-space programming as a separate proposal
+
+The user requested a concept-only proposal and publication. Added
+[the explanation](open/weight-space-programming.md), its original mechanism
+figure and an Open route. It distinguishes direct neural parameter editing
+from trained parameter generation and Tempo's explicit FSRS equations. The
+note cites the original report, HyperNetworks and a subsequent known-rule
+study; their experiments were inspected, not reproduced. A toy ReLU example
+illustrates direct weight writing without making a model-quality claim.
+No implementation, model selection, training or performance experiment is
+adopted. The commit identity is assigned by this entry's landing commit.
+
+A separate Sol High review checked the terminology and cited primary sources
+and found no consequential issue. The original toy-neuron assertions and SVG
+XML parse passed. The first strict lint correctly rejected an unregistered
+figure; automatic Reference rendering also treated SVG as text. Added its
+source/input manifest entry and registered this record as a source page, then
+rebuilt successfully. The public route is `html/weight-space-programming.html`.
+
+Desktop and 390 x 844 rendering were inspected by eye; the figure's desktop
+size was capped after review, with no page-wide overflow at either width.
+The phone table scrolls locally. Final build/freshness, strict lint, reader
+preservation, 47 existing formulas and whitespace are the publication checks.
+No ML/app tests, training, paper reproduction, print/reduced-motion rerun or
+shared-engine regression run is claimed for this record-only change.
+
 ## 2026-11-15 Publish the neural proposal and possible recall bug
 
 The user explicitly requested committing and pushing the two Open notes and
