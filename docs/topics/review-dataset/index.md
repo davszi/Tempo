@@ -102,7 +102,7 @@ The backend demo uses the same header with different move counting, retry and sc
 <figcaption><strong>Figure 2.</strong> Source-authored branches of the <a href="docs.topics.review-dataset.record.md.html#32-decision-logic">session grading policy</a>. These are configured thresholds, not fitted human-memory boundaries.</figcaption>
 </figure>
 
-[Figure 2](#fig-grading) puts correctness first. Latency distinguishes grades only after every first attempt is correct.
+[Figure 2](#fig-grading) puts correctness first. Latency distinguishes grades only after every first attempt is correct; [Figure 3](#fig-hesitation-grade) shows where that latency comes from.
 
 
 For a clean session, the model divides total latency by the number of repertoire moves ($M$) and subtracts the client's physical baseline. This normalizes the latency comparison; it does not make the entire grading process independent of line length.
@@ -116,6 +116,42 @@ $$\text{Average Delay per Move } \bar{\Delta} = \frac{\text{total\_time\_ms}}{M}
 | Clean; mean cognitive delay from 500 through 1800 ms | 3 — Good |
 | Clean; mean cognitive delay above 1800 ms | 2 — Hard |
 
+### How hesitation decides Easy, Good or Hard
+
+<figure id="fig-hesitation-grade">
+<div class="bs-flow" role="img" aria-label="Recall, effort, practice and typical speed set each move's hesitation. The baseline cancels, the mean hesitation over the line's moves is the graded delay, and the thresholds turn it into Easy, Good or Hard.">
+<div class="bs-node bs-violet"><span class="bs-label">Each move</span><b>Hesitation</b><p>Random draw scaled up by weak recall and down by practice.</p></div>
+<div class="bs-arrow"><span>average over M</span></div>
+<div class="bs-node bs-orange"><span class="bs-label">Clean session</span><b>Mean delay</b><p>The baseline cancels; only hesitation remains.</p></div>
+<div class="bs-arrow"><span>thresholds</span></div>
+<div class="bs-node bs-teal"><span class="bs-label">Grade</span><b>Easy, Good or Hard</b><p>Below 500 ms, 500–1800 ms, above 1800 ms.</p></div>
+</div>
+<figcaption><strong>Figure 3.</strong> Source-authored path from the <a href="docs.topics.review-dataset.record.md.html#33-how-hesitation-reaches-the-grade-synthetic-clients">simulated move times to the grade</a>. Arrows show computation in the synthetic clients, not measured human timing.</figcaption>
+</figure>
+
+In a clean session each move is right on its first attempt, so it has exactly one simulated time: the player's baseline plus a hesitation. The grade subtracts the baseline again, so what gets graded is the **average hesitation per move**:
+
+$$\bar{\Delta} = \frac{1}{M}\sum_{i=1}^{M} 1000\,H_i\,e^{\beta(1-R)}\frac{1}{1+\alpha\,\text{reps}}, \qquad H_i\sim\operatorname{Lognormal}(\mu,\sigma)$$
+
+- **Weak memory slows the player.** Lower recall $R$ raises the delay through $e^{\beta(1-R)}$, most for high-effort players (large $\beta$), pushing a clean pass toward Hard.
+- **Practice speeds the player up.** Each clean session adds one to reps and a blunder removes two; the delay is divided by $1+\alpha\cdot\text{reps}$, pushing toward Easy.
+- **Speed and luck.** $\mu$ sets the player's typical pace, and each session draws new hesitations, so grades vary; averaging $M$ moves steadies longer lines.
+- **Not the baseline.** The physical baseline never changes a clean grade, and a blunder gives Again whatever the time.
+
+<div class="scroll" role="region" aria-label="Expected delay and grade by profile; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
+<div style="min-width:620px">
+
+| Profile | Fresh line (R = 1) | R = 0.9 | R = 0.7 | R = 0.7 after 5 clean sessions |
+|---|---|---|---|---|
+| Blitzer | 607 ms · Good | 632 ms · Good | 685 ms · Good | 249 ms · Easy |
+| Balanced | 887 ms · Good | 980 ms · Good | 1197 ms · Good | 532 ms · Good |
+| Diligent | 1435 ms · Good | 1788 ms · Good | 2777 ms · Hard | 1388 ms · Good |
+
+</div>
+</div>
+
+The table is formula arithmetic at each profile's mean traits: the expected delay, not a measurement. Real simulated clients spread around these traits and draw new hesitations every session. The pattern still shows the mechanism: blitzers reach Easy through practice, while diligent players turn Hard when a line has faded. With FSRS hidden memory that grade also changes how fast the line's memory grows; with multiplicative memory it does not ([hidden memory models](synthetic-clients.html#hidden-memory)).
+
 These thresholds are the package's [implemented grading policy](docs.topics.review-dataset.record.md.html#32-decision-logic), not a validated diagnosis of a person's memory. The [synthetic-client explanation](synthetic-clients.html#memory-dynamics) shows why longer lines have a lower clean-session probability under independent recall draws. The app's separate backend grading path is explained in [System Architecture](system-architecture.html#practice).
 
 </section>
@@ -126,7 +162,7 @@ These thresholds are the package's [implemented grading policy](docs.topics.revi
 
 <p class="bs-lead">Human calibration is a future specification; the package currently supplies trait-sampling hooks, without a fitted human cohort or validation result.</p>
 
-[Figure 3](#fig-calibration) shows the specified calibration direction. Every stage awaits implementation and human evidence; the arrows do not describe an executed pipeline.
+[Figure 4](#fig-calibration) shows the specified calibration direction. Every stage awaits implementation and human evidence; the arrows do not describe an executed pipeline.
 
 <figure id="fig-calibration">
 <div class="bs-flow" role="img" aria-label="Future human calibration: collect human move telemetry, estimate latency and memory traits, then fit cohorts for synthetic trait sampling. No stage has a human-fit result.">
@@ -136,7 +172,7 @@ These thresholds are the package's [implemented grading policy](docs.topics.revi
 <div class="bs-arrow"><span>sample</span></div>
 <div class="bs-node bs-teal"><span class="bs-label">Future output</span><b>Calibrated cohorts</b><p>Trait distributions checked against human data</p></div>
 </div>
-<figcaption><strong>Figure 3.</strong> Source-authored diagram of the <a href="docs.topics.review-dataset.record.md.html#4-stage-2-human-calibration-pipeline">future calibration specification</a>; no human fit or validation is reported.</figcaption>
+<figcaption><strong>Figure 4.</strong> Source-authored diagram of the <a href="docs.topics.review-dataset.record.md.html#4-stage-2-human-calibration-pipeline">future calibration specification</a>; no human fit or validation is reported.</figcaption>
 </figure>
 
 The specified estimates include a 5th-percentile baseline, log-normal hesitation parameters, a practice-decay rate and a forgetting curve. Positive cognitive delays must be converted from milliseconds to seconds before taking logarithms. Handling non-positive delays, separating practice and strain effects, and estimating effort remain unspecified. A fit to observed delay alone cannot identify raw hesitation parameters.

@@ -2,6 +2,20 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-16 Explain how hesitation sets the clean-session grade
+
+Requested to show how simulated hesitation times influence the grade. Added
+section 3.3 to the [review dataset record](topics/review-dataset/record.md):
+in a clean session the baseline cancels, so the graded delay is the mean
+per-move hesitation 1000·H·exp(β(1−R))/(1 + α·reps); lower recall pushes
+toward Hard, practice toward Easy. It adds expected delays and grades for
+the three benchmark profiles at R = 1, 0.9 and 0.7 and reps 0 and 5 (formula
+arithmetic at mean traits, not measurements). The Review data and grading
+page's grading chapter gains a subsection and Figure 3 from it; the
+calibration figure became Figure 4. No code, data or result changed.
+Documentation build, freshness check and strict lint pass with kit 5.0.0.
+The commit hash is assigned by this entry's landing commit.
+
 ## 2026-11-16 Explain how the two hidden memory models differ
 
 Requested to make the multiplicative versus FSRS hidden memory difference

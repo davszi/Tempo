@@ -109,6 +109,50 @@ else:
 - **Lapse Priority (Grade 1):** TEMPO's grading policy assigns *Again* after any first-attempt failure in Repeating Mode. This is the project's mapping from move attempts to a session rating; FSRS receives that rating rather than imposing this mapping itself.
 - **Hesitation as Memory Strength:** For clean sessions, cognitive delay ($\bar{\Delta}$) differentiates effortless automaticity (*Easy*) from vulnerable, high-hesitation recall (*Hard*).
 
+
+### 3.3 How hesitation reaches the grade (synthetic clients)
+
+Implemented in `ml/tempo_ml/simulator/grading.py` (`calculate_session_grade`)
+with move times from `simulator/recall.py` (`sample_move_time_ms`); the
+latency model is section 3.4 of the
+[synthetic-client record](../synthetic-clients/record.md).
+
+In a clean session every move is correct on its first attempt, so each move
+has exactly one sampled time:
+baseline_ms + 1000·H·exp(β(1−R))/(1 + α·reps), with H ~ Lognormal(μ, σ) in
+seconds. Summing over the M moves, dividing by M and subtracting baseline_ms
+cancels the baseline exactly, so the graded delay is the mean of the M
+hesitation terms:
+
+$$\bar{\Delta} = \frac{1}{M}\sum_{i=1}^{M} 1000\,H_i\,e^{\beta(1-R)}\frac{1}{1+\alpha\,\text{reps}}$$
+
+Each factor moves the grade:
+
+- Lower recall R raises the delay through exp(β(1−R)); high-effort players
+  (large β) slow down most, pushing a clean pass toward Hard.
+- More practice (reps) divides the delay by 1 + α·reps, pushing toward Easy.
+  reps rises by 1 after a clean session and falls by 2 after a blunder
+  (synthetic-client record, section 3.5).
+- μ sets the player's typical speed; H's random draw makes the grade vary
+  between sessions, less so on longer lines because M draws are averaged.
+- The baseline does not affect a clean grade; a blunder gives Again
+  whatever the time. Learning sessions are graded with R = 1.
+
+Illustration (formula arithmetic, not a measurement): the expected delay
+1000·exp(μ + σ²/2)·exp(β(1−R))/(1 + α·reps) at each benchmark profile's mean
+traits (synthetic-client record, section 4).
+
+| Profile | R = 1, reps 0 | R = 0.9, reps 0 | R = 0.7, reps 0 | R = 0.7, reps 5 |
+|---|---|---|---|---|
+| Blitzer | 607 ms, Good | 632 ms, Good | 685 ms, Good | 249 ms, Easy |
+| Balanced | 887 ms, Good | 980 ms, Good | 1197 ms, Good | 532 ms, Good |
+| Diligent | 1435 ms, Good | 1788 ms, Good | 2777 ms, Hard | 1388 ms, Good |
+
+Individual clients' traits are spread around these means and each session
+draws H afresh, so actual grades scatter around these values. With FSRS
+hidden memory the grade also changes the memory update (synthetic-client
+record, section 7); with multiplicative memory it does not.
+
 ---
 
 ## 4. Stage 2: Human Calibration Pipeline
@@ -277,6 +321,7 @@ neither claims a completed human calibration.
 | Seven telemetry columns; grade values 1/2/3/4; accuracy 0 through 1; t_days at least 0 | Section 2.1 |
 | Guided accuracy 1; rows below 1 day excluded from loss | Section 2.1 implementation clarification |
 | Again after any first-attempt error; Easy below 500 ms; Good 500 through 1800 ms; Hard above 1800 ms | Section 3.2 |
+| Hesitation-to-grade formula; reps +1 / −2; expected delays and grades per profile at R = 1, 0.9, 0.7 and reps 0, 5 | Section 3.3; formula arithmetic at the benchmark profiles' mean traits, not measurements |
 | Stage 2; chi-squared exponent 2 | Section 4 and its unresolved validation-method clarification |
 | 5th-percentile physical baseline estimate | Section 4.1, Physical Baseline; future calibration specification, not a completed measurement |
 | CSV illustration: 2.4 days / grade 3 / 3420 ms / accuracy 1.0; 0.5 days / grade 1 / 8940 ms / accuracy 0.75; 5.1 days / grade 4 / 1980 ms / accuracy 1.0 | Existing page's labelled illustrative rows; invented examples, not observations or grade-calculation tests, because move counts and baselines are not supplied |
