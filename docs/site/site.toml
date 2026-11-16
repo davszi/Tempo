@@ -41,6 +41,11 @@ file = "review-dataset.html"
 group = "model"
 
 [[nav]]
+label = "Session grading"
+file = "session-grading.html"
+group = "model"
+
+[[nav]]
 label = "FSRS training"
 file = "fsrs-training.html"
 group = "model"

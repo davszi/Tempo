@@ -90,7 +90,7 @@ Review timing starts at side selection or a resumed session, resets after each a
 | Clean adjusted mean from 500 through 1,800 ms | Good |
 | Clean adjusted mean above 1,800 ms | Hard |
 
-These are the implemented app rules, not validated human-memory cutoffs. The grading specification now grades by the mean time per move, with intervals still to be set; the app keeps these boundaries until then. <a href="review-dataset.html#grading">Review Data & Grading</a> explains the change.
+These are the implemented app rules, not validated human-memory cutoffs. A new grading rule was decided on 2026-11-16 but is not implemented yet: one mistake no longer means Again on lines of 4 moves or more, and time is measured in the browser without a baseline. The app keeps the rules above until then. <a href="session-grading.html">Session grading</a> explains the decided rule.
 
 A due timestamp is a scheduler output, not a guarantee of an exact target-recall crossing. FSRS learning or relearning steps may schedule reviews sooner than stability in days suggests. The <a href="docs.topics.system-architecture.system-architecture.md.html#review-scheduling">scheduling record</a> owns timing and dependency limits.
 
