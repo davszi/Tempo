@@ -44,7 +44,7 @@ class Handler(SimpleHTTPRequestHandler):
             "/api/review/side": (self.controller.choose_review_side, ("session_id", "side"), ()),
             "/api/review/line": (self.controller.start_review_line, ("line_id",), ()),
             "/api/review/abandon": (self.controller.abandon_review, ("session_id",), ()),
-            "/api/move": (self.controller.submit_move, ("session_id", "move_index", "move_uci"), ()),
+            "/api/move": (self.controller.submit_move, ("session_id", "move_index", "move_uci"), ("response_time_ms",)),
             "/api/repertoire": (self.controller.repertoire, (), ()),
         }
         if self.path not in routes:

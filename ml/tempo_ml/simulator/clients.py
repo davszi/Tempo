@@ -24,7 +24,7 @@ from typing import Mapping, Protocol, Sequence
 
 import numpy as np
 
-from .grading import SessionRecord, calculate_session_grade
+from .grading import AGAIN, SessionRecord, calculate_session_grade
 from .memory.multiplicative import LineMemory, MultiplicativeStability, StabilityModel, next_reps, retrievability
 from .recall import DEFAULT_MAX_ATTEMPTS_PER_MOVE, MoveEvent, play_move, sample_move_time_ms
 
@@ -259,8 +259,7 @@ class SyntheticClient:
         if getattr(self.stability_model, "graded", False):
             # Graded memory (memory/fsrs.py): the update needs this session's grade,
             # computed as in _finish (no random draws, so the streams are unchanged).
-            grade = calculate_session_grade(blunder_count=0, total_time_ms=sum(m.time_ms for m in moves),
-                                            num_moves=line.num_moves, baseline_ms=self.traits.baseline_ms)
+            grade = self._grade(moves)
             if s_before is None:
                 s_after, d_after = self.stability_model.start(grade)
             else:
@@ -280,8 +279,9 @@ class SyntheticClient:
 
         Each repertoire move's first attempt is correct with probability R.
         A wrong move is taken back and retried; every attempt's latency counts
-        toward ``total_time_ms``. Status is ``relearning`` if the previous
-        Repeating Mode session on this line had a blunder, else ``review``.
+        toward ``total_time_ms``. The review is a lapse when its grade is Again
+        (section 3.5 of the session grading record). Status is ``relearning``
+        after a lapse, else ``review``.
         """
         mem = self.memory(line)
         if not mem.seen:
@@ -293,29 +293,34 @@ class SyntheticClient:
         R = retrievability(t_days, mem.stability, self.traits.C)
 
         moves = tuple(self._play_move(i, R, mem.reps) for i in range(line.num_moves))
-        blundered = any(not m.first_attempt_correct for m in moves)
+        grade = self._grade(moves)
+        lapsed = grade == AGAIN
 
         s_before = mem.stability
         if getattr(self.stability_model, "graded", False):
-            grade = calculate_session_grade(
-                blunder_count=sum(1 for m in moves if not m.first_attempt_correct),
-                total_time_ms=sum(m.time_ms for m in moves),
-                num_moves=line.num_moves, baseline_ms=self.traits.baseline_ms)
             s_after, d_after = self.stability_model.update(s_before, mem.difficulty, t_days, R, grade)
             outcome = self._finish(line, mem, day, status, "repeating", t_days, R, moves, s_before, s_after)
             mem.difficulty = d_after
-            mem.last_review_lapsed = blundered
+            mem.last_review_lapsed = lapsed
             return outcome
         s_after = (
             self.stability_model.after_lapse(s_before, R)
-            if blundered
+            if lapsed
             else self.stability_model.after_success(s_before, R)
         )
         outcome = self._finish(line, mem, day, status, "repeating", t_days, R, moves, s_before, s_after)
-        mem.last_review_lapsed = blundered
+        mem.last_review_lapsed = lapsed
         return outcome
 
     # --------------------------------------------------------------- internal
+
+    @staticmethod
+    def _grade(moves: Sequence[MoveEvent]) -> int:
+        """The session grade from each move's first attempt (correctness and time)."""
+        return calculate_session_grade(
+            [m.first_attempt_correct for m in moves],
+            [m.attempt_times_ms[0] for m in moves],
+        )
 
     def _play_move(self, index: int, R: float, reps: int) -> MoveEvent:
         return play_move(index, R, reps, self.traits, self._rng, self.max_attempts_per_move)
@@ -335,12 +340,7 @@ class SyntheticClient:
     ) -> SessionOutcome:
         blunders = sum(1 for m in moves if not m.first_attempt_correct)
         total_ms = sum(m.time_ms for m in moves)
-        grade = calculate_session_grade(
-            blunder_count=blunders,
-            total_time_ms=total_ms,
-            num_moves=line.num_moves,
-            baseline_ms=self.traits.baseline_ms,
-        )
+        grade = self._grade(moves)
         record = SessionRecord(
             agent_name=self.name,
             opening_name=line.opening_name,

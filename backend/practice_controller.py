@@ -11,6 +11,16 @@ from .ml_engine import MLEngine
 from .store import Store, add_event, is_learnable, repertoire_rows, timestamp
 
 
+MAX_RESPONSE_MS = 3_600_000   # one hour: longer than any real move, short enough to reject nonsense
+
+
+def checked_response_time(value):
+    """The browser-measured time of one move attempt, in whole milliseconds."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= MAX_RESPONSE_MS:
+        raise ValueError("response_time_ms must be a number of milliseconds from 0 to 3600000")
+    return round(value)
+
+
 def utc_now():
     return datetime.now(timezone.utc)
 
@@ -99,7 +109,7 @@ class PracticeController:
                 ).fetchone()
                 if mistake is None:
                     raise ValueError("Only a review with a mistake can be closed early")
-                grade = self.ml.complete_review(db, player_id, session.line_id, session_id, now)
+                grade, _ = self.ml.complete_review(db, player_id, session.line_id, session_id, now, forced_grade="Again")
                 add_event(
                     db, player_id, session.line_id, "session_completed", session.mode, now,
                     session_id=session_id, side=session.side, fsrs_rating=grade,
@@ -179,7 +189,7 @@ class PracticeController:
             "hint": session.moves[index] if session.mode == "learning" and not complete else None,
         }
 
-    def submit_move(self, player_id, session_id, move_index, move_uci):
+    def submit_move(self, player_id, session_id, move_index, move_uci, response_time_ms=None):
         with self.lock:
             session = self._get_session(player_id, session_id)
             if session.side is None or move_index != session.move_index:
@@ -192,8 +202,12 @@ class PracticeController:
                 next_index = min(move_index + step, len(session.moves))
             complete = next_index == len(session.moves)
             now = self.now()
-            elapsed_ms = max(0, round((self.timer() - session.move_started) * 1000))
+            if response_time_ms is None:
+                elapsed_ms = max(0, round((self.timer() - session.move_started) * 1000))
+            else:
+                elapsed_ms = checked_response_time(response_time_ms)
             grade = None
+            grading = None
 
             with self.store.transaction(write=True) as db:
                 add_event(
@@ -205,7 +219,7 @@ class PracticeController:
                     if session.mode == "learning":
                         self.ml.initialize_progress(db, player_id, session.line_id, now)
                     else:
-                        grade = self.ml.complete_review(db, player_id, session.line_id, session_id, now)
+                        grade, grading = self.ml.complete_review(db, player_id, session.line_id, session_id, now)
                     add_event(
                         db, player_id, session.line_id, "session_completed", session.mode, now,
                         session_id=session_id, side=session.side, fsrs_rating=grade,
@@ -218,14 +232,11 @@ class PracticeController:
             # After a wrong move in Repeating, name the expected move so the app can show it once.
             expected = session.moves[move_index] if not correct and session.mode == "repeating" else None
             return {**self._view(session_id, session), "correct": correct, "fsrs_rating": grade,
-                    "expected_move": expected}
+                    "expected_move": expected, "grading": grading}
 
 
-def create_backend(database_path, *, baseline_ms=0, weights_file=None):
+def create_backend(database_path, *, weights_file=None):
     """Build a controller for a file-backed SQLite database."""
-    engine = (
-        MLEngine(baseline_ms=baseline_ms) if weights_file is None
-        else MLEngine.from_weights_file(weights_file, baseline_ms=baseline_ms)
-    )
+    engine = MLEngine() if weights_file is None else MLEngine.from_weights_file(weights_file)
     store = Store(database_path)
     return PracticeController(store, MLController(store, engine))

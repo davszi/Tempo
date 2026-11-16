@@ -18,6 +18,8 @@ from tempo_ml.simulator import (
     CSV_COLUMNS,
     SessionRecord,
     calculate_session_grade,
+    mistake_limit,
+    time_band,
     ARCHETYPES,
     ClientTraits,
     Line,
@@ -65,12 +67,38 @@ def test_archetypes_match_record_table():
 # ------------------------------------------------------------------- grading
 
 
-def test_grading_function():
-    assert calculate_session_grade(1, 100, 4, 300) == 1
-    assert calculate_session_grade(0, 4 * (300 + 499), 4, 300) == 4
-    assert calculate_session_grade(0, 4 * (300 + 500), 4, 300) == 3
-    assert calculate_session_grade(0, 4 * (300 + 1800), 4, 300) == 3
-    assert calculate_session_grade(0, 4 * (300 + 1801), 4, 300) == 2
+# Section 3.7 of docs/topics/session-grading/session-grading.md. A move is a first-attempt time in ms
+# (correct), or None (wrong first attempt, then a correct retry, which does not count).
+GRADING_VECTORS = [
+    ([True, True, True], [5000, 900, 1100], 4),
+    ([True, True, False], [900, 900, None], 1),
+    ([True, True, True], [900, 20000, 1000], 2),
+    ([True, True, True, True], [900, 20000, 1000, 1000], 3),
+    ([True] * 5, [900, 2000, 2500, 3000, 2600], 3),
+    ([True, True, False, True, True, True], [900, 1000, None, 1200, 1100, 1300], 2),
+    ([True, False, False, True, True, True], [900, None, None, 1000, 1000, 1000], 1),
+    ([True, False] + [True] * 8, [900, None] + [1000] * 8, 3),
+    ([True, False] + [True] * 8, [900, None] + [4000] * 8, 2),
+    ([True, False, False] + [True] * 7, [900, None, None] + [1000] * 7, 2),
+    ([True, False, False] + [True] * 10, [900, None, None] + [2000] * 10, 3),
+    ([True, False, False, False] + [True] * 9, [900, None, None, None] + [2000] * 9, 2),
+    ([True] + [True] * 7, [900] + [9000] * 7, 2),
+    ([True, True] + [True] * 6, [900, 30000] + [1000] * 6, 3),
+]
+
+
+def test_grading_follows_section_3_7_vectors():
+    for correct, times, expected in GRADING_VECTORS:
+        # A wrong first attempt is graded from its first time only; the retry time is not part of the input.
+        first_times = [t if t is not None else 1500 for t in times]
+        first_correct = [c if t is not None else False for c, t in zip(correct, times)]
+        assert calculate_session_grade(first_correct, first_times) == expected, (correct, times)
+
+
+def test_mistake_limits_and_time_bands():
+    assert [mistake_limit(m) for m in (3, 4, 7, 8, 12, 13)] == [0, 1, 1, 2, 2, 3]
+    assert [time_band(t) for t in (None, 1499, 1500, 3500, 3501, 8000, 8001)] == [
+        "normal", "fast", "normal", "normal", "slow", "slow", "very_slow"]
 
 
 # ------------------------------------------------------------------ sessions
@@ -117,7 +145,7 @@ def test_record_fields_consistent():
     assert r.accuracy == (LINE.num_moves - out.blunder_count) / LINE.num_moves
     assert out.retrievability == pytest.approx(retrievability(2.0, 1.0, ARCHETYPES["balanced"].C))
     expected_grade = calculate_session_grade(
-        out.blunder_count, sum(m.time_ms for m in out.moves), LINE.num_moves, 300
+        [m.first_attempt_correct for m in out.moves], [m.attempt_times_ms[0] for m in out.moves]
     )
     assert r.grade == expected_grade
     assert all(t >= 300 for m in out.moves for t in m.attempt_times_ms)

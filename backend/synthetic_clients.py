@@ -55,7 +55,7 @@ PROFILES = (
 
 
 def simulate_line(profile, agent_name, opening, move_count, sessions, rng, scheduler):
-    engine = MLEngine(scheduler, baseline_ms=profile.baseline_ms)
+    engine = MLEngine(scheduler)
     _, state = engine.initial_schedule(START)
     previous = START
     now = START

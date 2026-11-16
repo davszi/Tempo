@@ -34,11 +34,15 @@ from .clients import (
 from .grading import (
     AGAIN,
     CSV_COLUMNS,
+    CAP_MS,
     EASY,
-    EASY_MAX_DELAY_MS,
     GOOD,
-    GOOD_MAX_DELAY_MS,
     HARD,
+    T_EASY_MS,
+    T_SLOW_MS,
+    T_VERY_SLOW_MS,
+    mistake_limit,
+    time_band,
     REVIEW_STATUSES,
     SessionRecord,
     calculate_session_grade,
@@ -63,10 +67,10 @@ from .recall import (
 
 __all__ = [
     "AGAIN", "ARCHETYPES", "BLUNDER_REPS_PENALTY", "CSV_COLUMNS", "ClientTraits",
-    "DEFAULT_MAX_ATTEMPTS_PER_MOVE", "EASY", "EASY_MAX_DELAY_MS", "GOOD", "GOOD_MAX_DELAY_MS",
+    "CAP_MS", "DEFAULT_MAX_ATTEMPTS_PER_MOVE", "EASY", "GOOD", "T_EASY_MS", "T_SLOW_MS", "T_VERY_SLOW_MS",
     "HARD", "Line", "LineMemory", "LineSpec", "MoveEvent", "MultiplicativeStability",
     "REVIEW_STATUSES", "SessionOutcome", "SessionRecord", "StabilityModel", "SyntheticClient",
     "TraitDistribution", "build_population", "calculate_session_grade", "clamp_traits",
-    "cognitive_strain", "next_reps", "play_move", "practice_multiplier", "retrievability",
-    "sample_move_time_ms", "with_overrides", "write_sessions_csv",
+    "cognitive_strain", "mistake_limit", "next_reps", "play_move", "practice_multiplier", "retrievability",
+    "sample_move_time_ms", "time_band", "with_overrides", "write_sessions_csv",
 ]

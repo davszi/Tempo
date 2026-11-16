@@ -37,7 +37,8 @@ class MLController:
             (player_id, line_id, timestamp(now), timestamp(due), state),
         )
 
-    def complete_review(self, db, player_id, line_id, session_id, now):
+    def complete_review(self, db, player_id, line_id, session_id, now, forced_grade=None):
+        """Schedule a finished review. Returns (grade, grading details); details are None when the grade is forced."""
         progress = db.execute(
             "SELECT fsrs_state FROM player_lines WHERE player_id = ? AND line_id = ?",
             (player_id, line_id),
@@ -49,11 +50,12 @@ class MLController:
             (player_id, line_id, session_id),
         ).fetchall()
         grade, due, state = self.engine.schedule_review(
-            progress["fsrs_state"], attempts, now
+            progress["fsrs_state"], attempts, now, grade=forced_grade
         )
         db.execute(
             """UPDATE player_lines SET last_reviewed_at = ?, next_review_at = ?, fsrs_state = ?
                WHERE player_id = ? AND line_id = ?""",
             (timestamp(now), timestamp(due), state, player_id, line_id),
         )
-        return grade
+        grading = None if forced_grade else self.engine.grade_details(attempts)
+        return grade, grading

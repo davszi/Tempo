@@ -1,7 +1,7 @@
 """Session grade (Again / Hard / Good / Easy) and the session record it is
 written in (review-dataset record, sections 2 and 3).
 
-Maps one session's blunder count and latency onto the FSRS 4-point scale.
+Maps one session's first-attempt mistakes and move times onto the FSRS 4-point scale.
 Latency is normalised by the number of repertoire moves ``M`` so lines of
 different depth are graded on the same footing.
 """
@@ -11,51 +11,76 @@ from __future__ import annotations
 import csv
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Sequence
 
 AGAIN = 1
 HARD = 2
 GOOD = 3
 EASY = 4
 
-# Thresholds on the average cognitive delay per move, in milliseconds
-# (review-dataset record, section 3.2).
-EASY_MAX_DELAY_MS = 500.0
-GOOD_MAX_DELAY_MS = 1800.0
+# Session grading rule: docs/topics/session-grading/session-grading.md, section 3.
+CAP_MS = 20000.0          # section 3.3: each timed move is capped at this time
+T_EASY_MS = 1500.0        # section 3.4: fast below this mean
+T_SLOW_MS = 3500.0        # section 3.4: slow above this mean
+T_VERY_SLOW_MS = 8000.0   # section 3.4: very slow above this mean
 
 
-def calculate_session_grade(
-    blunder_count: int,
-    total_time_ms: float,
-    num_moves: int,
-    baseline_ms: float,
-) -> int:
-    """Return the FSRS grade (1-4) for one session.
+def mistake_limit(num_moves: int) -> int:
+    """Most first-attempt mistakes a review of this many player moves may have and stay non-Again (section 3.2)."""
+    if num_moves <= 3:
+        return 0
+    if num_moves <= 7:
+        return 1
+    if num_moves <= 12:
+        return 2
+    return 3
+
+
+def time_band(mean_ms: float | None) -> str:
+    """Fast, normal, slow or very_slow from the mean of the capped timed moves (section 3.4).
+
+    With no timed moves the band is normal (section 3.3, step 5).
+    """
+    if mean_ms is None or T_EASY_MS <= mean_ms <= T_SLOW_MS:
+        return "normal"
+    if mean_ms < T_EASY_MS:
+        return "fast"
+    if mean_ms <= T_VERY_SLOW_MS:
+        return "slow"
+    return "very_slow"
+
+
+def calculate_session_grade(first_correct: Sequence[bool], first_times_ms: Sequence[float]) -> int:
+    """Return the FSRS grade (1-4) for one finished review (section 3.5).
 
     Args:
-        blunder_count: Number of moves whose first attempt was wrong.
-        total_time_ms: Wall-clock time summed over all repertoire moves.
-        num_moves: Number of repertoire moves ``M`` in the line (> 0).
-        baseline_ms: The player's physical motor/board-scan latency floor.
+        first_correct: For each of the line's ``M`` player moves, whether its first attempt was right.
+        first_times_ms: For each move, the time of its first attempt in milliseconds (browser-measured
+            in the app; the simulated physical move time, including the baseline, here).
 
-    Any blunder gives Again. Otherwise the average cognitive delay
-    ``total_time_ms / M - baseline_ms`` decides Easy (< 500 ms),
-    Good (500-1800 ms) or Hard (> 1800 ms).
+    The first player move is never timed. Mistakes are the moves whose first attempt was wrong.
     """
+    num_moves = len(first_correct)
     if num_moves <= 0:
-        raise ValueError(f"num_moves must be positive, got {num_moves}")
-    if blunder_count < 0:
-        raise ValueError(f"blunder_count must be >= 0, got {blunder_count}")
+        raise ValueError(f"a review must contain at least one move, got {num_moves}")
+    if len(first_times_ms) != num_moves:
+        raise ValueError("first_correct and first_times_ms must have one entry per move")
 
-    if blunder_count > 0:
+    mistakes = sum(1 for correct in first_correct if not correct)
+    timed = [min(time, CAP_MS) for correct, time in zip(first_correct[1:], first_times_ms[1:]) if correct]
+    mean_ms = sum(timed) / len(timed) if timed else None
+    band = time_band(mean_ms)
+    limit = mistake_limit(num_moves)
+
+    if mistakes > limit:
         return AGAIN
-
-    cognitive_delay = total_time_ms / num_moves - baseline_ms
-    if cognitive_delay < EASY_MAX_DELAY_MS:
-        return EASY
-    if cognitive_delay <= GOOD_MAX_DELAY_MS:
-        return GOOD
-    return HARD
+    if mistakes == limit and mistakes > 0:
+        return HARD
+    if mistakes == 0:
+        if band == "fast":
+            return EASY
+        return HARD if band == "very_slow" else GOOD
+    return GOOD if band in ("fast", "normal") else HARD
 
 
 # ---- review-session CSV schema (review-dataset record, section 2)

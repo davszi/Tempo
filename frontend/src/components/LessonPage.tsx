@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Square } from "chess.js";
 import { ArrowLeft, ArrowUpRight, BookOpen, Check, ChevronRight, Lightbulb, Play, RotateCcw, Undo2 } from "lucide-react";
 import { useApp } from "../lib/app";
 import { closestLines, lineLabel } from "../lib/catalog";
 import { positionAt } from "../lib/learning";
+import { MAX_RESPONSE_MS, gradeExplanation } from "../lib/grading";
 import { clearProgress, saveProgress } from "../lib/progress";
 import { practiceRequest, type Grade, type RepertoireLine, type Session } from "../lib/practiceApi";
 import { ChessBoard } from "./ChessBoard";
@@ -12,12 +13,6 @@ import { LineTitle, fmtDate, plural, sideName } from "./common";
 const MISTAKES_PER_RELEARN_PROMPT = 2;
 const promotions = { q: "Queen", r: "Rook", b: "Bishop", n: "Knight" } as const;
 const gradeClass: Record<Grade, string> = { Again: "g1", Hard: "g2", Good: "g3", Easy: "g4" };
-const gradeReason: Record<Grade, string> = {
-  Again: "A mistake in this line, so it counts as Again, even when fixed on retry.",
-  Hard: "No mistakes, but slow: over 1.8 s of thinking per move.",
-  Good: "No mistakes, with 0.5 to 1.8 s of thinking per move.",
-  Easy: "No mistakes and fast: under 0.5 s of thinking per move.",
-};
 
 /** A running Learning or Repeating session against the backend. */
 export function LessonPage({ initial, onExit }: { initial: Session; onExit: (hash: string) => void }) {
@@ -47,6 +42,10 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
     return position;
   }, [session.played_moves, shown, pendingFinalMove]);
   const yourTurn = !finished && !showRelearnChoice && !pendingFinalMove;
+  // Move timing for grading (grading record, section 3.3): the clock starts when the player's position is ready.
+  // A wrong attempt does not restart it, because only each move's first attempt is graded.
+  const turnStartedAt = useRef(performance.now());
+  useEffect(() => { if (yourTurn) turnStartedAt.current = performance.now(); }, [yourTurn, shown]);
   const hint = learning ? session.hint : hintMove;
   const arrow = yourTurn && hint ? { from: hint.slice(0, 2) as Square, to: hint.slice(2, 4) as Square, promotion: hint[4] } : null;
   const nextSan = useMemo(() => {
@@ -75,7 +74,10 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
     setSelected(null);
     setPromotion("");
     try {
-      const next = await practiceRequest<Session>("move", { session_id: session.session_id, move_index: previous, move_uci: move });
+      const responseTime = Math.min(MAX_RESPONSE_MS, Math.round(performance.now() - turnStartedAt.current));
+      const next = await practiceRequest<Session>("move", {
+        session_id: session.session_id, move_index: previous, move_uci: move, response_time_ms: responseTime,
+      });
       setPendingFinalMove(null);
       setSession(next);
       if (next.correct) {
@@ -176,7 +178,9 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
     panel = <div className="card"><p className="eyebrow">REVIEW SAVED</p>
       <>
         <span className={`grade ${gradeClass[grade]}`}>{grade}</span>
-        <p className="muted" style={{ margin: "12px 0 0", fontSize: 14 }}>{mistakes ? `${plural(mistakes, "mistake")} in this line. Any mistake means Again, even when fixed on retry.` : gradeReason[grade]}</p>
+        <p className="muted" style={{ margin: "12px 0 0", fontSize: 14 }}>{session.grading
+          ? gradeExplanation(session.grading)
+          : `This review was graded ${grade}.`}</p>
         <div className="facts">
           <div className="fact"><span>Recall before</span><b>{recallBefore == null ? "first test" : `${Math.round(recallBefore * 100)}%`}</b></div>
           <div className="fact"><span>Memory strength</span><b>{before.current?.stability_days != null ? `${before.current.stability_days.toFixed(1)} → ` : ""}{after?.stability_days != null ? `${after.stability_days.toFixed(1)} d` : "—"}</b></div>

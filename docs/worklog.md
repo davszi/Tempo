@@ -2,6 +2,12 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-16 Implement the session grading rule in the app
+
+Implemented section 5.3 of the [session grading record](topics/session-grading/session-grading.md) on `feature/frontend-learning`: a Repeating review is graded from its mistakes and the browser-measured time of its timed moves, with no baseline. `LessonPage.tsx` starts a clock when the player's position is ready and sends each attempt's time with the move (`response_time_ms`). `practice_controller.py` stores that time, or the server's own interval for older clients, and rejects values outside 0 to 3,600,000 ms. `ml_engine.py` grades the first attempt of each move with the record's mistake limits, time bands and 20 s cap, and returns the breakdown with the completed review. Abandoning a review to relearn it is still graded Again, now forced rather than derived. The relearn prompts are unchanged: a choice after 2 wrong attempts, relearning only after 4.
+
+Checks: the record's 14 test vectors and the timing edge cases pass in `backend/tests/test_session_grading.py` (8 tests); the frontend passes 15 tests, the type check and the build; scripted checks cover the abandon path and client times on a copy of the demo database. In the browser, on a copy of the presentation database, a review played at human pace was graded Good with its explanation shown, and two and four wrong attempts gave the choice and relearn-only prompts. Open question: relearning a line that another line extends fails, because the catalog only lets longer lines be learned; the review itself is saved as Again. The simulator follows the same rule (section 5.1): `ml/tempo_ml/simulator/grading.py` grades from each move's first attempt with the same limits, bands and cap, a review is a lapse only when it is graded Again, and `ml/tests/test_simulator.py` checks the 14 vectors (46 ML tests pass). The FSRS label docstring now says a pass means "not Again". Not done: the truth columns, regenerated datasets and retrained weights (sections 5.2 and 5.4), and the memory update for passed reviews with mistakes (section 6.1). If a completed review arrives without a grading breakdown, the result screen now states the grade instead of the relearn sentence. The commit hash is assigned by this entry's landing commit.
+
 ## 2026-11-16 Record the move recall decisions in their own topic
 
 Decided on 2026-11-16 by the ML owner and recorded as a new topic at their

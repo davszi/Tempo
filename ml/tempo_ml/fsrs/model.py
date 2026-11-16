@@ -21,7 +21,7 @@ card but are excluded from the loss, as in the FSRS optimizers; so are
 Learning Mode sessions (``new``/``learning``), which test nothing because the
 arrow shows the move.
 
-Label: success = grade > 1, i.e. the whole line was played without a blunder.
+Label: success = grade > 1, i.e. the review was not Again: its mistakes stayed within the line's limit.
 """
 
 from __future__ import annotations

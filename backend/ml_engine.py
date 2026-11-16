@@ -6,9 +6,38 @@ import json
 from math import isfinite
 
 
+# Session grading rule, from docs/topics/session-grading/session-grading.md (section 3).
+CAP_MS = 20000
+T_EASY_MS = 1500
+T_SLOW_MS = 3500
+T_VERY_SLOW_MS = 8000
+
+
+def mistake_limit(moves):
+    """Most first-attempt mistakes a review of a line with this many player moves may have and stay non-Again."""
+    if moves <= 3:
+        return 0
+    if moves <= 7:
+        return 1
+    if moves <= 12:
+        return 2
+    return 3
+
+
+def time_band(mean_ms):
+    """Fast, normal, slow or very_slow, from the mean of the capped times of the timed moves."""
+    if mean_ms is None or T_EASY_MS <= mean_ms <= T_SLOW_MS:
+        return "normal"
+    if mean_ms < T_EASY_MS:
+        return "fast"
+    if mean_ms <= T_VERY_SLOW_MS:
+        return "slow"
+    return "very_slow"
+
+
 class MLEngine:
     @classmethod
-    def from_weights_file(cls, path, *, baseline_ms=0):
+    def from_weights_file(cls, path):
         """Load one ordered FSRS-6 parameter vector from a training export."""
         from fsrs import Scheduler
 
@@ -30,17 +59,14 @@ class MLEngine:
         scheduler = Scheduler(parameters=weights, learning_steps=(), relearning_steps=())
         if tuple(scheduler.parameters) != weights:
             raise ValueError("FSRS adjusted the supplied weights. Check the parameter bounds")
-        return cls(scheduler, baseline_ms=baseline_ms)
+        return cls(scheduler)
 
-    def __init__(self, scheduler=None, *, baseline_ms=0):
-        if not isfinite(baseline_ms) or baseline_ms < 0:
-            raise ValueError("The grading baseline must be finite and nonnegative")
+    def __init__(self, scheduler=None):
         if scheduler is None:
             from fsrs import Scheduler
 
             scheduler = Scheduler(learning_steps=(), relearning_steps=())
         self.scheduler = scheduler
-        self.baseline_ms = baseline_ms
 
     @staticmethod
     def select_line(repertoire, now):
@@ -52,20 +78,50 @@ class MLEngine:
         ))["line_id"]
 
     @staticmethod
-    def grade_session(attempts, baseline_ms):
-        """Apply the review-dataset grading rule to completed move attempts."""
+    def grade_details(attempts):
+        """Grade one review and explain it. `attempts` are the move attempts in the order they were made.
+
+        Only each move's first attempt counts. A timed move is a correct first attempt that is not the
+        line's first player move; its time is capped at CAP_MS.
+        """
         if not attempts:
             raise ValueError("A review must contain at least one move")
-        if any(not attempt["is_correct"] for attempt in attempts):
-            return "Again"
+        by_move = {}
+        for attempt in attempts:
+            by_move.setdefault(attempt["move_index"], []).append(attempt)
+        moves = sorted(by_move)
+        first = {index: by_move[index][0] for index in moves}
+        player_moves = len(moves)
+        mistakes = sum(1 for index in moves if not first[index]["is_correct"])
+        timed = [
+            min(first[index]["response_time_ms"], CAP_MS)
+            for index in moves[1:]
+            if first[index]["is_correct"]
+        ]
+        mean_ms = sum(timed) / len(timed) if timed else None
+        band = time_band(mean_ms)
+        limit = mistake_limit(player_moves)
 
-        move_count = len({attempt["move_index"] for attempt in attempts})
-        delay_ms = sum(attempt["response_time_ms"] for attempt in attempts) / move_count - baseline_ms
-        if delay_ms < 500:
-            return "Easy"
-        if delay_ms <= 1800:
-            return "Good"
-        return "Hard"
+        if mistakes > limit:
+            grade = "Again"
+        elif mistakes == limit and mistakes > 0:
+            grade = "Hard"
+        elif mistakes == 0:
+            grade = {"fast": "Easy", "very_slow": "Hard"}.get(band, "Good")
+        else:
+            grade = "Good" if band in ("fast", "normal") else "Hard"
+        return {
+            "grade": grade,
+            "moves": player_moves,
+            "mistakes": mistakes,
+            "limit": limit,
+            "mean_ms": None if mean_ms is None else round(mean_ms),
+            "band": band,
+        }
+
+    @classmethod
+    def grade_session(cls, attempts):
+        return cls.grade_details(attempts)["grade"]
 
     def initial_schedule(self, now):
         from fsrs import Card
@@ -94,10 +150,10 @@ class MLEngine:
 
         return Card.from_dict(json.loads(state)).stability
 
-    def schedule_review(self, state, attempts, now):
+    def schedule_review(self, state, attempts, now, grade=None):
         from fsrs import Card, Rating
 
-        grade = self.grade_session(attempts, self.baseline_ms)
+        grade = grade or self.grade_session(attempts)
         card = Card.from_dict(json.loads(state))
         card, _ = self.scheduler.review_card(card, Rating[grade], review_datetime=now)
         return grade, card.due, json.dumps(card.to_dict())

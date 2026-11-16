@@ -16,6 +16,16 @@ export type OpeningLine = {
   learned: boolean;
 };
 
+/** How a finished Repeating review was graded (docs/topics/session-grading, section 3). */
+export type Grading = {
+  grade: Grade;
+  moves: number;
+  mistakes: number;
+  limit: number;
+  mean_ms: number | null;
+  band: "fast" | "normal" | "slow" | "very_slow";
+};
+
 export type Session = {
   status: "choose_side" | "play" | "complete";
   session_id: string;
@@ -32,6 +42,8 @@ export type Session = {
   fsrs_rating?: Grade | null;
   /** Repeating only: the move that was expected after a wrong one. */
   expected_move?: string | null;
+  /** Repeating only, once the review is complete: the grade and how it was reached. */
+  grading?: Grading | null;
 };
 
 export type ReviewStart = Session | { status: "learn_first" | "none_due" };
