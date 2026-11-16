@@ -40,7 +40,7 @@ navigation updates the document title and scrolls to the top.
 - **Dashboard:** due-review actions, unfinished lessons, and a selectable 30-day schedule with overdue lines grouped into today. It displays saved due dates; it does not simulate future reviews or refitting.
 - **Learning:** search by family, variation or ECO code; filter White, Black or all families; open a family to select a learnable variation. Family previews use a shortest catalog line. Only leaf lines can start Learning; [opening catalog structure](../catalog-data/catalog-data.md) owns that rule and distinguishing labels for same-name lines.
 - **Lesson:** the browser automatically uses the family's side. Learning shows an arrow and move notation, accepts click, keyboard and drag interactions, offers promotion pieces, and animates the opponent's reply after a correct move. Wrong moves leave the position unchanged. Completion marks the line learned and refreshes repertoire data. Related variations are ranked by shared opening plies, then length; the next suggestion is the first unlearned line in that order.
-- **Repeating:** the main Start review action asks the planner for a due line. The browser selects its family's side automatically. Per-line Review and Practise actions also start a chosen repertoire line, including one not yet due. A first mistake reveals the expected move with an arrow until a correct retry. A second mistake in the session offers re-learning or continuing; continuing disables further hints. Choosing re-learning closes the review as Again before starting Learning. The backend accepts early closure after any recorded mistake; the browser offers it after the second.
+- **Repeating:** the main Start review action asks the planner for a due line. The browser selects its family's side automatically. Per-line Review and Practise actions also start a chosen repertoire line, including one not yet due. A first mistake reveals the expected move with an arrow until a correct retry. The second mistake offers re-learning or continuing. Continuing keeps the review open without further hints. Two more mistakes bring up a prompt with only the Learn this line again button. Choosing re-learning closes the review as Again before starting Learning. The backend accepts early closure after any recorded mistake; the browser offers it after the second.
 - **Repertoire:** learned lines and unfinished local lessons, search and side filters, due/fresh/learning tabs, moves, dates, recall, stability and completed review grades. Unstarted lines are browsed through Learning.
 - **Settings:** nine themes and six recoloured Lichess piece sets, with credits. Desktop navigation has a Settings control; mobile navigation includes Settings directly. The current shell has no mobile drawer.
 
@@ -141,7 +141,9 @@ Repeating updates immediately. First-mistake hints and the second-mistake
 choice are local lesson state; the backend returns `expected_move` after
 every wrong Repeating attempt and grades from persisted attempts. Re-learning
 from that choice first closes the review as Again, then requests fresh
-Learning. Continuing hides further hints in that mounted lesson. UI copy
+Learning. Continuing hides further hints in that mounted lesson and brings
+a prompt with only the Learn this line again button after two additional mistakes. The player only
+returns to Learning by choosing to learn the line again. UI copy
 such as “no hints” does not override these implemented behaviors.
 
 ## HTTP interface

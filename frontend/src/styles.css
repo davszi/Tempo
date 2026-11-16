@@ -121,6 +121,8 @@ svg.i { width: 18px; height: 18px; flex-shrink: 0; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 10px 18px; border-radius: 12px; border: 1px solid transparent; font-weight: 700; font-size: 14px; }
 .btn.primary { background: var(--accent); color: var(--on-accent); }
 .btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+.btn.upcoming-review { background: color-mix(in srgb, var(--easy) 15%, var(--surface)); border-color: var(--easy); color: var(--ink); }
+.btn.upcoming-review:hover:not(:disabled) { background: color-mix(in srgb, var(--easy) 28%, var(--surface)); }
 .btn.ghost { background: var(--surface); border-color: var(--line); color: var(--ink); }
 .btn.ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .btn.quiet { background: var(--pale); border-color: var(--line); color: var(--accent); }
@@ -146,6 +148,16 @@ svg.i { width: 18px; height: 18px; flex-shrink: 0; }
 .search input { padding-left: 40px; }
 .field { display: grid; gap: 5px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .field select { min-width: 160px; }
+.learning-browse-controls { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+.learning-filter { position: relative; flex: none; }
+.learning-filter > .btn { min-height: 44px; }
+.learning-menu:not([hidden]) { position: absolute; z-index: 5; inset-block-start: calc(100% + 8px); inset-inline-end: 0; display: grid; gap: 12px; width: 220px; max-width: calc(100vw - 32px); padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); }
+.learning-menu fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.learning-menu legend { margin-bottom: 4px; padding: 0; font-weight: 700; }
+.learning-menu label { display: flex; align-items: center; gap: 8px; min-height: 36px; cursor: pointer; }
+.learning-menu input { margin: 0; accent-color: var(--accent); }
+.learning-type-locked { color: var(--muted); }
+.learning-type-locked svg { margin-inline-start: auto; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .fchip { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 13px; font-weight: 600; }
 .fchip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
@@ -290,7 +302,7 @@ button.item:hover:not(:disabled) { border-color: var(--accent); background: var(
 .board.interactive .sq.mine { cursor: grab; touch-action: none; }
 .drag-ghost { position: fixed; z-index: 1000; pointer-events: none; transform: translate(-50%, -55%) scale(1.12); filter: drop-shadow(0 8px 8px rgba(0,0,0,.3)); }
 body.dragging, body.dragging * { cursor: grabbing !important; }
-.arrow { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; color: var(--arrow); opacity: .92; }
+.arrow { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; color: #244c7d; opacity: .92; }
 .board.shake { animation: shake .32s; }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 
@@ -321,6 +333,15 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .fact span { display: block; font-size: 11px; color: var(--muted); font-weight: 600; }
 .fact b { font: 800 17px "Manrope", sans-serif; }
 .done-actions { display: grid; gap: 8px; margin-top: 16px; }
+.learning-complete { overflow-wrap: anywhere; }
+.learning-complete-header { display: flex; align-items: center; gap: 12px; }
+.learning-complete-header .done-icon { flex: 0 0 40px; width: 40px; height: 40px; margin: 0; }
+.learning-complete-header p { margin: 4px 0 0; }
+.learning-complete .done-actions { grid-template-columns: minmax(0, 1fr); }
+.learning-complete .done-actions .btn { min-width: 0; text-align: center; }
+.learning-complete .done-actions svg { flex: none; }
+.lesson-controls { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 8px; }
+.lesson-controls .btn { width: 42px; padding: 0; border-radius: 50%; }
 details.more { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 details.more summary { cursor: pointer; font-size: 12px; font-weight: 700; color: var(--muted); list-style: none; display: flex; gap: 8px; align-items: center; }
 details.more summary::before { content: "▸"; transition: transform .15s; }

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { buildFamilies, variantMoves } from "./lib/catalog";
+import { allOpeningTypes, buildFamilies, variantMoves, type OpeningSort, type OpeningType } from "./lib/catalog";
 import { AppearanceContext, loadAppearance, storeAppearance, type Appearance } from "./lib/appearance";
 import { practiceRequest, type OpeningLine, type Repertoire, type ReviewStart, type Session } from "./lib/practiceApi";
-import { clearProgress, useProgress } from "./lib/progress";
+import { clearProgress, saveProgress, useProgress } from "./lib/progress";
 import { isDue } from "./lib/memory";
-import { AppContext, type AppData, type Route } from "./lib/app";
+import { AppContext, learningSideKey, type AppData, type LearningSide, type Route } from "./lib/app";
 import { Shell } from "./components/Shell";
 import { Toast } from "./components/common";
 import { DashboardPage } from "./components/DashboardPage";
@@ -29,6 +29,13 @@ export default function App() {
   const [route, setRoute] = useState(readRoute);
   const [appearance, setAppearance] = useState<Appearance>(loadAppearance);
   const [catalog, setCatalog] = useState<OpeningLine[]>([]);
+  const [openingSort, setOpeningSort] = useState<OpeningSort>("easy");
+  const [learningSide, setLearningSide] = useState<LearningSide>(() => {
+    const saved = localStorage.getItem(learningSideKey);
+    return saved === "white" || saved === "black" ? saved : "all";
+  });
+  const availableOpeningTypes = learningSide === "white" ? allOpeningTypes.filter((type) => type !== "defense") : allOpeningTypes;
+  const [selectedOpeningTypes, setSelectedOpeningTypes] = useState<OpeningType[]>(availableOpeningTypes);
   const [repertoire, setRepertoire] = useState<Repertoire | null>(null);
   const [loadError, setLoadError] = useState("");
   const [loadVersion, setLoadVersion] = useState(0);
@@ -55,8 +62,10 @@ export default function App() {
 
   const refreshRepertoire = useCallback(async () => {
     try {
-      setRepertoire(await practiceRequest<Repertoire>("repertoire"));
+      const fresh = await practiceRequest<Repertoire>("repertoire");
+      setRepertoire(fresh);
       setNow(Date.now());
+      return fresh;
     } catch (failure) { setLoadError((failure as Error).message); }
   }, []);
 
@@ -85,19 +94,23 @@ export default function App() {
     window.setTimeout(() => setToast((current) => (current === text ? "" : current)), 2800);
   }, []);
 
-  const startLearning = useCallback(async (lineId: number, { restart = false } = {}) => {
+  const startLearning = useCallback(async (lineId: number, { restart = false, replayFrom }: { restart?: boolean; replayFrom?: number } = {}) => {
     const line = lineById.get(lineId);
     if (!line) return;
     const side = line.family_side;          // every opening is learned from its family's side
     const saved = progress[lineId];
-    if (restart) clearProgress(lineId);
-    const resumeAt = !restart && saved && saved.side === side ? saved.ply : 0;
+    const resumeAt = replayFrom ?? (!restart && saved?.side === side ? saved.ply : 0);
     try {
       const started = await practiceRequest<Session>("learning", { line_id: lineId, side, ...(resumeAt ? { resume_at: resumeAt } : {}) });
+      if (restart || (replayFrom !== undefined && started.move_index <= (side === "black" ? 1 : 0))) {
+        clearProgress(lineId);
+      } else if (replayFrom !== undefined) {
+        saveProgress(lineId, { ply: started.move_index, total: started.total_plies, side, at: Date.now() });
+      }
       setSession(started);
       go("#/lesson");
     } catch (failure) {
-      if (resumeAt) { clearProgress(lineId); showToast("The saved lesson could not be resumed, so it starts again."); }
+      if (resumeAt && replayFrom === undefined) { clearProgress(lineId); showToast("The saved lesson could not be resumed, so it starts again."); }
       else showToast((failure as Error).message);
     }
   }, [lineById, progress, go, showToast]);
@@ -126,6 +139,8 @@ export default function App() {
   const dueCount = repertoire ? repertoire.lines.filter((line) => isDue(line, now)).length : 0;
   const data: AppData = {
     catalog, families, variants, lineById, repertoire, progress, now, go, showToast,
+    openingSort, setOpeningSort, selectedOpeningTypes, setSelectedOpeningTypes,
+    availableOpeningTypes, learningSide, setLearningSide,
     startLearning, startReview, refreshRepertoire, markLearned, dueCount,
   };
 

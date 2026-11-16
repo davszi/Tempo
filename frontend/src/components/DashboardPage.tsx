@@ -31,7 +31,7 @@ export function DashboardPage() {
   return <>
     <header className="page-head"><p className="eyebrow">YOUR LEARNING SPACE</p><h1>{greeting}.</h1>
       <p className="lead">{due.length ? `You have ${plural(due.length, "line")} to review today.` : lines.length ? "Your repertoire is fresh. Learn something new?" : "Pick an opening, learn one line, and TEMPO will remind you before you forget it."}</p></header>
-    <div className="grid2">{reviewCard}
+    <div className="grid2">
       <div className="card"><div className="row" style={{ marginBottom: 14 }}><h2>Continue learning</h2><span className="spacer" />
         <button className="btn sm ghost" onClick={() => go("#/learn")}>All openings</button></div>
         {inProgress.length ? <ul className="list">{inProgress.slice(0, 4).map(({ line, saved }) => <li key={line!.line_id}>
@@ -41,6 +41,7 @@ export function DashboardPage() {
             <ChevronRight size={18} /></button></li>)}</ul>
           : <div className="empty">Nothing in progress. Leave a lesson at any time and it waits for you here.</div>}
       </div>
+      {reviewCard}
     </div>
     <MemoryTimeline />
   </>;

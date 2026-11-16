@@ -110,7 +110,7 @@ Any wrong review attempt yields Again, even if corrected. Clean reviews are grad
 | Waiting | Requests, Learning reply animation, promotion and the second-mistake decision block input. Completion blocks further moves. |
 | Board perspective | Black sessions place Black at the bottom and include White's opening move. The browser takes the family's side; backend/demo callers can also choose Both. |
 
-Learning supplies the move arrow and notation. Repeating currently reveals an arrow after the first mistake; a second mistake offers re-learning or continuation without further hints. That feedback remains an <a href="docs.topics.app-practice.app-practice.md.html#unresolved-repeating-behavior">unresolved departure from the settled no-hints contract</a>. Keyboard square activation exists; a separate arrow-key board navigation system does not.
+Learning supplies the move arrow and notation. Repeating currently reveals an arrow after the first mistake; the second mistake offers re-learning or continuation without further hints. After continuing, two more mistakes bring up a prompt with only Learn this line again. That feedback remains an <a href="docs.topics.app-practice.app-practice.md.html#unresolved-repeating-behavior">unresolved departure from the settled no-hints contract</a>. Keyboard square activation exists; a separate arrow-key board navigation system does not.
 
 </section>
 

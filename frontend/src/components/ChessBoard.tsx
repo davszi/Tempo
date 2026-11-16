@@ -13,7 +13,7 @@ type BoardProps = {
   disabled?: boolean;
   /** Small preview: no coordinates, not interactive. */
   mini?: boolean;
-  arrow?: MoveCoordinates | null;
+  arrow?: (MoveCoordinates & { promotion?: string }) | null;
   selected?: Square | null;
   lastMove?: MoveCoordinates | null;
   shake?: number;
@@ -38,6 +38,7 @@ export function ChessBoard({ fen, flipped = false, disabled = false, mini = fals
   const centre = (square: Square) => ({ x: files.indexOf(square[0]) * 100 + 50, y: ranks.indexOf(square[1]) * 100 + 50 });
   const start = arrow ? centre(arrow.from) : null;
   const end = arrow ? centre(arrow.to) : null;
+  const suggestedPiece = arrow ? game.get(arrow.from) : undefined;
   const angle = start && end ? Math.atan2(end.y - start.y, end.x - start.x) : 0;
   const image = (color: string, type: string) => pieceImage(pieces, color + type.toUpperCase(), theme);
 
@@ -134,11 +135,13 @@ export function ChessBoard({ fen, flipped = false, disabled = false, mini = fals
       })}
     </div>
     {start && end && <svg className="arrow" viewBox="0 0 800 800" aria-hidden="true">
-      <defs><marker id={markerId} markerWidth="3.6" markerHeight="3.6" refX="2.8" refY="1.8" orient="auto">
-        <path d="M0,0 L3.6,1.8 L0,3.6 Z" fill="currentColor" />
+      <defs><marker id={markerId} markerWidth="3.2" markerHeight="3.2" refX="2.8" refY="1.6" orient="auto">
+        <path d="M0,0 L3.2,1.6 L0,3.2 Z" fill="currentColor" />
       </marker></defs>
+      {suggestedPiece && <image href={image(suggestedPiece.color, arrow?.promotion ?? suggestedPiece.type)}
+        x={end.x - 44} y={end.y - 44} width="88" height="88" opacity=".5" />}
       <line x1={start.x} y1={start.y} x2={end.x - Math.cos(angle) * 22} y2={end.y - Math.sin(angle) * 22}
-        stroke="currentColor" strokeWidth="17" strokeLinecap="round" markerEnd={`url(#${markerId})`} />
+        stroke="currentColor" strokeWidth="13" strokeLinecap="round" markerEnd={`url(#${markerId})`} />
     </svg>}
     {/* The dragged piece follows the pointer above everything else, so it is drawn on the page body. */}
     {dragging && draggedPiece && createPortal(<span aria-hidden="true" className="pc drag-ghost"
