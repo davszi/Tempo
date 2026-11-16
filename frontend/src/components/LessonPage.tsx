@@ -10,6 +10,7 @@ import { ChessBoard } from "./ChessBoard";
 import { LineTitle, fmtDate, plural, sideName } from "./common";
 
 const OPPONENT_DELAY_MS = 450;
+const MISTAKES_PER_RELEARN_PROMPT = 2;
 const promotions = { q: "Queen", r: "Rook", b: "Bishop", n: "Knight" } as const;
 const gradeClass: Record<Grade, string> = { Again: "g1", Hard: "g2", Good: "g3", Easy: "g4" };
 const gradeReason: Record<Grade, string> = {
@@ -34,7 +35,7 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
     learning && initial.move_index > 0 && progress[initial.line_id] ? { text: "Welcome back. You're continuing where you left off.", tone: "ok" } : { text: "", tone: "" });
   const [mistakes, setMistakes] = useState(0);
   const [hintMove, setHintMove] = useState<string | null>(null);   // Repeating: the move shown once after a mistake
-  const [choice, setChoice] = useState<"closed" | "open" | "used">("closed");
+  const [showRelearnChoice, setShowRelearnChoice] = useState(false);
   const [shake, setShake] = useState(0);
   const [result, setResult] = useState<{ grade: Grade; before: RepertoireLine | undefined; after?: RepertoireLine } | null>(null);
   const before = useRef(repertoire?.lines.find((item) => item.line_id === initial.line_id));
@@ -44,7 +45,7 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
   const finished = session.status === "complete";
   const game = useMemo(() => positionAt(session.played_moves, shown), [session, shown]);
   const animating = shown < session.move_index;
-  const yourTurn = !finished && !animating && choice !== "open";
+  const yourTurn = !finished && !animating && !showRelearnChoice;
   const hint = learning ? session.hint : hintMove;
   const arrow = yourTurn && hint ? { from: hint.slice(0, 2) as Square, to: hint.slice(2, 4) as Square } : null;
   const nextSan = useMemo(() => {
@@ -92,10 +93,10 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
     else if (count === 1) {
       setHintMove(next.expected_move ?? null);
       setFeedback({ text: "Not quite. Here's the move once. Play it to continue.", tone: "bad" });
-    } else if (choice === "closed") {
+    } else if (count % MISTAKES_PER_RELEARN_PROMPT === 0) {
       setHintMove(null);
-      setChoice("open");
-      setFeedback({ text: "Second mistake in this line.", tone: "bad" });
+      setShowRelearnChoice(true);
+      setFeedback({ text: `${plural(count, "mistake")} in this line.`, tone: "bad" });
     } else setFeedback({ text: "Try again. The board is unchanged.", tone: "bad" });
   }
 
@@ -136,7 +137,7 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
     else if (selected) attemptMove(selected, square);
   }
 
-  const status = finished ? "Line complete." : choice === "open" ? "Choose how to continue."
+  const status = finished ? "Line complete." : showRelearnChoice ? "Choose how to continue."
     : animating ? "Opponent is replying…"
     : learning ? `${game.turn() === "w" ? "White" : "Black"} to move. Follow the arrow, drag the piece or click it and then its square.`
     : `${game.turn() === "w" ? "White" : "Black"} to move. Recall the move: no hints.`;
@@ -171,12 +172,15 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
         {grade === "Again" && <button className="btn ghost full" onClick={() => void startLearning(session.line_id, { restart: true })}><BookOpen size={16} /> Learn this line again</button>}
         <button className="btn quiet full" onClick={() => onExit("#/review")}>Done</button>
       </div></div>;
-  } else if (choice === "open") {
+  } else if (showRelearnChoice) {
+    const canContinue = mistakes === MISTAKES_PER_RELEARN_PROMPT;
     panel = <div className="card choice" role="alertdialog" aria-labelledby="choice-h"><p className="eyebrow" style={{ color: "var(--hard)" }}>THIS LINE IS FADING</p>
-      <h2 id="choice-h">You missed a move twice.</h2>
-      <p>You can go back and learn {line ? lineLabel(line) : "this line"} again with the arrows, or keep going on your own. Either way this review counts as Again, so it comes back soon.</p>
+      <h2 id="choice-h">Learn this line again?</h2>
+      <p>{canContinue
+        ? "You can learn the line again with arrows or keep going on your own. Either way, this review counts as Again."
+        : "You missed two more moves. Practise the line again with arrows. This review counts as Again."}</p>
       <button className="btn primary full" disabled={busy} onClick={() => void relearn()}><BookOpen size={16} /> Learn this line again</button>
-      <button className="btn ghost full" disabled={busy} onClick={() => { setChoice("used"); setFeedback({ text: "Keep going. No more hints in this line.", tone: "" }); }}><Play size={16} /> Continue this line</button></div>;
+      {canContinue && <button className="btn ghost full" disabled={busy} onClick={() => { setShowRelearnChoice(false); setFeedback({ text: "Keep going. No more hints in this line.", tone: "" }); }}><Play size={16} /> Continue this line</button>}</div>;
   } else {
     panel = <div className="card">
       <div className="progress-head"><span>Your progress</span><b>{Math.round(shown / total * 100)}%</b></div>
