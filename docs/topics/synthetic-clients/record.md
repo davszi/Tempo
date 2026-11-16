@@ -7,7 +7,8 @@
 | Technical specification & parameters | `docs/topics/synthetic-clients/record.md` |
 | Human-facing documentation & explanation | `docs/topics/synthetic-clients/index.md` |
 | Project context & product vocabulary | `docs/PROJECT_CONTEXT.md` |
-| Review session dataset & grading function | `docs/topics/review-dataset/record.md` (Topic 2) |
+| Review session dataset | `docs/topics/review-dataset/record.md` (Topic 2) |
+| Session grading function (decided rule) | `docs/topics/session-grading/session-grading.md` |
 
 This record specifies the behavioral, cognitive, and latency simulation engine for **Synthetic Clients** in TEMPO. Synthetic clients generate simulated practice histories (repetitions, move accuracy, and move hesitation times) across opening lines to train and calibrate the Review Planner and FSRS without cold-start dependencies on human user data.
 

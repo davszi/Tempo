@@ -2,7 +2,7 @@
 toc = []
 title = "Review data and grading"
 slug = "review-dataset"
-description = "Read the session export and correctness-first grade policy, with human calibration kept as future work."
+description = "Read the session export, the grading inputs it carries and the earlier grade rule still implemented, with human calibration kept as future work."
 brand_sub = "session telemetry · FSRS grading · human calibration"
 components = ["toc", "nav", "code", "filelinks"]
 page_css = ["build-sheet.css"]
@@ -90,46 +90,26 @@ The backend demo uses the same header with different move counting, retry and sc
 
 <section class="card" id="grading">
 
-## A finished review is graded from its accuracy and its mean time per move
+## Every recorded grade used the earlier rule, and the export cannot regrade it with the decided one
 
-<p class="bs-lead">The player always plays the line to the end: a wrong move is taken back and retried. The grade then uses two measurements of the whole review, how many moves were right first time and how long the line took per move. One slip no longer means Again; the boundaries are still being established.</p>
+<p class="bs-lead">A new grading rule was decided on 2026-11-16 and is explained on the <a href="session-grading.html">Session grading</a> page; it is not implemented, so every dataset here was graded with the earlier rule, and the seven export columns are not enough to regrade it.</p>
 
 <figure id="fig-grading">
-<div class="bs-flow" role="img" aria-label="The player finishes the line, retrying wrong moves. Accuracy, the share of moves right on the first attempt, and the mean time per move go into the grading function, which returns Again, Hard, Good or Easy; the boundaries are open.">
-<div class="bs-node bs-violet"><span class="bs-label">Review</span><b>Play the line to the end</b><p>A wrong move is taken back and retried until it is right.</p></div>
-<div class="bs-arrow"><span>measure</span></div>
-<div class="bs-node bs-orange"><span class="bs-label">Two inputs</span><b>Accuracy and time</b><p>Share of moves right first time; total time ÷ moves.</p></div>
-<div class="bs-arrow"><span>grade</span></div>
-<div class="bs-node bs-teal"><span class="bs-label">Grade</span><b>Again, Hard, Good or Easy</b><p>Low accuracy gives Again; among accurate reviews, time decides. Boundaries open.</p></div>
+<div class="bs-flow" role="img" aria-label="Every recorded synthetic dataset was graded with the earlier rule. The session export keeps accuracy and total time but not the move count, the mistake count or per-move times. The decided rule needs those, so it cannot be applied from the CSV alone.">
+<div class="bs-node bs-violet"><span class="bs-label">Recorded data</span><b>Graded by the earlier rule</b><p>Any mistake gives Again; otherwise time per move minus the baseline.</p></div>
+<div class="bs-arrow"><span>export</span></div>
+<div class="bs-node bs-orange"><span class="bs-label">Seven-column CSV</span><b>Accuracy and total time</b><p>No move count, no mistake count, no per-move times.</p></div>
+<div class="bs-arrow"><span>regrade?</span></div>
+<div class="bs-node bs-teal"><span class="bs-label">Decided rule</span><b>Needs more inputs</b><p>Move count, mistake count and the mean time of the timed moves.</p></div>
 </div>
-<figcaption><strong>Figure 2.</strong> Source-authored path of the <a href="docs.topics.review-dataset.record.md.html#3-the-session-grading-function">session grading rule</a> decided on 2026-11-16. No boundary values are shown because none has been set.</figcaption>
+<figcaption><strong>Figure 2.</strong> Source-authored path from the recorded grades to the <a href="docs.topics.review-dataset.record.md.html#31-grading-inputs-in-the-export">grading inputs the export carries</a>. The last arrow is a regrade the export cannot support. Generator: this page's HTML.</figcaption>
 </figure>
 
-[Figure 2](#fig-grading) shows the two measurements the grade is built from:
+[Figure 2](#fig-grading) shows what this page keeps about grading: the inputs the export carries, the earlier rule that produced every recorded grade, and the synthetic evidence gathered before the decision. The decided rule itself, with its mistake limits by line length, time bands, worked examples and implementation plan, lives on the [Session grading](session-grading.html) page.
 
-$$\text{accuracy} = \frac{\text{moves right on the first attempt}}{M}, \qquad \bar{T} = \frac{\text{total\_time\_ms}}{M}$$
+**Why the export cannot regrade.** The export carries `accuracy` and `total_time_ms`. The decided rule needs the line's move count $M$, the mistake count $k$ and the mean of the capped times of first-try correct moves without the first move. `total_time_ms` includes retries and the first move, and $M$ is not exported. Adding these inputs to the export is [still open](session-grading.html#next).
 
-$M$ is the number of moves the player plays in the line. Both numbers are already saved for every review. The total time includes retries, so a review with mistakes is also slower per move.
-
-**What changed.** Before, one wrong move made the whole review Again, however well the rest of the line went. Now accuracy decides: a single slip in an otherwise fluent 12-move line is weak evidence that the line is forgotten. The earlier rule also subtracted each player's physical move time (`baseline_ms`) and graded only the remaining hesitation against fixed thresholds; both are removed, because the app cannot know a real player's baseline.
-
-<div class="scroll" role="region" aria-label="Grading structure with open boundaries; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
-<div style="min-width:620px">
-
-| Review | Grade | Still open |
-|---|---|---|
-| Accuracy below the Again boundary | 1 — Again | the accuracy boundary |
-| Some mistakes, accuracy above that boundary | 2 — Hard or 3 — Good | whether mistakes cap the grade, and at which |
-| Every move right, fast | 4 — Easy | the Easy time boundary |
-| Every move right, normal time | 3 — Good | |
-| Every move right, slow | 2 — Hard | the Hard time boundary |
-
-</div>
-</div>
-
-The table is a starting point for the open choices, not a decided rule. One more choice is open: whether to count mistakes rather than use the accuracy share, because one mistake costs a short line much more accuracy than a long one (see below).
-
-**Not implemented yet.** The simulator and the app keep the earlier rule (any mistake gives Again) until these choices are made, so every recorded synthetic dataset and result was graded with it. Implementing the new rule also changes what training treats as a pass and what the hidden memory does after a review with mistakes; the [grading record](docs.topics.review-dataset.record.md.html#3-the-session-grading-function) lists those consequences.
+**The earlier rule, still implemented.** Any first-attempt error gives Again. Otherwise the mean time per move minus the player's physical move time, `total_time_ms / M − baseline_ms`, gives Easy below 500 ms, Good from 500 to 1,800 ms and Hard above 1,800 ms. The simulator subtracts each client's `baseline_ms`; the web app uses a baseline of zero. The simulator and the app keep this rule until the decided one is implemented; the [grading record section](docs.topics.review-dataset.record.md.html#32-the-earlier-rule-still-implemented) states it exactly.
 
 ### Where the time per move comes from
 
@@ -138,8 +118,8 @@ The table is a starting point for the open choices, not a decided rule. One more
 <div class="bs-node bs-violet"><span class="bs-label">Each move</span><b>Baseline + hesitation</b><p>Physical move time plus a random hesitation, longer when recall is weak, shorter with practice.</p></div>
 <div class="bs-arrow"><span>average over M</span></div>
 <div class="bs-node bs-orange"><span class="bs-label">Clean session</span><b>Mean time per move</b><p>Thinking and the physical move together.</p></div>
-<div class="bs-arrow"><span>intervals</span></div>
-<div class="bs-node bs-teal"><span class="bs-label">Grade</span><b>Easy, Good or Hard</b><p>Boundaries still to be established.</p></div>
+<div class="bs-arrow"><span>grade</span></div>
+<div class="bs-node bs-teal"><span class="bs-label">Grade</span><b>Easy, Good or Hard</b><p>The earlier rule subtracts the baseline again; the decided rule will keep it in the time.</p></div>
 </div>
 <figcaption><strong>Figure 3.</strong> Source-authored path from the <a href="docs.topics.review-dataset.record.md.html#33-where-the-time-per-move-comes-from-synthetic-clients">simulated move times to the mean time per move</a>. Arrows show computation in the synthetic clients, not measured human timing.</figcaption>
 </figure>
@@ -148,10 +128,10 @@ In a clean session each simulated move is right on its first attempt, so it has 
 
 $$\bar{T} = \text{baseline\_ms} + \frac{1}{M}\sum_{i=1}^{M} 1000\,H_i\,e^{\beta(1-R)}\frac{1}{1+\alpha\,\text{reps}}, \qquad H_i\sim\operatorname{Lognormal}(\mu,\sigma)$$
 
-- **Physical speed counts.** The baseline is added to every move, so a faster-handed player gets faster grades.
+- **Physical speed is part of the time.** The baseline is added to every move. The earlier rule subtracts it before grading; the decided rule keeps it, so slower hands reach Easy less often.
 - **Weak memory slows the player.** Lower recall $R$ raises the time through $e^{\beta(1-R)}$, most for high-effort players (large $\beta$).
 - **Practice speeds the player up.** Each clean session adds one to reps and a blunder removes two; the hesitation is divided by $1+\alpha\cdot\text{reps}$.
-- **Speed and luck.** $\mu$ sets the player's typical pace, and each session draws new hesitations; averaging $M$ moves steadies longer lines. After a mistake, the retries add their time too.
+- **Speed and luck.** $\mu$ sets the player's typical pace, and each session draws new hesitations; averaging $M$ moves steadies longer lines. After a mistake, the retries add their time to `total_time_ms`; the decided rule leaves moves with a mistake out of the time.
 
 <div class="scroll" role="region" aria-label="Expected mean time per move by profile; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
 <div style="min-width:620px">
@@ -186,11 +166,11 @@ Every bot gets its own traits: a random draw around its profile's average, with 
 </div>
 </div>
 
-Only three bots touched a limit: one at the lowest practice rate and two with zero effort. Under the new rule the baseline is part of the graded time, as it already is for real players in the web app ([System Architecture](system-architecture.html#practice)).
+Only three bots touched a limit: one at the lowest practice rate and two with zero effort. Under the decided rule the baseline stays part of the graded time, as it already is for real players in the web app ([System Architecture](system-architecture.html#practice)).
 
-### Establishing the boundaries
+### Synthetic evidence gathered before the decision
 
-The boundaries are open work. Two synthetic checks on the November 13 run give a starting point.
+These two checks on the November 13 run were made on 2026-11-16, before the rule was decided. Both compare with the earlier rule; the decided rule has not been applied to this data.
 
 **Accuracy.** Of its 123,891 reviews, 61.6% had no mistake, 24.3% one, 9.3% two, 3.3% three and 1.5% four or more. Under the earlier rule all 38.4% with a mistake were Again. How much accuracy one mistake leaves depends on the line's length:
 
@@ -204,7 +184,7 @@ The boundaries are open work. Two synthetic checks on the November 13 run give a
 </div>
 </div>
 
-An accuracy boundary such as 0.8 would therefore make one slip Again on a short line but not on a long one; counting mistakes would treat them alike.
+An accuracy boundary such as 0.8 would therefore make one slip Again on a short line but not on a long one. The decided rule counts mistakes against a limit that depends on line length instead; the [Session grading](session-grading.html#mistake-limits) page explains why.
 
 **Time.** Regrading the 76,287 fully accurate reviews by mean time per move:
 
@@ -215,12 +195,12 @@ An accuracy boundary such as 0.8 would therefore make one slip Again on a short 
 |---|---|---|---|
 | Earlier rule, as recorded in the data | 31.5% | 65.1% | 3.4% |
 | Mean time per move, earlier boundaries kept | 5.8% | 85.5% | 8.7% |
-| Mean time per move, candidate 800 / 2100 ms | 35.3% | 60.6% | 4.1% |
+| Mean time per move, candidate 800 / 2100 ms (superseded) | 35.3% | 60.6% | 4.1% |
 
 </div>
 </div>
 
-Kept unchanged, the earlier boundaries would make Easy rare, because they were set for hesitation without the physical move. The candidate raises both by 300 ms, about the bots' median baseline (302 ms); it keeps the overall mix close to the earlier one and changes 6.5% of clean grades. This only relates the candidate to the earlier rule; where human recall really changes needs mean times per move from real players in the app. The [evidence section](docs.topics.review-dataset.record.md.html#35-evidence-for-choosing-the-boundaries) gives the per-profile shares and the accuracy figures.
+Kept unchanged, the earlier boundaries would make Easy rare, because they were set for hesitation without the physical move. The candidate raised both by 300 ms, about the bots' median baseline (302 ms); it kept the overall mix close to the earlier one and changed 6.5% of clean grades. The candidate was superseded: the decided rule uses [four time bands](session-grading.html#time) with different boundaries and times only first-try correct moves after the first. These shares only relate a candidate to the earlier rule; where human recall really changes needs move times from real players in the app. The [evidence section](docs.topics.review-dataset.record.md.html#35-evidence-for-choosing-the-boundaries) gives the per-profile shares and the accuracy figures.
 
 The [synthetic-client explanation](synthetic-clients.html#memory-dynamics) shows why longer lines have a lower clean-session probability under independent recall draws. The app's separate backend grading path is explained in [System Architecture](system-architecture.html#practice).
 

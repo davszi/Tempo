@@ -2,6 +2,37 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-16 Decide the session grading rule in its own topic
+
+Decided in the 2026-11-16 grading discussion and recorded as a new topic at
+the project's request: the [session grading record](topics/session-grading/session-grading.md)
+specifies the rule, its rationale, test vectors, implementation targets,
+open items and validation plan. Rule: mistakes are moves wrong on the first
+attempt; the mistake limit is 0 for lines of 3 moves, 1 for 4–7, 2 for
+8–12 and 3 for 13 or more; above the limit is Again, at the limit Hard,
+below it Good (Easy only without mistakes). Time is the mean of
+browser-measured times of first-try correct moves without the line's first
+move, each capped at 20000 ms, without a baseline; bands Fast < 1500 ms,
+Normal to 3500 ms, Slow to 8000 ms, Very slow above. Without mistakes, Slow
+stays Good and Very slow gives Hard; with mistakes below the limit, Slow or
+Very slow gives Hard. The time values are starting values from published
+orders of magnitude, not calibrated. The app's relearn prompts stay. The
+record's evidence measures catalog line lengths (2,719 lines, 3–18 player
+moves, 49.2% at 5 or fewer) with a retained script and gives binomial
+design arithmetic comparing four mistake rules and two Good rules. Review
+dataset section 3 now points to the new record and keeps the export's
+grading inputs, the earlier rule and the pre-decision evidence (its 800 /
+2100 ms candidate marked superseded); System architecture, Synthetic
+players' ownership table, Open work, the reading index and project context
+follow; a new Session grading page joins the navigation. No code, app or
+data changed; the simulator and the app keep the earlier rule until the
+record's implementation targets land. Documentation build, freshness check,
+reader check and strict lint pass with kit 5.0.0 (Python 3.13.5, run with
+`PYTHONUTF8=1` on Windows; 99 formulas compile); both changed pages were
+reviewed in the browser at desktop and phone widths. Print, no-JavaScript,
+reduced-motion and keyboard checks were not run. The commit hash is
+assigned by this entry's landing commit.
+
 ## 2026-11-16 Grade from accuracy and total time
 
 Decided at the project's request: the grading function takes two inputs,

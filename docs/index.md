@@ -2,7 +2,7 @@
 
 [Project context](PROJECT_CONTEXT.md) owns purpose, accepted decisions,
 repository orientation and run/build commands. [Task routes](../AGENTS.md)
-identify the adopted shared guides. The six real topics below each have a
+identify the adopted shared guides. The seven real topics below each have a
 canonical record and a requested explanatory HTML entry page. Reference
 renders supporting records, setup, open work and dated experiment material.
 
@@ -14,8 +14,9 @@ renders supporting records, setup, open work and dated experiment material.
 | 2 | [System architecture](https://davszi.github.io/Tempo/html/system-architecture.html) | [System Architecture](topics/system-architecture/system-architecture.md): components, process/session/transaction boundaries, due-line selection, runtime FSRS and demo |
 | 3 | [Catalog & data](https://davszi.github.io/Tempo/html/opening-catalog.html) | [Catalog & Data](topics/catalog-data/catalog-data.md): line identity, catalog decisions, all four tables, store operations, constraints and migration |
 | 4 | [Synthetic players](https://davszi.github.io/Tempo/html/synthetic-clients.html) | [Synthetic Players](topics/synthetic-clients/record.md): traits, memory models, recall/retry/timing/session generation and separate demo producer |
-| 5 | [Review data & grading](https://davszi.github.io/Tempo/html/review-dataset.html) | [Review Dataset](topics/review-dataset/record.md): observable export, grade rules, hidden-truth boundary and future human calibration |
-| 6 | [FSRS training](https://davszi.github.io/Tempo/html/fsrs-training.html) | [FSRS Training](topics/fsrs-training/fsrs-training.md): fitting inputs/objectives, optimizer, evaluation/clock/metric contracts, artifacts, dated results and limits |
+| 5 | [Review data & grading](https://davszi.github.io/Tempo/html/review-dataset.html) | [Review Dataset](topics/review-dataset/record.md): observable export, grading inputs, the earlier grade rule, hidden-truth boundary and future human calibration |
+| 6 | [Session grading](https://davszi.github.io/Tempo/html/session-grading.html) | [Session Grading](topics/session-grading/session-grading.md): the decided grading rule (mistake limits, time bands), its rationale, test vectors, implementation targets, open items and validation plan |
+| 7 | [FSRS training](https://davszi.github.io/Tempo/html/fsrs-training.html) | [FSRS Training](topics/fsrs-training/fsrs-training.md): fitting inputs/objectives, optimizer, evaluation/clock/metric contracts, artifacts, dated results and limits |
 
 ## Actual merges and splits
 
@@ -33,7 +34,10 @@ establish a current importer.
 Simulator implementation and hidden memory models belong to Synthetic
 Players. Training links to that producer and owns fitting/evaluation instead.
 Review Data & Grading remains one output contract; its human-calibration
-specification is marked future. Historical study protocols and results remain
+specification is marked future. The decided grading rule has its own topic,
+Session Grading, because its implementation spans the simulator, training
+and the app; Review Data keeps the export's grading inputs and the earlier
+synthetic evidence. Historical study protocols and results remain
 with their producing experiments. The completed retraining plan's durable
 requirements are incorporated into Training; its superseded task text remains
 available through its pinned Git reference there.
