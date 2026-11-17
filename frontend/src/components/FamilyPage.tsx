@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, BookOpen, Check, ChevronRight, Play, RotateCcw, Search } from "lucide-react";
 import { useApp } from "../lib/app";
-import { linesByType, lineLabel, playerMoveCount } from "../lib/catalog";
+import { linesByType, lineLabel, playerMoveCount, progressMoves } from "../lib/catalog";
 import { positionAt } from "../lib/learning";
 import { ChessBoard } from "./ChessBoard";
 import { LineTitle, MoveChips, SideDot, plural, sideName } from "./common";
@@ -45,10 +45,10 @@ export function FamilyPage({ name }: { name: string }) {
     <div className="fam-layout">
       <section className="card fam-stage" aria-label="Selected line">
         <div className="fam-info">
-          <div><p className="eyebrow">{selected.eco} · {moves.length} half-moves</p><h2><LineTitle line={selected} /></h2></div>
+          <div><p className="eyebrow">{selected.eco} · {plural(playerMoveCount(selected), "move")}</p><h2><LineTitle line={selected} /></h2></div>
           <div className="fam-actions">
             {saved ? <>
-              <button className="btn primary" onClick={() => void startLearning(selected.line_id)}><Play size={16} /> Continue ({saved.ply}/{saved.total})</button>
+              <button className="btn primary" onClick={() => void startLearning(selected.line_id)}><Play size={16} /> Continue ({progressMoves(saved).done}/{progressMoves(saved).total})</button>
               <button className="btn ghost" onClick={() => void startLearning(selected.line_id, { restart: true })}><RotateCcw size={16} /> Start over</button>
             </> : inRepertoire ? <>
               <button className="btn primary" onClick={() => void startReview(selected.line_id)}><RotateCcw size={16} /> Review without hints</button>
@@ -67,8 +67,9 @@ export function FamilyPage({ name }: { name: string }) {
         <div className="var-list" role="list">{list.length ? list.map((line) => {
           const lineProgress = progress[line.line_id];
           return <button key={line.line_id} role="listitem" className={`var ${line.line_id === selected.line_id ? "on" : ""}`} onClick={() => setSelectedId(line.line_id)}>
-            <span className="grow"><b><LineTitle line={line} /></b><small>{line.eco} · {line.moves_uci.split(" ").length} half-moves</small></span>
-            {line.learned ? <span className="chip"><Check size={12} /> Learned</span> : lineProgress ? <span className="chip warn">{lineProgress.ply}/{lineProgress.total}</span> : null}
+            <span className="grow"><b><LineTitle line={line} /></b><small>{line.eco} · {plural(playerMoveCount(line), "move")}</small></span>
+            {line.learned ? <span className="chip"><Check size={12} /> Learned</span>
+              : lineProgress ? <span className="chip warn">{progressMoves(lineProgress).done}/{progressMoves(lineProgress).total}</span> : null}
             <ChevronRight size={16} /></button>;
         }) : <div className="empty">No variation matches.</div>}</div>
         {!query && family.lines.length === 1 && <p className="muted small var-note">

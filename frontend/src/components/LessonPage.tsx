@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Square } from "chess.js";
 import { ArrowLeft, ArrowUpRight, BookOpen, Check, ChevronRight, Lightbulb, Play, RotateCcw, Undo2 } from "lucide-react";
 import { useApp } from "../lib/app";
-import { closestLines, lineLabel } from "../lib/catalog";
+import { closestLines, lineLabel, playerMoveCount, playerMovesIn } from "../lib/catalog";
 import { positionAt } from "../lib/learning";
 import { MAX_RESPONSE_MS, gradeExplanation } from "../lib/grading";
 import { clearProgress, saveProgress } from "../lib/progress";
@@ -62,6 +62,9 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
   const lastMove = game.history({ verbose: true }).at(-1);
   const side = session.side ?? "white";
   const total = session.total_plies;
+  // Progress counts the player's own moves: 4 for a 7-half-move line as White, 3 as Black.
+  const movesDone = playerMovesIn(shown, side);
+  const movesTotal = playerMovesIn(total, side);
   const firstPlayerPly = side === "black" ? 1 : 0;
   const lastPlayedPly = session.move_index - 1;
   const previousPlayerPly = side === "both" || lastPlayedPly % 2 === firstPlayerPly ? lastPlayedPly : lastPlayedPly - 1;
@@ -216,8 +219,8 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
     </div>;
   } else {
     panel = <div className="card">
-      <div className="progress-head"><span>Your progress</span><b>{Math.round(shown / total * 100)}%</b></div>
-      <div className="bar"><i style={{ width: `${shown / total * 100}%` }} /></div>
+      <div className="progress-head"><span>Your progress</span><b>{Math.round(movesDone / movesTotal * 100)}%</b></div>
+      <div className="bar"><i style={{ width: `${movesDone / movesTotal * 100}%` }} /></div>
       {guided ? (yourTurn && nextSan ? <div className="next-move"><span className="icon"><ArrowUpRight size={24} /></span><div><span>YOUR NEXT MOVE</span><h2>{nextSan}</h2>
           <small className="muted">{hint!.slice(0, 2)} → {hint!.slice(2, 4)}</small></div></div>
         : null)
@@ -235,7 +238,7 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
     <button className="back" onClick={() => onExit(learning ? `#/family/${encodeURIComponent(line?.opening_family ?? "")}` : "#/review")}>
       <ArrowLeft size={16} /> {learning ? line?.opening_family ?? "Openings" : "Repeating"}</button>
     <div className="session-head"><div><p className="eyebrow">{guided ? "GUIDED LEARNING" : learning ? "LEARNING · RECALL PRACTICE" : "REPEATING"} · {sideName(side)}</p><h1>{title}</h1></div>
-      <span className="badge">{shown} / {total} half-moves</span></div>
+      <span className="badge">{movesDone} / {plural(movesTotal, "move")}</span></div>
     <div className="session">
       <div className="board-col">
         {learning && <div className="lesson-controls" role="group" aria-label="Learning controls">
@@ -276,7 +279,7 @@ function VariationItem({ lineId, shared, suggested }: { lineId: number; shared?:
   const { lineById, progress, startLearning } = useApp();
   const line = lineById.get(lineId)!;
   const moves = line.moves_uci.split(" ");
-  let detail = `${moves.length} half-moves`;
+  let detail = plural(playerMoveCount(line), "move");
   if (shared != null && shared < moves.length) {
     const san = positionAt(moves, moves.length).history();
     const ply = shared;

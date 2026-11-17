@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DAY, dayStart, dueInfo, firstReviewWhen, recallLevel, timeline } from "../src/lib/memory.ts";
-import { buildFamilies, closestLines, lineLabel, sharedPlies } from "../src/lib/catalog.ts";
+import { buildFamilies, closestLines, lineLabel, playerMoveCount, playerMovesIn, progressMoves, sharedPlies } from "../src/lib/catalog.ts";
 
 const noon = new Date(2026, 10, 14, 12, 0).getTime();
 const at = (offsetMs) => new Date(noon + offsetMs).toISOString();
@@ -29,6 +29,17 @@ test("an untested line waits for its first review on the next day", () => {
   assert.match(firstReviewWhen(fourTomorrow, lateNight), /^today from /);
   assert.equal(dueInfo({ next_review_at: new Date(fourTomorrow).toISOString(), stability_days: null }, fourTomorrow, 0.9).text,
     "First test ready");
+});
+
+test("move counts are the player's own moves, not half-moves", () => {
+  const sevenPlies = "f2f3 d7d5 e2e4 g7g6 d2d4 d5e4 c2c3";
+  assert.equal(playerMoveCount({ moves_uci: sevenPlies, family_side: "white" }), 4);
+  assert.equal(playerMoveCount({ moves_uci: sevenPlies, family_side: "black" }), 3);
+  assert.equal(playerMovesIn(7, "both"), 7);
+  // A saved lesson at half-move 4 (White to move) has 2 White moves played; at 5 (Black to move), 2 Black moves.
+  assert.deepEqual(progressMoves({ ply: 4, total: 7, side: "white" }), { done: 2, total: 4 });
+  assert.deepEqual(progressMoves({ ply: 5, total: 7, side: "black" }), { done: 2, total: 3 });
+  assert.deepEqual(progressMoves({ ply: 7, total: 7, side: "white" }), { done: 4, total: 4 });
 });
 
 test("recall bands compare with the target", () => {

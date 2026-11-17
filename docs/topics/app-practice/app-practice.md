@@ -42,6 +42,13 @@ there is no URL-addressable session identifier. Opening `#/lesson` after a
 page reload shows Learning when no in-memory browser session exists. Hash
 navigation updates the document title and scrolls to the top.
 
+Line lengths and progress on every screen count **moves**: the player's own
+moves from the side they play, not half-moves. A 7-half-move line is 4 moves
+as White and 3 as Black (every half-move with Both). `playerMovesIn`,
+`playerMoveCount` and `progressMoves` in `frontend/src/lib/catalog.ts` hold the
+rule; the API and saved lesson progress still store half-move indices
+(`total_plies`, `ply`).
+
 - **Dashboard:** due-review actions, unfinished lessons, and a selectable 30-day schedule with overdue lines grouped into today. It displays saved due dates; it does not simulate future reviews or refitting.
 - **Learning:** search by family, variation or ECO code; filter White, Black or all families; open a family to select a learnable variation. Family previews use a shortest catalog line. Only leaf lines can start Learning; [opening catalog structure](../catalog-data/catalog-data.md) owns that rule and distinguishing labels for same-name lines.
 - **Lesson:** the browser automatically uses the family's side. Learning shows an arrow and move notation, accepts click, keyboard and drag interactions, offers promotion pieces, and animates the opponent's reply after a correct move. Wrong moves leave the position unchanged. Completion marks the line learned and refreshes repertoire data. Related variations are ranked by shared opening plies, then length; the next suggestion is the first unlearned line in that order.

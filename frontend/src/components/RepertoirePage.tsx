@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BookOpen, Play, RotateCcw, Search } from "lucide-react";
 import { useApp } from "../lib/app";
-import { lineLabel } from "../lib/catalog";
+import { lineLabel, playerMoveCount, progressMoves } from "../lib/catalog";
 import { DAY, dueInfo, isDue } from "../lib/memory";
 import { positionAt } from "../lib/learning";
 import type { OpeningLine, RepertoireLine } from "../lib/practiceApi";
@@ -80,8 +80,8 @@ function RepCard({ item, on, onPick }: { item: Item; on: boolean; onPick: () => 
     return <button className={`rcard ${on ? "on" : ""}`} onClick={onPick}>
       <ChessBoard fen={position.fen()} mini flipped={line.family_side === "black"} />
       <span className="rc-body"><small>{line.opening_family}</small><b><LineTitle line={line} /></b>
-        <span className="bar"><i style={{ width: `${Math.round(saved.ply / saved.total * 100)}%` }} /></span>
-        <span className="rc-foot"><span className="chip warn">{saved.ply}/{saved.total} learned</span><span className="chip plain">{sideName(line.family_side)}</span></span></span></button>;
+        <span className="bar"><i style={{ width: `${Math.round(progressMoves(saved).done / progressMoves(saved).total * 100)}%` }} /></span>
+        <span className="rc-foot"><span className="chip warn">{progressMoves(saved).done}/{plural(progressMoves(saved).total, "move")} learned</span><span className="chip plain">{sideName(line.family_side)}</span></span></span></button>;
   }
   const line = item.rep!;
   const position = positionAt(line.moves_uci.split(" "), line.moves_uci.split(" ").length);
@@ -99,8 +99,8 @@ function Detail({ item }: { item: Item }) {
     const position = positionAt(moves, saved.ply);
     return <aside className="card detail" aria-label="Selected lesson">
       <p className="eyebrow">{line.opening_family} · {line.eco}</p><h2><LineTitle line={line} /></h2>
-      <div className="big-status"><b>Lesson in progress</b><small>{saved.ply} of {saved.total} half-moves learned · playing {sideName(line.family_side)} · last opened {fmtDate(saved.at)}</small>
-        <span className="bar" style={{ marginTop: 10 }}><i style={{ width: `${Math.round(saved.ply / saved.total * 100)}%` }} /></span></div>
+      <div className="big-status"><b>Lesson in progress</b><small>{progressMoves(saved).done} of {plural(progressMoves(saved).total, "move")} learned · playing {sideName(line.family_side)} · last opened {fmtDate(saved.at)}</small>
+        <span className="bar" style={{ marginTop: 10 }}><i style={{ width: `${Math.round(progressMoves(saved).done / progressMoves(saved).total * 100)}%` }} /></span></div>
       <div className="detail-actions"><button className="btn primary" onClick={() => void startLearning(line.line_id)}><Play size={16} /> Continue lesson</button>
         <button className="btn ghost" onClick={() => void startLearning(line.line_id, { restart: true })}><RotateCcw size={16} /> Start over</button></div>
       <div className="detail-board"><div className="board-frame"><ChessBoard fen={position.fen()} flipped={line.family_side === "black"} /></div></div>
@@ -133,6 +133,6 @@ function Detail({ item }: { item: Item }) {
       <span>{fmtDate(review.at, { day: "numeric", month: "short" })}</span><span className={`grade ${gradeClass[review.grade]}`}>{review.grade}</span>
       <span className="gap"><i style={{ width: `${Math.max(4, gaps[index] / longest * 55)}%` }} />after {gaps[index] < 1 ? "under a day" : plural(Math.round(gaps[index]), "day")}</span></li>)}</ul>
       : <p className="muted small" style={{ margin: "6px 0 0" }}>No reviews yet. The first recall test starts the memory clock.</p>}
-    <p className="muted small" style={{ marginTop: 12 }}>{lineLabel(line)} · {moves.length} half-moves</p>
+    <p className="muted small" style={{ marginTop: 12 }}>{lineLabel(line)} · {plural(playerMoveCount(line), "move")}</p>
   </aside>;
 }

@@ -2,6 +2,28 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-17 Count moves instead of half-moves in the app
+
+At the user's request, every screen that showed half-moves now shows the
+player's own moves from the side they play: a 7-half-move line is 4 moves as
+White and 3 as Black. New `playerMovesIn` and `progressMoves` in
+`frontend/src/lib/catalog.ts` (with `playerMoveCount` built on them) count
+them; the lesson badge and progress bar, the opening page's line list,
+selected line and Continue button, the dashboard's unfinished lessons and the
+repertoire's lesson card, lesson detail and line footer use them. The API and
+saved progress keep half-move indices. The App & Practice record states the
+rule. Checks: `npm test` 17 of 17 (one new test), type check and build. In the
+browser, on a copy of the demo database, the opening pages showed "4 moves"
+for the 7-half-move Barnes Opening line (White) and "3 moves" for the
+7-half-move Alekhine Myers Gambit line (Black); with a saved lesson at
+half-move 4 the dashboard showed "2 of 4 moves" and the opening page
+"Continue (2/4)"; no console errors. The Browser pane was hidden, so the
+lesson badge and the repertoire's lesson card were not seen on screen in that
+run; the user then tested the app by hand on another copy and confirmed it
+works. The
+backend requirements were installed into the local Python to start the Flask
+server. The commit hash is assigned by this entry's landing commit.
+
 ## 2026-11-17 Sync the project context with the commits through 8161d57
 
 `5be8698` (Render hosting), `9e01e62` (password reset by email) and their

@@ -295,7 +295,7 @@ npm run dev
 
 With the Python backend running, open `http://127.0.0.1:5173`. Stop the server with Ctrl+C. Run `npm run build` in `frontend/` for TypeScript checking and a production build; `npm run typecheck` checks TypeScript alone. Generated `dist/` and installed `node_modules/` are ignored. Frontend commands do not build the documentation website.
 
-Run `npm test` in `frontend/` for the helper and sample-line tests, including memory labels, schedule grouping, variations, guided retry, castling and session grading. These are not HTTP or integrated browser tests. The local merge checks used Node.js 24.13.0; earlier records name their original environments.
+Run `npm test` in `frontend/` for the helper and sample-line tests, including memory labels, schedule grouping, variations, guided retry, castling, session grading and move counts. These are not HTTP or integrated browser tests. The local merge checks used Node.js 24.13.0; earlier records name their original environments.
 
 ### Documentation website
 

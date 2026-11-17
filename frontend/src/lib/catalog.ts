@@ -1,5 +1,5 @@
 import { distinguishingMoves } from "./learning.ts";
-import type { FamilySide, OpeningLine } from "./practiceApi.ts";
+import type { FamilySide, OpeningLine, Side } from "./practiceApi.ts";
 
 export type Family = {
   name: string;
@@ -34,9 +34,24 @@ const namePatterns = {
   system: /\bsystems?\b/i,
 };
 
-export function playerMoveCount(line: OpeningLine) {
-  const plies = moves(line).length;
-  return line.family_side === "white" ? Math.ceil(plies / 2) : Math.floor(plies / 2);
+/**
+ * How many of the first `plies` half-moves are the player's own moves when playing `side`.
+ * White plays half-moves 0, 2, 4…, Black 1, 3, 5…, and Both plays every one. Screens count
+ * "moves" this way, so a 7-half-move line is 4 moves as White and 3 as Black.
+ */
+export function playerMovesIn(plies: number, side: Side) {
+  if (side === "both") return plies;
+  return side === "white" ? Math.ceil(plies / 2) : Math.floor(plies / 2);
+}
+
+/** A saved lesson's progress in the player's own moves: done of total. */
+export function progressMoves(saved: { ply: number; total: number; side: Side }) {
+  return { done: playerMovesIn(saved.ply, saved.side), total: playerMovesIn(saved.total, saved.side) };
+}
+
+/** The player's moves in a whole line, played from its opening family's side. */
+export function playerMoveCount(line: { moves_uci: string; family_side: FamilySide }) {
+  return playerMovesIn(line.moves_uci.split(" ").length, line.family_side);
 }
 
 export function linesByType(family: Family, types: readonly OpeningType[]) {

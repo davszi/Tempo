@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, BookOpen, ChevronRight, Play } from "lucide-react";
 import { useApp } from "../lib/app";
-import { lineLabel } from "../lib/catalog";
+import { lineLabel, progressMoves } from "../lib/catalog";
 import { dueAt, dueInfo, isDue, timeline } from "../lib/memory";
 import { MemCard, fmtDate, plural } from "./common";
 
@@ -34,11 +34,11 @@ export function DashboardPage() {
     <div className="grid2">
       <div className="card"><div className="row" style={{ marginBottom: 14 }}><h2>Continue learning</h2><span className="spacer" />
         <button className="btn sm ghost" onClick={() => go("#/learn")}>All openings</button></div>
-        {inProgress.length ? <ul className="list">{inProgress.slice(0, 4).map(({ line, saved }) => <li key={line!.line_id}>
+        {inProgress.length ? <ul className="list">{inProgress.slice(0, 4).map(({ line, saved }) => { const done = progressMoves(saved); return <li key={line!.line_id}>
           <button className="item" onClick={() => void startLearning(line!.line_id)}>
-            <span className="grow"><b>{line!.opening_family} · {lineLabel(line!)}</b><small>Playing {saved.side === "black" ? "Black" : "White"} · {saved.ply} of {saved.total} half-moves</small>
-              <span className="bar" style={{ marginTop: 6 }}><i style={{ width: `${Math.round(saved.ply / saved.total * 100)}%` }} /></span></span>
-            <ChevronRight size={18} /></button></li>)}</ul>
+            <span className="grow"><b>{line!.opening_family} · {lineLabel(line!)}</b><small>Playing {saved.side === "black" ? "Black" : "White"} · {done.done} of {plural(done.total, "move")}</small>
+              <span className="bar" style={{ marginTop: 6 }}><i style={{ width: `${Math.round(done.done / done.total * 100)}%` }} /></span></span>
+            <ChevronRight size={18} /></button></li>; })}</ul>
           : <div className="empty">Nothing in progress. Leave a lesson at any time and it waits for you here.</div>}
       </div>
       {reviewCard}
