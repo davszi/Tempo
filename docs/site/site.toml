@@ -46,6 +46,11 @@ file = "session-grading.html"
 group = "model"
 
 [[nav]]
+label = "Move recall"
+file = "move-recall.html"
+group = "model"
+
+[[nav]]
 label = "FSRS training"
 file = "fsrs-training.html"
 group = "model"

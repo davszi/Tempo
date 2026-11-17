@@ -208,7 +208,7 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 - `docs/topics/catalog-data/index.md`: Catalog & data, combining catalog rules, schema and historical provenance for readers.
 - `docs/topics/synthetic-clients/index.md`, `docs/topics/review-dataset/index.md`, `docs/topics/fsrs-training/index.md`: producer model (including both hidden memory implementations), telemetry/grading contract and parameter fitting/evaluation, respectively.
 - `docs/topics/session-grading/session-grading.md`: the decided session grading rule (mistake limits by line length, time bands), its rationale, implementation targets and validation plan; not implemented yet.
-- `docs/topics/move-recall/move-recall.md`, `approaches.md`: the decided meaning of FSRS recall (one player move), the pass-chance scheduling target, the training arms and the two per-move training approaches; not implemented yet.
+- `docs/topics/move-recall/move-recall.md`, `approaches.md` (page `index.md`): the decided meaning of FSRS recall (one player move), the pass-chance scheduling target, the training arms and the two per-move training approaches; not implemented yet.
 - `docs/topics/fsrs-training/fsrs-training.md`: fitting, evaluation, accepted metric criteria and scoped historical results.
 - `docs/topics/catalog-data/provenance.md`: historical opening-library classifier, inputs and side evidence within Catalog & Data.
 - `docs/development/ml.md`, `ml/pyproject.toml`: install and run commands for the `tempo_ml` package.
@@ -289,7 +289,7 @@ The [GitHub Pages workflow](../.github/workflows/pages.yml) checks out the pinne
 `reference_listing = true` enables kit 5's automatic Reference section, as
 requested on 2026-11-15. Tracked Markdown records, project setup and experiment
 summaries are listed there using the kit's normal eligibility rules. The
-starter Guide page and its source record have been removed. Home and seven
+starter Guide page and its source record have been removed. Home and eight
 curated TEMPO overviews form the main navigation; [the reading index](index.md#reading-order)
 defines their order and which canonical records each overview explains. A local build or commit is
 not a GitHub Pages deployment.
@@ -307,9 +307,9 @@ superseded. The user explicitly authorized checking and publishing this change.
 
 ### Source audit and topic coverage
 
-The seven canonical topic folders are `app-practice`, `system-architecture`,
-`catalog-data`, `synthetic-clients`, `review-dataset`, `session-grading` and
-`fsrs-training`. Each
+The eight canonical topic folders are `app-practice`, `system-architecture`,
+`catalog-data`, `synthetic-clients`, `review-dataset`, `session-grading`,
+`move-recall` and `fsrs-training`. Each
 has a human `index.md` and scoped source-to-topic coverage in its canonical
 record. Historical library provenance is a supporting Catalog & Data record;
 product acceptance is `docs/open/product-backlog.md`; package setup is

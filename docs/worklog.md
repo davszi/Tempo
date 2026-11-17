@@ -2,6 +2,18 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-16 Explain the per-move training targets on a Move recall page
+
+At the ML owner's request, [training approaches](topics/move-recall/approaches.md)
+gains section 7, where the pass chance enters each per-move arm (training,
+scheduling, evaluation) with one worked pass chance (`p_pass(0.9, 6) =
+0.886`), and section 8, the comparison with the 2026-11-13 arms A2 and B2
+and the target one 6-move review with one mistake gives each arm. A new
+Move recall page explains the move recall record and these sections; the
+reading index, navigation and project context list it. No code, data,
+weights or app behavior changed. Commit hash assigned by its landing
+commit.
+
 ## 2026-11-16 Record the move recall decisions in their own topic
 
 Decided on 2026-11-16 by the ML owner and recorded as a new topic at their
