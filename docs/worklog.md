@@ -2,6 +2,26 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-17 Show current recall instead of a whole-day value
+
+The user saw 100% recall on every line in Repeating. Py-FSRS 6.3.3's
+`get_card_retrievability` counts elapsed whole days (`timedelta.days`), so
+recall stayed exactly 100% for the first 24 hours after each review, and the
+browser kept the value from its last request. `MLEngine.memory` now uses the
+FSRS-6 forgetting curve with fractional elapsed days (`recall_after`; equal to
+Py-FSRS at whole days); `/api/repertoire` also returns the curve's `decay`;
+and the browser recomputes each line's recall from its stability and
+`last_reviewed_at` (`recallNow`) on its one-minute clock. Scheduling is
+unchanged. The App & Practice record and page and the System Architecture
+record follow. Checks: backend 41 of 41 (5 new in
+`backend/tests/test_recall.py`: below 100% within the first day, 90% after
+stability days, equal to Py-FSRS at whole days), frontend 18 of 18 (one new),
+type check and build. In the browser, on a copy of the demo database, a test
+player's line reviewed 2 days earlier showed "90% recall now" and one
+reviewed 6 hours earlier "98% recall now" (whole days would show 100%), with
+no console errors; the browser's own player ID was restored afterwards. The
+commit hash is assigned by this entry's landing commit.
+
 ## 2026-11-17 Count moves instead of half-moves in the app
 
 At the user's request, every screen that showed half-moves now shows the

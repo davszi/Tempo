@@ -147,7 +147,7 @@ The demo player UUID, preferences and unfinished lessons live under this browser
 
 ## Saved dates and recall snapshots answer different questions
 
-<p class="bs-lead">The schedule shows when a review is saved as due; recall is the server's estimate when repertoire data was last fetched.</p>
+<p class="bs-lead">The schedule shows when a review is saved as due; recall is the FSRS estimate for right now, recomputed every minute.</p>
 
 <div class="scroll" role="region" aria-label="Memory and schedule display meanings; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
 <div style="min-width:640px">
@@ -156,7 +156,7 @@ The demo player UUID, preferences and unfinished lessons live under this browser
 |---|---|---|
 | Due / future | Compare the saved due timestamp with the browser clock. | The server's returned time does not drive the browser's due labels. |
 | Day countdown | Compare dates in the browser's local time zone. | “Days until forgetting” is time until a scheduled review, not measured memory loss. |
-| Recall and stability | Derive estimates from the saved FSRS card on a repertoire request. | Values remain snapshots until refresh; both are absent before first review. The “new”/full bar style is not observed perfect recall. |
+| Recall and stability | Derive estimates from the saved FSRS card; the browser recomputes recall each minute from stability and the last review time. | Recall is a model estimate, not measured memory; both are absent before first review. The “new”/striped bar style is not observed perfect recall. |
 | Dashboard calendar | Show saved due dates across the display horizon, with overdue work in today. | It does not simulate future practice. Fixed-day bins were not verified across daylight-saving transitions. |
 | Review history | Show completed grades and elapsed days between learning/reviews. | Bar lengths are not past stability measurements. |
 

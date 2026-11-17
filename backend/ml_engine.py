@@ -168,14 +168,33 @@ class MLEngine:
         """The recall probability reviews are scheduled at (the scheduler's desired retention)."""
         return self.scheduler.desired_retention
 
+    @property
+    def decay(self):
+        """FSRS-6 forgetting-curve decay (w20); the browser uses it to keep recall current between fetches."""
+        return float(self.scheduler.parameters[20])
+
+    def recall_after(self, stability, elapsed_days):
+        """FSRS-6 forgetting curve: chance of recall after `elapsed_days` (fractional) at this stability.
+
+        Same curve as py-fsrs, which reaches desired retention 0.9 after `stability` days.
+        """
+        decay = -self.decay
+        factor = 0.9 ** (1 / decay) - 1
+        return (1 + factor * max(0.0, elapsed_days) / stability) ** decay
+
     def memory(self, state, now):
-        """Return (stability in days, chance of recall now), or (None, None) before the first review."""
+        """Return (stability in days, chance of recall now), or (None, None) before the first review.
+
+        Elapsed time is measured in fractional days. py-fsrs's get_card_retrievability counts whole
+        days only, so it reports 100% for the first 24 hours after every review.
+        """
         from fsrs import Card
 
         card = Card.from_dict(json.loads(state))
-        if card.stability is None:
+        if card.stability is None or card.last_review is None:
             return None, None
-        return card.stability, self.scheduler.get_card_retrievability(card, current_datetime=now)
+        elapsed_days = (now - card.last_review).total_seconds() / 86400
+        return card.stability, self.recall_after(card.stability, elapsed_days)
 
     @staticmethod
     def stability_days(state):

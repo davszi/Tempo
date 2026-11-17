@@ -83,7 +83,7 @@ class PracticeController:
         for row in rows:
             stability, recall = engine.memory(row.pop("fsrs_state"), now)
             lines.append({**row, "stability_days": stability, "recall": recall})
-        return {"now": timestamp(now), "target_recall": engine.target_recall, "lines": lines}
+        return {"now": timestamp(now), "target_recall": engine.target_recall, "decay": engine.decay, "lines": lines}
 
     def start_review_line(self, player_id, line_id):
         """Review one chosen repertoire line now, from its opening family's side."""

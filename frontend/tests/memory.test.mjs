@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DAY, dayStart, dueInfo, firstReviewWhen, recallLevel, timeline } from "../src/lib/memory.ts";
+import { DAY, dayStart, dueInfo, firstReviewWhen, recallLevel, recallNow, timeline } from "../src/lib/memory.ts";
 import { buildFamilies, closestLines, lineLabel, playerMoveCount, playerMovesIn, progressMoves, sharedPlies } from "../src/lib/catalog.ts";
 
 const noon = new Date(2026, 10, 14, 12, 0).getTime();
@@ -40,6 +40,18 @@ test("move counts are the player's own moves, not half-moves", () => {
   assert.deepEqual(progressMoves({ ply: 4, total: 7, side: "white" }), { done: 2, total: 4 });
   assert.deepEqual(progressMoves({ ply: 5, total: 7, side: "black" }), { done: 2, total: 3 });
   assert.deepEqual(progressMoves({ ply: 7, total: 7, side: "white" }), { done: 4, total: 4 });
+});
+
+test("recall is current: it falls within the first day and reaches 90% after stability days", () => {
+  const reviewed = new Date(2026, 10, 14, 9, 0).toISOString();
+  const line = { stability_days: 2, last_reviewed_at: reviewed };
+  const at = (hours) => Date.parse(reviewed) + hours * 3_600_000;
+  const decay = 0.42800040086626656;
+  assert.equal(recallNow(line, at(0), decay), 1);
+  assert.ok(recallNow(line, at(12), decay) < 1);
+  assert.ok(recallNow(line, at(23), decay) < recallNow(line, at(12), decay));
+  assert.ok(Math.abs(recallNow(line, at(48), decay) - 0.9) < 1e-12);
+  assert.equal(recallNow({ stability_days: null, last_reviewed_at: null }, at(5), decay), null);
 });
 
 test("recall bands compare with the target", () => {

@@ -133,9 +133,10 @@ without a lock or exact installed-version pin.
 `initial_schedule` serializes a `Card(due=now)`; `schedule_review` deserializes
 the saved card, calls `Scheduler.review_card` with `Rating[grade]` and the review
 timestamp, and serializes the returned card. `target_recall` is the scheduler's
-`desired_retention`; memory is `card.stability` plus
-`get_card_retrievability(..., current_datetime=now)`, with both values null
-before initialized stability. Scheduling may use short learning/relearning
+`desired_retention`; memory is `card.stability` plus the FSRS-6 forgetting
+curve at the fractional days since `card.last_review` (`MLEngine.recall_after`,
+the same curve as `get_card_retrievability`, which counts whole days only),
+with both values null before initialized stability. Scheduling may use short learning/relearning
 steps even when stability is expressed in days. Exact dependency defaults,
 fuzzing outcomes and installed runtime versions were not executed or inspected
 in this source-only pass; a precise 90% crossing cannot be inferred from due

@@ -14,6 +14,18 @@ export type DueInfo = { text: string; long: string; tone: Tone };
 export const dueAt = (line: Memory) => Date.parse(line.next_review_at);
 export const isDue = (line: Memory, now: number) => dueAt(line) <= now;
 
+/**
+ * Chance of recalling a line at `now`, from the FSRS-6 forgetting curve the backend uses:
+ * (1 + factor · elapsed days / stability) ^ −decay, which falls to 90% after `stability` days.
+ * Null before the first review.
+ */
+export function recallNow(line: { stability_days: number | null; last_reviewed_at: string | null }, now: number, decay: number) {
+  if (line.stability_days == null || line.last_reviewed_at == null) return null;
+  const elapsed = Math.max(0, (now - Date.parse(line.last_reviewed_at)) / DAY);
+  const factor = 0.9 ** (-1 / decay) - 1;
+  return (1 + factor * elapsed / line.stability_days) ** -decay;
+}
+
 /** When a not-yet-due first review opens, in local time: "tomorrow from 04:00". */
 export function firstReviewWhen(due: number, now: number) {
   const days = dayDiff(due, now);

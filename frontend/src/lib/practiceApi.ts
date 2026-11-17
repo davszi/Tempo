@@ -66,7 +66,8 @@ export type RepertoireLine = {
   reviews: { at: string; grade: Grade }[];
 };
 
-export type Repertoire = { now: string; target_recall: number; lines: RepertoireLine[] };
+/** `decay` is the FSRS-6 forgetting-curve decay (w20), used to keep recall current between fetches. */
+export type Repertoire = { now: string; target_recall: number; decay: number; lines: RepertoireLine[] };
 
 /** The browser's IANA time zone as a request field, or nothing when the browser cannot tell (the server then uses UTC). */
 export function playerTimeZone(): { time_zone?: string } {

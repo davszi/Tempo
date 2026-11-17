@@ -172,7 +172,7 @@ such as “no hints” does not override these implemented behaviors.
 | `POST /api/review/line` | `line_id` | Chosen learned-line review from family side; `start_review_line`; see the unresolved deviation below |
 | `POST /api/review/abandon` | `session_id` | Close a running review with a recorded mistake, save Again and reschedule; `abandon_review` |
 | `POST /api/move` | `session_id`, `move_index`, `move_uci` | Correctness and updated session; completion may include `fsrs_rating`; a wrong review move includes `expected_move`; `submit_move` |
-| `POST /api/repertoire` | None | Server `now`, `target_recall`, learned lines with dates, stability, current recall and completed review history; `repertoire` |
+| `POST /api/repertoire` | None | Server `now`, `target_recall`, forgetting-curve `decay`, learned lines with dates, stability, current recall and completed review history; `repertoire` |
 
 Session responses contain status, session and line IDs, name, mode, side, available sides, move index, total plies, played moves and a Learning-only `hint`. The move index is zero-based across the full line. The browser chooses a side after a planner response before opening the board. Both-side sessions advance one ply; single-side sessions include the opponent reply automatically.
 
@@ -219,7 +219,7 @@ the browser behind committed server state; recovery was not exercised here.
 
 ## Memory displays and limits
 
-The repertoire endpoint computes current recall and stability from the saved Py-FSRS card. Both are null before the first review. The browser uses scheduled `next_review_at` for due labels and calendar-day countdowns, presents UTC timestamps in the browser's local time zone, and refreshes repertoire data when memory screens open or sessions complete. Due labels update against the browser clock each minute; recall percentages remain snapshots from the last request.
+The repertoire endpoint computes current recall and stability from the saved Py-FSRS card. Both are null before the first review. Recall uses the FSRS-6 forgetting curve with elapsed time in fractional days (`MLEngine.memory`), because Py-FSRS's `get_card_retrievability` counts whole days and showed 100% for the first 24 hours after every review; at whole days the two agree. The endpoint also returns the curve's `decay`, and the browser recomputes each line's recall from its stability and `last_reviewed_at` (`recallNow` in `frontend/src/lib/memory.ts`) whenever its one-minute clock ticks, so rings, bars and "% recall now" stay current between requests. The browser uses scheduled `next_review_at` for due labels and calendar-day countdowns, presents UTC timestamps in the browser's local time zone, and refreshes repertoire data when memory screens open or sessions complete.
 
 The UI calls the due-date countdown “days until forgetting.” Its implemented meaning is time until the scheduled review, not time until memory is lost. Do not claim that every due timestamp is the exact instant recall crosses the target: FSRS learning/relearning steps and scheduler settings also affect due dates. The local app passes no custom learning steps or fuzzing settings to Py-FSRS. Exact installed dependency defaults were not inspected in this audit.
 

@@ -3,7 +3,7 @@ import { allOpeningTypes, buildFamilies, variantMoves, type OpeningSort, type Op
 import { AppearanceContext, loadAppearance, storeAppearance, type Appearance } from "./lib/appearance";
 import { playerTimeZone, practiceRequest, type OpeningLine, type Repertoire, type ReviewStart, type Session } from "./lib/practiceApi";
 import { clearProgress, saveProgress, useProgress } from "./lib/progress";
-import { dueAt, firstReviewWhen, isDue } from "./lib/memory";
+import { dueAt, firstReviewWhen, isDue, recallNow } from "./lib/memory";
 import { AppContext, learningSideKey, type AppData, type LearningSide, type Route } from "./lib/app";
 import { Shell } from "./components/Shell";
 import { Toast } from "./components/common";
@@ -200,8 +200,13 @@ export default function App() {
   }, [account, route.view, replaceRoute]);
 
   const dueCount = repertoire ? repertoire.lines.filter((line) => isDue(line, now)).length : 0;
+  // Recall keeps falling between fetches; recompute it whenever the one-minute clock ticks.
+  const liveRepertoire = useMemo(() => repertoire && {
+    ...repertoire,
+    lines: repertoire.lines.map((line) => ({ ...line, recall: recallNow(line, now, repertoire.decay) })),
+  }, [repertoire, now]);
   const data: AppData = {
-    catalog, families, variants, lineById, repertoire, progress, now, go, showToast,
+    catalog, families, variants, lineById, repertoire: liveRepertoire, progress, now, go, showToast,
     openingSort, setOpeningSort, selectedOpeningTypes, setSelectedOpeningTypes,
     availableOpeningTypes, learningSide, setLearningSide,
     startLearning, startReview, refreshRepertoire, markLearned, dueCount, account, signOut, accountChanged, accountDeleted,
