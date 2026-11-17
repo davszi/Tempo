@@ -39,3 +39,4 @@ export function markArrivedBySwipe(from: "up" | "left", now = Date.now()) { swip
 export function arrivedBySwipe(now = Date.now()): "up" | "left" | null {
   return swiped && now - swiped.at <= ARRIVAL_WINDOW_MS ? swiped.from : null;
 }
+export function clearArrivedBySwipe() { swiped = null; }

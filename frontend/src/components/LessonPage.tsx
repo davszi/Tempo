@@ -9,7 +9,7 @@ import { clearProgress, saveProgress } from "../lib/progress";
 import { firstReviewWhen } from "../lib/memory";
 import { isMobileApp } from "../lib/platform";
 import { practiceRequest, type Grade, type OpeningLine, type RepertoireLine, type Session } from "../lib/practiceApi";
-import { dragOffset, swipeOutcome } from "../lib/swipe";
+import { arrivedBySwipe, clearArrivedBySwipe, dragOffset, markArrivedBySwipe, swipeOutcome } from "../lib/swipe";
 import { forgetSkip, markSkipped, nextDueLine, otherDueCount, pastCard, rememberCard, type PastCard } from "../lib/reviewQueue";
 import { playSound, savedSound } from "../lib/sound";
 import { isDue } from "../lib/memory";
@@ -52,7 +52,9 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
     if (pendingFinalMove) position.move(pendingFinalMove);
     return position;
   }, [session.played_moves, shown, pendingFinalMove]);
-  const yourTurn = !finished && !showRelearnChoice && !pendingFinalMove;
+  // In the app, a card reached by swiping shows the opening first; the review starts on "Review now".
+  const [started, setStarted] = useState(() => !(!learning && isMobileApp() && arrivedBySwipe()));
+  const yourTurn = started && !finished && !showRelearnChoice && !pendingFinalMove;
   // Move timing for grading (grading record, section 3.3): the clock starts when the player's position is ready.
   // A wrong attempt does not restart it, because only each move's first attempt is graded.
   const turnStartedAt = useRef(performance.now());
@@ -210,6 +212,7 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
     }
     await slide(-1);
     leaveLiveCard();
+    markArrivedBySwipe("up");
     await startReview(nextId);
     setSwipeState("idle");   // only reached when the next review did not start
     setSwipeY(0);
@@ -219,6 +222,7 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
     await slide(-1);
     leaveLiveCard();
     forgetSkip(lineId);
+    clearArrivedBySwipe();   // the player already chose to review it: start straight away
     await startReview(lineId);
     settle();
   }
@@ -293,7 +297,7 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
     else if (selected) attemptMove(selected, square);
   }
 
-  const status = finished ? "Line complete." : pendingFinalMove ? "Finishing line…" : showRelearnChoice ? "Review ended."
+  const status = !started ? "Tap Review now when you're ready." : finished ? "Line complete." : pendingFinalMove ? "Finishing line…" : showRelearnChoice ? "Review ended."
     : `${game.turn() === "w" ? "White" : "Black"} to move. ${hint ? "Follow the arrow." : "Recall the move."}`;
   const title = line ? lineTitle(line) : session.name;
 
@@ -342,6 +346,13 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
       <p>You’ve used all four hints. Learn the line again with arrows to save this review as Again.</p>
       <button className="btn primary full" disabled={busy} onClick={() => void relearn()}><BookOpen size={16} /> Learn this line again</button>
     </div>;
+  } else if (!started) {
+    const recallNow = before.current?.recall;
+    panel = <div className="card reel-ready"><p className="eyebrow">READY WHEN YOU ARE</p>
+      <h2>{plural(movesTotal, "move")} to recall</h2>
+      <p className="muted">{recallNow == null ? "Your first recall test of this line." : `About ${Math.round(recallNow * 100)}% chance you still remember it.`} Nothing is timed until you start.</p>
+      <button className="btn primary full" onClick={() => setStarted(true)}><Play size={16} /> Review now</button>
+    </div>;
   } else {
     panel = <div className="card">
       <div className="progress-head"><span>Your progress</span><b>{Math.round(movesDone / movesTotal * 100)}%</b></div>
@@ -367,7 +378,7 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
   if (feed) {
     const hint = showRelearnChoice ? null : othersDue === 0
       ? (finished ? "All caught up. Nothing else is due right now." : "This is the only opening due right now.")
-      : <><ChevronUp size={16} /> {finished ? "Swipe up for the next opening" : "Swipe up to skip to the next opening"} · {othersDue} more due{earlier ? " · down for earlier" : ""}</>;
+      : <><ChevronUp size={16} /> {finished ? "Swipe up for the next" : "Swipe up to skip"} · {othersDue} more due{earlier ? " · down for earlier" : ""}</>;
     return <div className="reel-stage" ref={stage} style={stageHeight ? { height: stageHeight } : undefined}>
       <div className={`reel-track${swipeState === "dragging" ? " dragging" : ""}`} style={swipeY ? { transform: `translateY(${swipeY}px)` } : undefined}
         onPointerDown={swipeDown} onPointerMove={swipeMove} onPointerUp={swipeEnd} onPointerCancel={swipeEnd}>

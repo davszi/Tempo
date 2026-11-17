@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { arrivedBySwipe, dragOffset, markArrivedBySwipe, swipeOutcome } from "../src/lib/swipe.ts";
+import { arrivedBySwipe, clearArrivedBySwipe, dragOffset, markArrivedBySwipe, swipeOutcome } from "../src/lib/swipe.ts";
 
 const SIZE = 330;   // a phone-sized board
 
@@ -45,4 +45,10 @@ test("only a review started by a swipe a moment ago slides in, from the side it 
   markArrivedBySwipe("up", 10_000);
   assert.equal(arrivedBySwipe(10_500), "up");
   assert.equal(arrivedBySwipe(20_000), null);
+});
+
+test("a review opened on purpose right after a swipe does not count as arriving by swipe", () => {
+  markArrivedBySwipe("up", 50_000);
+  clearArrivedBySwipe();
+  assert.equal(arrivedBySwipe(50_100), null);
 });

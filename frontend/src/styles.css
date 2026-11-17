@@ -313,6 +313,8 @@ html:has(.reel-stage), html:has(.reel-stage) body { overflow: hidden; overscroll
 .reel-panel { flex: 1 1 auto; min-height: 0; margin-top: 8px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
 .reel-panel .card { padding: 14px 16px; }
 .reel-panel .next-move h2 { font-size: 22px; }
+.reel-ready h2 { margin: 2px 0 6px; font-size: 20px; }
+.reel-ready p.muted { margin: 0 0 12px; font-size: 13px; }
 .reel-card .swipe-hint { flex: none; }
 .reel-end { display: grid; place-content: center; justify-items: center; gap: 8px; height: 100%; text-align: center; color: var(--accent); }
 .reel-end p { margin: 0; }

@@ -35,7 +35,8 @@ Outside the app `isMobileApp()` is `false` and no `.mobile-app` rule matches, so
 Everything below runs only inside the app (`isMobileApp()`); the website is unchanged.
 
 - **Repeating as a feed.** Each review is a full-screen card. Swipe up anywhere on it for the next
-  due opening, which rises from below. Before the line is finished this skips it without a grade:
+  due opening, which rises from below and waits for "Review now" before its clock starts. Before
+  the line is finished a swipe skips it without a grade:
   it stays due and comes back after the others (`lib/reviewQueue.ts`). A drag that starts on one of
   your pieces is always a move. Swipe down to look back at the cards left behind, read-only; a
   skipped one can be reviewed from there.
