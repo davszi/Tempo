@@ -14,28 +14,45 @@ Follow the [task routes](../AGENTS.md#read-before-the-relevant-action) before th
 
 ## Implementation snapshot and unresolved differences
 
-The latest source-to-documentation pass inspected `788e060` on 2026-11-15.
+The latest full source-to-documentation pass inspected `788e060` on 2026-11-15.
 The integrated implementation comes from `feature/frontend-learning` at
-`c12eb50` and main's ML work at `ea3d01d`. These are implementation facts,
-not additional accepted product decisions:
+`c12eb50` and main's ML work at `ea3d01d`. On 2026-11-17 this snapshot was
+synced with the commits through `42a6810` from their messages and the
+changed source; that sync was not a full source audit. These are
+implementation facts, not additional accepted product decisions:
 
 - The React app calls the Python API for catalog, Learning, Repeating and
   repertoire data. It includes resumable lessons, a 30-day review schedule,
-  repertoire history and appearance settings. The browser stores a demo player
-  identifier, lesson progress and appearance locally; it does not implement
-  accounts or authentication. [Frontend](topics/app-practice/app-practice.md) owns the
-  routes, API and storage boundaries.
+  repertoire history and appearance settings. The browser stores lesson
+  progress and appearance locally. Guests still play under a browser-stored
+  demo player identifier. Since `4754804` and `7ef4fe7`, a player can also
+  create an account with email and password, or sign in with Google when the
+  server has a client ID, and edit, sign out of or delete it under Settings →
+  Profile. `backend/auth.py` keeps salted scrypt password hashes and an
+  HttpOnly session cookie; a new account starts empty. [Frontend](topics/app-practice/app-practice.md)
+  owns the routes, API and storage boundaries; its record still describes the
+  demo identity only.
 - The current browser uses the opening family's side. The backend and terminal
   demo also support White, Black and Both. The catalog has 2,719 lines in 82
   families after cleaning and family regrouping; the dated evidence and
   learnability rule are in [opening catalog structure](topics/catalog-data/catalog-data.md).
-- The runtime chooses a due repertoire line with its existing FSRS scheduler.
-  Offline model fitting and the synthetic-client simulator live in `ml/tempo_ml/`.
-  The dated [FSRS experiments](topics/fsrs-training/fsrs-training.md) are synthetic
-  evidence; their diagnostic true-recall weights are not the app's runtime weights.
-- The implementation now permits a selected-line review and reveals the expected
-  move after a review mistake. Both conflict with the settled Repeating behavior
-  in sections 4 and 9 below. The [frontend's unresolved behavior choices](topics/app-practice/app-practice.md)
+- The runtime chooses a due repertoire line with its existing FSRS scheduler
+  and grades each Repeating review with the decided
+  [session grading rule](topics/session-grading/session-grading.md) (`52e9535`).
+  Offline model fitting and the synthetic-client simulator live in `ml/tempo_ml/`;
+  since `54446db` they train on [per-move recall](topics/move-recall/move-recall.md),
+  which beat line-level recall on synthetic data. The app does not yet schedule
+  by the per-move pass chance, and which weights it ships is open. The dated
+  [FSRS experiments](topics/fsrs-training/fsrs-training.md) are synthetic
+  evidence; their weights are not the app's runtime weights.
+- The implementation permits a selected-line review (Review or Practise early
+  from the opening, repertoire and schedule pages) and, since `42a6810`, shows
+  the expected move as an arrow after each Repeating mistake, up to four hints;
+  a fifth mistake ends the review, which counts as Again, and offers relearning.
+  Illegal moves are ignored, and the "Review without hints" button after a lesson
+  now runs an unguided Learning session. The selected-line review and the hints
+  conflict with the settled Repeating behavior in sections 4 and 9 below. The
+  [frontend's unresolved behavior choices](topics/app-practice/app-practice.md)
   track the decision needed; this documentation pass does not approve either change.
 
 The [product backlog](open/product-backlog.md) separates remaining acceptance
@@ -208,7 +225,7 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 - `docs/topics/catalog-data/index.md`: Catalog & data, combining catalog rules, schema and historical provenance for readers.
 - `docs/topics/synthetic-clients/index.md`, `docs/topics/review-dataset/index.md`, `docs/topics/fsrs-training/index.md`: producer model (FSRS hidden memory; the multiplicative model is historical), telemetry/grading contract and parameter fitting/evaluation, respectively.
 - `docs/topics/session-grading/session-grading.md`: the decided session grading rule (mistake limits by line length, time bands), its rationale, implementation targets and validation plan; implemented in the app, the simulator, training and evaluation.
-- `docs/topics/move-recall/move-recall.md`, `approaches.md` (page `index.md`): the decided meaning of FSRS recall (one player move), the pass-chance scheduling target, the training arms and the two per-move training approaches; not implemented yet.
+- `docs/topics/move-recall/move-recall.md`, `approaches.md` (page `index.md`): the decided meaning of FSRS recall (one player move), the pass-chance scheduling target, the training arms and the two per-move training approaches; implemented in the simulator, training and evaluation, not in the app's scheduler.
 - `docs/topics/fsrs-training/fsrs-training.md`: fitting, evaluation, accepted metric criteria and scoped historical results.
 - `docs/topics/catalog-data/provenance.md`: historical opening-library classifier, inputs and side evidence within Catalog & Data.
 - `docs/development/ml.md`, `ml/pyproject.toml`: install and run commands for the `tempo_ml` package.
@@ -221,7 +238,7 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 - `.build/docs/`: ignored generated output, never source.
 
 - `frontend/`: React browser application. See [frontend ownership and scope](topics/app-practice/app-practice.md).
-- `backend/`: Python application, requirements, and demo data.
+- `backend/`: Python application, accounts (`auth.py`), requirements, demo data, and tests in `backend/tests/`.
 
 ## Build and review
 
@@ -234,7 +251,13 @@ python -m pip install -r backend/requirements.txt
 python -m backend.web
 ```
 
-The server listens on `127.0.0.1:8000` and uses the SQLite catalog and FSRS weights in `backend/`. Run `.\backend\run-demo.cmd` from the repository root for the terminal demo.
+The server listens on `127.0.0.1:8000` and uses the SQLite catalog and FSRS weights in `backend/`. Google sign-in stays off until the server gets `--google-client-id` or `TEMPO_GOOGLE_CLIENT_ID`. Run `.\backend\run-demo.cmd` from the repository root for the terminal demo.
+
+Run the backend tests (session grading and accounts) from the repository root:
+
+```powershell
+python -m unittest discover -s backend/tests -t .
+```
 
 ### Frontend development
 
@@ -248,7 +271,7 @@ npm run dev
 
 With the Python backend running, open `http://127.0.0.1:5173`. Stop the server with Ctrl+C. Run `npm run build` in `frontend/` for TypeScript checking and a production build; `npm run typecheck` checks TypeScript alone. Generated `dist/` and installed `node_modules/` are ignored. Frontend commands do not build the documentation website.
 
-Run `npm test` in `frontend/` for the helper and sample-line tests, including memory labels, schedule grouping, variations, guided retry and castling. These are not HTTP or integrated browser tests. The local merge checks used Node.js 24.13.0; earlier records name their original environments.
+Run `npm test` in `frontend/` for the helper and sample-line tests, including memory labels, schedule grouping, variations, guided retry, castling and session grading. These are not HTTP or integrated browser tests. The local merge checks used Node.js 24.13.0; earlier records name their original environments.
 
 ### Documentation website
 

@@ -2,6 +2,28 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-17 Sync the project context with the commits through 42a6810
+
+The project context's implementation snapshot still said the app had no
+accounts, described the one-time review hint from before `42a6810`, and
+routed to the move recall record as "not implemented yet". The snapshot now
+records the optional accounts and Google sign-in (`4754804`, `7ef4fe7`),
+grading by the session grading rule (`52e9535`), per-move recall training
+(`54446db`) with the app's per-length scheduling still open, and the
+Repeating behavior since `42a6810`: an arrow hint after each mistake, up to
+four, then the review ends as Again; illegal moves are ignored; selected-line
+review remains. Both conflicts with the settled Repeating behavior stay
+unapproved. The repository map and build section gain `backend/auth.py`, the
+backend test command and the Google client ID option. `42a6810` landed
+without a worklog entry; this entry records its behavior from the commit and
+its `LessonPage` diff only. The App & Practice record still describes the
+demo identity only and was not changed. Checks: the backend suite
+(`python -m unittest discover -s backend/tests -t .`) passes 22 of 22; the
+documentation build, freshness check and strict lint (with `PYTHONUTF8=1`)
+pass, the lint reporting only older worklog link notes; the frontend was not
+run and no browser check was made. The commit hash is
+assigned by this entry's landing commit.
+
 ## 2026-11-17 Record the move-recall retraining: per-move recall beats line-level recall
 
 Experiment [`ml/experiments/2026-11-16-move-recall`](../ml/experiments/2026-11-16-move-recall/SUMMARY.md),
