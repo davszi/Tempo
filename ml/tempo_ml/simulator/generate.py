@@ -16,9 +16,10 @@ Outputs in ``<dir>``:
 - ``sessions.csv``: the review-dataset schema, chronological per client. Within
   one client every opening name is unique, so (agent_name, opening_name) is a
   line's identity.
-- ``ground_truth.csv``: hidden per-session state (true R, S, reps, p_clean).
-  For evaluation only; never a model input.
+- ``ground_truth.csv``: hidden per-session state (true per-move R, S, reps and
+  the true pass chance ``p_pass``). For evaluation only; never a model input.
 - ``clients.csv``, ``repertoires.csv``: who the clients are and what they learned.
+- ``memory_weights.csv``: each client's hidden FSRS-6 weights (evaluation only).
 - ``manifest.json``: config, row counts, SHA-256 of every output and input.
 """
 
@@ -37,13 +38,14 @@ from pathlib import Path
 import numpy as np
 
 from ..catalog import DEFAULT_CATALOG_DB, OpeningLine, load_opening_lines
+from ..pass_chance import p_pass
 from .grading import CSV_COLUMNS, SessionRecord
 from .practice import GenerationConfig, build_plans, simulate_client
 
 GROUND_TRUTH_COLUMNS = (
     "agent_name", "archetype", "side", "line_id", "opening_name", "num_moves",
     "day", "mode", "review_status", "t_days", "grade", "accuracy", "blunders",
-    "retrievability", "p_clean", "stability_before", "stability_after",
+    "retrievability", "p_pass", "stability_before", "stability_after",
     "reps_before", "reps_after",
 )
 
@@ -107,7 +109,7 @@ def generate(out_dir: Path, cfg: GenerationConfig, catalog_db: Path = DEFAULT_CA
                     "review_status": r.review_status, "t_days": r.t_days, "grade": r.grade,
                     "accuracy": r.accuracy, "blunders": out.blunder_count,
                     "retrievability": round(out.retrievability, 6),
-                    "p_clean": round(out.retrievability ** m, 6) if out.mode == "repeating" else 1.0,
+                    "p_pass": round(float(p_pass(out.retrievability, m)), 6) if out.mode == "repeating" else 1.0,
                     "stability_before": "" if out.stability_before is None else round(out.stability_before, 6),
                     "stability_after": round(out.stability_after, 6),
                     "reps_before": out.reps_before, "reps_after": out.reps_after,
@@ -129,12 +131,11 @@ def generate(out_dir: Path, cfg: GenerationConfig, catalog_db: Path = DEFAULT_CA
                         "repertoire_size": len(p.repertoire), "p_active": round(p.p_active, 4),
                         "review_budget": p.review_budget})
 
-    if cfg.memory == "fsrs":  # each client's hidden FSRS-6 weights (truth, evaluation only)
-        with (out_dir / "memory_weights.csv").open("w", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            w.writerow(["agent_name", *[f"w{i}" for i in range(21)]])
-            for p in plans:
-                w.writerow([p.client.name, *[round(x, 6) for x in p.client.stability_model.weights]])
+    with (out_dir / "memory_weights.csv").open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["agent_name", *[f"w{i}" for i in range(21)]])
+        for p in plans:
+            w.writerow([p.client.name, *[round(x, 6) for x in p.client.memory_model.weights]])
 
     with (out_dir / "repertoires.csv").open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -146,9 +147,8 @@ def generate(out_dir: Path, cfg: GenerationConfig, catalog_db: Path = DEFAULT_CA
     manifest = {
         "generator": "tempo_ml.simulator.generate",
         "config": asdict(cfg),
-        "stability_model": (asdict(plans[0].client.stability_model) if cfg.memory != "fsrs" else
-                            {"model": "fsrs", "min_days": plans[0].client.stability_model.min_days,
-                             "weight_noise": cfg.fsrs_weight_noise, "weights": "memory_weights.csv"}),
+        "memory_model": {"model": "fsrs", "min_days": plans[0].client.memory_model.min_days,
+                         "weight_noise": cfg.fsrs_weight_noise, "weights": "memory_weights.csv"},
         "max_attempts_per_move": plans[0].client.max_attempts_per_move,
         "counts": {**counts, "clients": len(plans),
                    "review_status": dict(sorted(status_counts.items())),
@@ -178,7 +178,7 @@ def load_config(path: Path) -> dict:
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", type=Path, required=True)
-    ap.add_argument("--config", type=Path, help="JSON file of GenerationConfig fields, e.g. configs/multiplicative-memory.json")
+    ap.add_argument("--config", type=Path, help="JSON file of GenerationConfig fields, e.g. configs/fsrs-memory.json")
     ap.add_argument("--seed", type=int)
     ap.add_argument("--clients-per-archetype", type=int)
     ap.add_argument("--horizon-days", type=int)

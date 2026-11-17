@@ -1,0 +1,8 @@
+==> experiments/2026-11-16-move-recall/results/logs/seed-20261111-A1.log <==
+{"constant_base_rate": 0.2438, "fsrs6_default": 0.1991, "fsrs6_trained": 0.1916}
+
+==> experiments/2026-11-16-move-recall/results/logs/seed-20261121-A1.log <==
+{"constant_base_rate": 0.285, "fsrs6_default": 0.2289, "fsrs6_trained": 0.2165}
+
+==> experiments/2026-11-16-move-recall/results/logs/seed-20261131-A1.log <==
+{"constant_base_rate": 0.2521, "fsrs6_default": 0.2088, "fsrs6_trained": 0.2018}

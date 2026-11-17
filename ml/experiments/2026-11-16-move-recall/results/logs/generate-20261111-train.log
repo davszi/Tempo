@@ -1,0 +1,18 @@
+{
+  "sessions": 54068,
+  "learning_mode": 7903,
+  "repeating_mode": 46165,
+  "clients": 300,
+  "review_status": {
+    "new": 7903,
+    "relearning": 2718,
+    "review": 43447
+  },
+  "grade": {
+    "1": 2733,
+    "2": 6289,
+    "3": 8968,
+    "4": 36078
+  }
+}
+wrote data/move-recall/seed-20261111/train in 9.7 s

@@ -92,7 +92,7 @@ The backend demo uses the same header with different move counting, retry and sc
 
 ## Every recorded grade used the earlier rule, and the export cannot regrade it with the decided one
 
-<p class="bs-lead">A new grading rule was decided on 2026-11-16 and is explained on the <a href="session-grading.html">Session grading</a> page; it is not implemented, so every dataset here was graded with the earlier rule, and the seven export columns are not enough to regrade it.</p>
+<p class="bs-lead">A new grading rule was decided on 2026-11-16 and is explained on the <a href="session-grading.html">Session grading</a> page; the simulator and the app use it since 2026-11-16. The datasets described here were graded with the earlier rule, and the seven export columns are not enough to regrade them.</p>
 
 <figure id="fig-grading">
 <div class="bs-flow" role="img" aria-label="Every recorded synthetic dataset was graded with the earlier rule. The session export keeps accuracy and total time but not the move count, the mistake count or per-move times. The decided rule needs those, so it cannot be applied from the CSV alone.">

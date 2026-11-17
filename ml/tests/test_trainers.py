@@ -5,7 +5,12 @@ import pytest
 
 from tempo_ml.fsrs import model as M
 from tempo_ml.evaluate.metrics import auc
-from tempo_ml.fsrs.train import fit, objective, split_clients
+import torch
+
+from tempo_ml.fsrs.train import Objective, fit, split_clients
+from tempo_ml.pass_chance import mistake_limit
+
+CPU = torch.device("cpu")
 
 fsrs = pytest.importorskip("fsrs")
 
@@ -60,11 +65,16 @@ def test_load_cards_and_masks(tmp_path):
         ("a", "L1", "review", 2.0, 1, 1000, 0.5),    # in loss, failure
         ("a", "L1", "relearning", 1.5, 3, 1000, 1.0),  # in loss, success
     ])
-    c = M.load_cards(p)
+    c = M.load_cards(p, {("a", "L1"): 6, ("a", "L2"): 4})
     assert c.t.shape == (2, 4)
     assert c.loss_mask.sum() == 2
     assert list(c.y[c.loss_mask]) == [0.0, 1.0]
     assert list(c.row[0]) == [0, 1, 3, 4]
+    assert list(c.t[0]) == [0.0, 0.0, 2.0, 1.0]          # app clock: whole elapsed days
+    assert list(c.acc[c.loss_mask]) == [0.5, 1.0]
+    assert list(c.m) == [6, 4]
+    exact = M.load_cards(p, clock="exact")
+    assert list(exact.t[0]) == [0.0, 0.01, 2.0, 1.5] and list(exact.m) == [0, 0]
 
 
 def test_predict_first_step_and_padding():
@@ -77,31 +87,51 @@ def test_predict_first_step_and_padding():
     assert p[0, 1] == pytest.approx(float(M.forgetting_curve(M.DEFAULT_PARAMETERS, np.array(1.0), np.array(s0))))
 
 
-def test_fit_recovers_known_parameters():
-    """Data drawn from FSRS itself: fitting from defaults lowers the loss toward the truth."""
-    rng = np.random.default_rng(1)
-    w_true = M.DEFAULT_PARAMETERS.copy()
-    w_true[20] = 0.4
-    w_true[0:4] = [0.5, 2.0, 4.0, 12.0]
-    n, steps = 1500, 12
-    t = rng.uniform(1, 20, (n, steps)); t[:, 0] = 0
+def simulate_cards(w_true, n, steps, rng, per_move=False):
+    """Cards drawn from FSRS itself. ``per_move``: R is per move, lines of 3-14 moves are
+    graded pass (Good) when mistakes are within L(M), as in the simulator."""
+    t = np.floor(rng.uniform(1, 20, (n, steps))); t[:, 0] = 0
     valid = np.ones((n, steps), bool)
     g = np.zeros((n, steps), int)
+    acc = np.ones((n, steps))
+    m = rng.integers(3, 15, n) if per_move else np.ones(n, int)
     g[:, 0] = rng.integers(2, 5, n)
     s = M.initial_stability(w_true, g[:, 0]); d = M.initial_difficulty(w_true, g[:, 0])
     for k in range(1, steps):
         r = M.forgetting_curve(w_true, t[:, k], s)
-        ok = rng.random(n) < r
-        g[:, k] = np.where(ok, 3, 1)
+        mistakes = rng.binomial(m, 1 - r)
+        g[:, k] = np.where(mistakes <= mistake_limit(m), 3, 1)
+        acc[:, k] = (m - mistakes) / m
         s, d = M.next_stability(w_true, d, s, r, g[:, k]), M.next_difficulty(w_true, d, g[:, k])
-    Cards = M.Cards
-    c = Cards(agent=np.array(["x"] * n), t=t, g=g, valid=valid, y=(g > 1).astype(float),
-              loss_mask=np.c_[np.zeros((n, 1), bool), valid[:, 1:]], row=np.zeros((n, steps), int))
-    l_def = objective(M.DEFAULT_PARAMETERS, c, c.loss_mask)
-    l_true = objective(w_true, c, c.loss_mask)
-    w_fit, info = fit(M.DEFAULT_PARAMETERS, c, c.loss_mask, maxiter=150)
+    return M.Cards(agent=np.array(["x"] * n), t=t, g=g, valid=valid, y=(g > 1).astype(float),
+                   loss_mask=np.c_[np.zeros((n, 1), bool), valid[:, 1:]], row=np.zeros((n, steps), int),
+                   acc=acc, m=m)
+
+
+W_TRUE = M.DEFAULT_PARAMETERS.copy()
+W_TRUE[20] = 0.4
+W_TRUE[0:4] = [0.5, 2.0, 4.0, 12.0]
+
+
+def test_fit_recovers_known_parameters():
+    """Line-level data from FSRS itself: fitting from defaults reaches the true weights' loss."""
+    c = simulate_cards(W_TRUE, 1500, 12, np.random.default_rng(1))
+    obj = Objective(c, c.loss_mask, "line", device=CPU)
+    l_def, l_true = obj(M.DEFAULT_PARAMETERS)[0], obj(W_TRUE)[0]
+    w_fit, info = fit(M.DEFAULT_PARAMETERS, c, c.loss_mask, arm="line", device=CPU)
     assert info["loss"] < l_def
-    assert info["loss"] <= l_true + 0.005
+    assert info["loss"] <= l_true + 1e-3
+
+
+@pytest.mark.parametrize("arm", ["pass", "accuracy"])
+def test_per_move_arms_recover_the_decay(arm):
+    """Per-move data with the new pass rule: both per-move arms find the true decay w20,
+    and their loss at the fit is no worse than at the true weights."""
+    c = simulate_cards(W_TRUE, 2000, 12, np.random.default_rng(3), per_move=True)
+    obj = Objective(c, c.loss_mask, arm, device=CPU)
+    w_fit, info = fit(M.DEFAULT_PARAMETERS, c, c.loss_mask, arm=arm, device=CPU)
+    assert info["loss"] <= obj(W_TRUE)[0] + 1e-6
+    assert w_fit[20] == pytest.approx(0.4, abs=0.08)
 
 
 def test_auc_simple():

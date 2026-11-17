@@ -4,8 +4,9 @@ Owner: docs/topics/synthetic-clients/record.md, sections 3.3 and 3.4.
 
 Recall is per move: in Repeating Mode each repertoire move's first attempt is
 correct with probability R, and a wrong move is taken back and retried (at
-most ``DEFAULT_MAX_ATTEMPTS_PER_MOVE`` attempts). A session is clean only when
-every first attempt is correct, so its chance is R ** M.
+most ``DEFAULT_MAX_ATTEMPTS_PER_MOVE`` attempts). A review passes with at most
+L(M) first-attempt mistakes, so its chance is ``p_pass(R, M)``
+(``tempo_ml.pass_chance``).
 
 Latency of one attempt:
 final_time_ms = baseline_ms + total_hesitation_ms

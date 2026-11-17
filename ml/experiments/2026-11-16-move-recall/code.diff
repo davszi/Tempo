@@ -1,0 +1,2160 @@
+diff --git a/ml/configs/fsrs-memory-holdout.json b/ml/configs/fsrs-memory-holdout.json
+index 3f5f694..f66e609 100644
+--- a/ml/configs/fsrs-memory-holdout.json
++++ b/ml/configs/fsrs-memory-holdout.json
+@@ -32,6 +32,5 @@
+     "beta": 0.2,
+     "alpha": 0.04,
+     "C": 0.05
+-  },
+-  "memory": "fsrs"
++  }
+ }
+diff --git a/ml/configs/fsrs-memory.json b/ml/configs/fsrs-memory.json
+index b615023..23a6dc9 100644
+--- a/ml/configs/fsrs-memory.json
++++ b/ml/configs/fsrs-memory.json
+@@ -32,6 +32,5 @@
+     "beta": 0.2,
+     "alpha": 0.04,
+     "C": 0.05
+-  },
+-  "memory": "fsrs"
++  }
+ }
+diff --git a/ml/configs/multiplicative-memory-holdout.json b/ml/configs/multiplicative-memory-holdout.json
+deleted file mode 100644
+index f66e609..0000000
+--- a/ml/configs/multiplicative-memory-holdout.json
++++ /dev/null
+@@ -1,36 +0,0 @@
+-{
+-  "seed": 20261112,
+-  "clients_per_archetype": 20,
+-  "horizon_days": 180,
+-  "repertoire_size": [
+-    15,
+-    40
+-  ],
+-  "families_per_client": [
+-    2,
+-    6
+-  ],
+-  "min_moves": 2,
+-  "new_lines_per_day": [
+-    1,
+-    3
+-  ],
+-  "daily_review_budget": [
+-    8,
+-    30
+-  ],
+-  "active_day_prob": [
+-    0.5,
+-    0.95
+-  ],
+-  "interval_noise_sigma": 0.35,
+-  "max_interval_days": 365.0,
+-  "trait_std": {
+-    "baseline_ms": 25.0,
+-    "mu": 0.15,
+-    "sigma": 0.05,
+-    "beta": 0.2,
+-    "alpha": 0.04,
+-    "C": 0.05
+-  }
+-}
+diff --git a/ml/configs/multiplicative-memory.json b/ml/configs/multiplicative-memory.json
+deleted file mode 100644
+index 23a6dc9..0000000
+--- a/ml/configs/multiplicative-memory.json
++++ /dev/null
+@@ -1,36 +0,0 @@
+-{
+-  "seed": 20261111,
+-  "clients_per_archetype": 100,
+-  "horizon_days": 180,
+-  "repertoire_size": [
+-    15,
+-    40
+-  ],
+-  "families_per_client": [
+-    2,
+-    6
+-  ],
+-  "min_moves": 2,
+-  "new_lines_per_day": [
+-    1,
+-    3
+-  ],
+-  "daily_review_budget": [
+-    8,
+-    30
+-  ],
+-  "active_day_prob": [
+-    0.5,
+-    0.95
+-  ],
+-  "interval_noise_sigma": 0.35,
+-  "max_interval_days": 365.0,
+-  "trait_std": {
+-    "baseline_ms": 25.0,
+-    "mu": 0.15,
+-    "sigma": 0.05,
+-    "beta": 0.2,
+-    "alpha": 0.04,
+-    "C": 0.05
+-  }
+-}
+diff --git a/ml/pyproject.toml b/ml/pyproject.toml
+index 0bed8a1..fc4ca83 100644
+--- a/ml/pyproject.toml
++++ b/ml/pyproject.toml
+@@ -10,9 +10,9 @@ requires-python = ">=3.12"
+ dependencies = ["numpy>=1.26"]
+ 
+ [project.optional-dependencies]
+-train = ["scipy>=1.11", "pandas>=2.1"]
+-# py-fsrs supplies reference-formula tests and the retained historical A1 optimizer run.
+-test = ["pytest>=8", "scipy>=1.11", "pandas>=2.1", "fsrs==6.3.2"]
++train = ["scipy>=1.11", "pandas>=2.1", "torch>=2.4"]
++# py-fsrs supplies reference-formula tests and the A1 optimizer arm; torch the trainer's exact gradients.
++test = ["pytest>=8", "scipy>=1.11", "pandas>=2.1", "torch>=2.4", "fsrs==6.3.2"]
+ 
+ [tool.setuptools.packages.find]
+ include = ["tempo_ml*"]
+diff --git a/ml/tempo_ml/evaluate/days.py b/ml/tempo_ml/evaluate/days.py
+index aa26819..4a8128e 100644
+--- a/ml/tempo_ml/evaluate/days.py
++++ b/ml/tempo_ml/evaluate/days.py
+@@ -1,34 +1,53 @@
+-"""Error in days: predicted minus true days until the chance of a clean
+-session drops to 90 % (negative = the review would come too early).
++"""Error in days: predicted minus true days until the chance of passing the
++line drops to 90 % (negative = the review would come too early).
+ 
+-Definition: docs/topics/fsrs-training/retraining-plan.md (days metric).
++Definition: docs/topics/move-recall/move-recall.md, section 3.5. A pass is a
++review with at most L(M) mistakes; with per-move recall R it has chance
++``p_pass(R, M)``, which falls to 0.9 when R falls to ``per_move_target(M)``.
+ """
+ 
+ from __future__ import annotations
+ 
++from functools import lru_cache
++
+ import numpy as np
+ 
+-TARGET_RETENTION = 0.9
++from ..pass_chance import TARGET_PASS, per_move_target
++
++
++@lru_cache(maxsize=None)
++def _target(m: int) -> float:
++    return per_move_target(m, TARGET_PASS)
++
+ 
++def per_move_targets(num_moves) -> np.ndarray:
++    """R*(M) for an array of line lengths."""
++    m = np.asarray(num_moves, dtype=int)
++    table = {int(x): _target(int(x)) for x in np.unique(m)}
++    return np.vectorize(table.get, otypes=[float])(m)
+ 
+-def true_days(stability, num_moves, C, retention: float = TARGET_RETENTION):
+-    """Days until the true chance of a clean session drops to ``retention``.
+ 
+-    The hidden memory is per move, R(t) = (1 + F t / S) ** -C with
+-    F = 0.9 ** (-1 / C) - 1, and a clean session needs all M moves, so the
+-    chance is R(t) ** M. Solving R(t) ** M = retention gives
+-    t = S / F * ((retention ** (1 / M)) ** (-1 / C) - 1). For M = 1 and
+-    retention 0.9 this is S.
++def days_to_pass_target(stability, decay, num_moves):
++    """Days after a review until the pass chance falls to 0.9.
++
++    Per-move recall follows R(t) = (1 + F t / S) ** -C with F = 0.9 ** (-1/C) - 1,
++    so it reaches R*(M) at t = S / F * (R*(M) ** (-1/C) - 1). For one move this is S.
++    Used for the hidden truth (the client's S and C) and for per-move arms
++    (fitted S and decay w20).
+     """
+-    stability, num_moves, C = (np.asarray(x, dtype=float) for x in (stability, num_moves, C))
+-    F = 0.9 ** (-1.0 / C) - 1.0
+-    r_move = retention ** (1.0 / num_moves)
+-    return stability / F * (r_move ** (-1.0 / C) - 1.0)
++    stability, decay = (np.asarray(x, dtype=float) for x in (stability, decay))
++    F = 0.9 ** (-1.0 / decay) - 1.0
++    return stability / F * (per_move_targets(num_moves) ** (-1.0 / decay) - 1.0)
++
++
++def true_days(stability, num_moves, C):
++    """True days until the hidden pass chance drops to 0.9."""
++    return days_to_pass_target(stability, C, num_moves)
+ 
+ 
+ def days_metrics(d_pred: np.ndarray, d_true: np.ndarray, after_learning: np.ndarray,
+                  horizon_days: float) -> dict:
+-    """Error in days, predicted minus true days to 90 % (negative = review too early)."""
++    """Error in days, predicted minus true days to a 90 % pass chance (negative = review too early)."""
+     e = d_pred - d_true
+ 
+     def block(sel: np.ndarray) -> dict:
+diff --git a/ml/tempo_ml/evaluate/metrics.py b/ml/tempo_ml/evaluate/metrics.py
+index 7fcc43b..8452717 100644
+--- a/ml/tempo_ml/evaluate/metrics.py
++++ b/ml/tempo_ml/evaluate/metrics.py
+@@ -1,8 +1,14 @@
+ """Scores for FSRS-6 predictions on synthetic clients.
+ 
+-Pass-chance metrics: log-loss, Brier, calibration (RMSE(bins)), AUC, and
+-RMSE and MAE against the hidden true chance ``p_clean``. ``score`` adds the
+-error in days from ``days.py``. Used by ``tempo_ml.fsrs.train``.
++Pass-chance metrics: log-loss, Brier, calibration (RMSE(bins)), AUC, and RMSE
++and MAE against the hidden true pass chance ``p_pass``. ``score`` adds the
++error in days from ``days.py``.
++
++``link`` says what the fitted R means (move-recall record, section 3.4):
++``line`` - R is the chance of passing the line, the prediction is R and the
++predicted interval is the fitted stability; ``move`` - R is the recall of one
++move, the prediction is ``p_pass(R, M)`` and the interval is when it falls to
++0.9. Move-link scores also compare R with the hidden per-move recall.
+ """
+ 
+ from __future__ import annotations
+@@ -13,10 +19,12 @@ import numpy as np
+ import pandas as pd
+ 
+ from ..fsrs.model import Cards, predict_states
+-from .days import days_metrics, true_days
++from ..pass_chance import p_pass
++from .days import days_metrics, days_to_pass_target, true_days
+ 
+ EPS = 1e-6
+-TRUTH_COLUMNS = ["agent_name", "mode", "num_moves", "p_clean", "stability_after"]
++TRUTH_COLUMNS = ["agent_name", "mode", "num_moves", "retrievability", "p_pass", "stability_after"]
++LINKS = ("line", "move")
+ 
+ 
+ def bce(p: np.ndarray, y: np.ndarray) -> np.ndarray:
+@@ -67,13 +75,15 @@ def metrics(p: np.ndarray, y: np.ndarray, truth: np.ndarray | None = None) -> di
+ 
+ 
+ class Truth:
+-    """Hidden per-session truth, aligned with ``sessions.csv`` rows. Evaluation, and B arms' fit clients only."""
++    """Hidden per-session truth, aligned with ``sessions.csv`` rows. Evaluation,
++    and the fit clients of the simulator-only reference arm."""
+ 
+     def __init__(self, data_dir: Path):
+         gt = pd.read_csv(data_dir / "ground_truth.csv", usecols=TRUTH_COLUMNS)
+         clients = pd.read_csv(data_dir / "clients.csv")
+         c_by_agent = dict(zip(clients["agent_name"], clients["C"]))
+-        self.p_clean = gt["p_clean"].to_numpy(float)
++        self.p_pass = gt["p_pass"].to_numpy(float)
++        self.r_move = gt["retrievability"].to_numpy(float)
+         self.d_true = true_days(gt["stability_after"].to_numpy(float), gt["num_moves"].to_numpy(float),
+                                 gt["agent_name"].map(c_by_agent).to_numpy(float))
+         self.learning = (gt["mode"] == "learning").to_numpy()
+@@ -83,12 +93,38 @@ class Truth:
+         return np.where(cards.row >= 0, values[np.maximum(cards.row, 0)], np.nan)
+ 
+ 
+-def score(w, cards: Cards, truth: Truth, horizon_days: float) -> dict:
++def predicted_pass(r: np.ndarray, m_grid: np.ndarray, link: str) -> np.ndarray:
++    """Predicted pass chance from the fitted R (see module docstring)."""
++    if link == "line":
++        return r
++    if link == "move":
++        if (m_grid <= 0).any():
++            raise ValueError("move link needs every card's line length M")
++        return p_pass(r, m_grid)
++    raise ValueError(f"link must be one of {LINKS}, got {link!r}")
++
++
++def predicted_days(w, s_after: np.ndarray, m: np.ndarray, link: str) -> np.ndarray:
++    """Predicted days until a 90 % pass chance after each session."""
++    if link == "line":
++        return s_after
++    return days_to_pass_target(s_after, float(w[20]), m)
++
++
++def score(w, cards: Cards, truth: Truth, horizon_days: float, link: str = "line") -> dict:
+     """All metrics of weights ``w`` on ``cards``: tested reviews, plus days over every session."""
+-    p, s_after = predict_states(w, cards.t, cards.g, cards.valid)
++    w = np.asarray(w, dtype=float)
++    r, s_after = predict_states(w, cards.t, cards.g, cards.valid)
++    mg = cards.m_grid()
+     m = cards.loss_mask
+-    out = metrics(p[m], cards.y[m], truth.p_clean[cards.row[m]])
++    p = predicted_pass(np.where(m, r, 1.0), mg, link)
++    out = metrics(p[m], cards.y[m], truth.p_pass[cards.row[m]])
++    if link == "move":
++        rows = cards.row[m]
++        out["move_recall"] = {"rmse_vs_truth": float(np.sqrt(np.mean((r[m] - truth.r_move[rows]) ** 2))),
++                              "mae_vs_truth": float(np.mean(np.abs(r[m] - truth.r_move[rows])))}
+     v = cards.valid
+     rows = cards.row[v]
+-    out["days"] = days_metrics(s_after[v], truth.d_true[rows], truth.learning[rows], horizon_days)
++    d_pred = predicted_days(w, s_after[v], mg[v], link)
++    out["days"] = days_metrics(d_pred, truth.d_true[rows], truth.learning[rows], horizon_days)
+     return out
+diff --git a/ml/tempo_ml/fsrs/model.py b/ml/tempo_ml/fsrs/model.py
+index 4530525..aa7ba92 100644
+--- a/ml/tempo_ml/fsrs/model.py
++++ b/ml/tempo_ml/fsrs/model.py
+@@ -14,20 +14,27 @@ DECAY = -w[20], FACTOR = 0.9 ** (1 / DECAY) - 1.
+ Input layout (``Cards``, ``load_cards``): a review-session CSV turned into
+ padded per-card arrays.
+ 
+-Only the review-dataset schema columns are used, so the same code works on
+-human data. A card is (agent_name, opening_name); rows must be chronological
+-per card (generator output is). Same-day reviews (t_days < 1) still update the
+-card but are excluded from the loss, as in the FSRS optimizers; so are
+-Learning Mode sessions (``new``/``learning``), which test nothing because the
+-arrow shows the move.
+-
+-Label: success = grade > 1, i.e. the whole line was played without a blunder.
++Only observable columns are used, so the same code works on human data: the
++review-dataset schema plus each line's player move count M (``repertoires.csv``;
++the app knows its lines). A card is (agent_name, opening_name); rows must be
++chronological per card (generator output is). Same-day reviews (elapsed < 1
++day) still update the card but are excluded from the loss, as in the FSRS
++optimizers; so are Learning Mode sessions (``new``/``learning``), which test
++nothing because the arrow shows the move.
++
++Clock (``clock``): ``app`` (default) uses whole elapsed days, the floor of the
++exact elapsed time, as the app's py-fsrs scheduler does; ``exact`` uses the
++exact elapsed time.
++
++Label: pass = grade > 1, i.e. at most L(M) mistakes (session-grading record).
++``acc`` holds the review's accuracy (M - k) / M.
+ """
+ 
+ from __future__ import annotations
+ 
+ from dataclasses import dataclass
+ from pathlib import Path
++from typing import Mapping
+ 
+ import numpy as np
+ import pandas as pd
+@@ -173,16 +180,31 @@ class Cards:
+     y: np.ndarray            # (n, steps) 1.0 if grade > 1
+     loss_mask: np.ndarray    # (n, steps) review counts toward loss/metrics
+     row: np.ndarray          # (n, steps) row number in the CSV, -1 if none
++    acc: np.ndarray          # (n, steps) accuracy (M - k) / M of the review
++    m: np.ndarray            # (n,) player moves M of the card's line, 0 if unknown
+ 
+     def subset(self, keep: np.ndarray) -> "Cards":
+         return Cards(*(getattr(self, f)[keep] for f in self.__dataclass_fields__))
+ 
++    def m_grid(self) -> np.ndarray:
++        """M laid out like the (n, steps) arrays."""
++        return np.broadcast_to(self.m[:, None], self.t.shape)
++
+     @property
+     def n_reviews(self) -> int:
+         return int(self.loss_mask.sum())
+ 
+ 
+-def load_cards(sessions_csv: str | Path) -> Cards:
++def line_lengths(data_dir: str | Path) -> dict[tuple[str, str], int]:
++    """(agent_name, opening_name) -> player moves M, from ``repertoires.csv``."""
++    rep = pd.read_csv(Path(data_dir) / "repertoires.csv")
++    return {(a, o): int(m) for a, o, m in zip(rep["agent_name"], rep["opening_name"], rep["num_moves"])}
++
++
++def load_cards(sessions_csv: str | Path, num_moves: Mapping[tuple[str, str], int] | None = None,
++               clock: str = "app") -> Cards:
++    if clock not in ("app", "exact"):
++        raise ValueError(f"clock must be 'app' or 'exact', got {clock!r}")
+     df = pd.read_csv(sessions_csv)
+     df["row"] = np.arange(len(df))
+     key = df["agent_name"] + "\x1f" + df["opening_name"]
+@@ -196,11 +218,17 @@ def load_cards(sessions_csv: str | Path) -> Cards:
+         return a
+ 
+     valid = grid(True, False, bool)
+-    t = grid(df["t_days"].to_numpy(float), 0.0, float)
++    elapsed = df["t_days"].to_numpy(float)
++    t = grid(np.floor(elapsed + 1e-9) if clock == "app" else elapsed, 0.0, float)
+     g = grid(df["grade"].to_numpy(int), 3, int)
+     row = grid(df["row"].to_numpy(int), -1, int)
+     tested = grid(df["review_status"].isin(TEST_STATUSES).to_numpy(), False, bool)
+     loss_mask = valid & tested & (t >= 1.0)
+     loss_mask[:, 0] = False
+-    agent = df.groupby("card")["agent_name"].first().to_numpy()
+-    return Cards(agent=agent, t=t, g=g, valid=valid, y=(g > 1).astype(float), loss_mask=loss_mask, row=row)
++    acc = grid(df["accuracy"].to_numpy(float), 1.0, float)
++    first = df.groupby("card")[["agent_name", "opening_name"]].first()
++    agent = first["agent_name"].to_numpy()
++    m = np.array([num_moves.get((a, o), 0) if num_moves else 0
++                  for a, o in zip(first["agent_name"], first["opening_name"])], dtype=int)
++    return Cards(agent=agent, t=t, g=g, valid=valid, y=(g > 1).astype(float), loss_mask=loss_mask,
++                 row=row, acc=acc, m=m)
+diff --git a/ml/tempo_ml/fsrs/train.py b/ml/tempo_ml/fsrs/train.py
+index 332ffb1..754b6ba 100644
+--- a/ml/tempo_ml/fsrs/train.py
++++ b/ml/tempo_ml/fsrs/train.py
+@@ -1,22 +1,32 @@
+ """Fit FSRS-6 on a synthetic session dataset, evaluate, and personalise.
+ 
+     python -m tempo_ml.fsrs.train --data <generated dir> --out <dir> [--seed N]
+-        [--target {pass,true}] [--no-personalise]
++        [--arm {line,pass,accuracy,true-recall}] [--device {auto,cpu,cuda}]
++        [--clock {app,exact}] [--no-personalise]
++
++Arms (move-recall record, section 3.4; training approaches record):
++
++- ``line`` (A1c): R is the chance of passing the line; log-loss of R against
++  pass/fail (grade > 1).
++- ``pass`` (A1c-pass): R is the recall of one move; log-loss of
++  ``p_pass(R, M)`` against pass/fail.
++- ``accuracy`` (A1c-acc): R is the recall of one move; binary cross-entropy of
++  R against the review's accuracy (M - k) / M, weighted by M, i.e. the binomial
++  likelihood of the mistakes.
++- ``true-recall`` (A1c-R): as ``accuracy`` with the hidden per-move recall as
++  target. Reads ``ground_truth.csv`` for the fit clients: a simulator-only
++  reference that real players cannot support.
+ 
+ Protocol:
+ 
+ 1. Split clients by archetype into fit (70 %), validation (10 %) and test (20 %).
+-2. General model: start from FSRS-6 defaults and minimise, on the fit clients,
+-   either (``--target pass``, default) the mean binary cross-entropy of
+-   predicted R against session success, or (``--target true``) the mean
+-   squared error of predicted R against the hidden true chance of a clean
+-   session ``p_clean`` (L-BFGS-B within the py-fsrs parameter bounds,
+-   finite-difference gradients). ``--target true`` reads ``ground_truth.csv``
+-   for the fit clients: it is a diagnostic that real players cannot support.
+-3. Evaluate on test clients against two baselines: FSRS-6 default parameters,
+-   and a constant predictor equal to the fit clients' success rate. Metrics:
+-   log loss, Brier score, RMSE(bins), AUC, RMSE and MAE against ``p_clean``,
+-   and the error in days (see ``tempo_ml.evaluate.days``).
++2. General model: start from the FSRS-6 defaults and minimise the arm's mean
++   loss on the fit clients with L-BFGS-B within the py-fsrs parameter bounds.
++   The FSRS-6 replay and its exact gradient are computed in torch
++   (``torch_model.py``) on the GPU when available.
++3. Evaluate on test clients against two baselines, the FSRS-6 defaults and a
++   constant equal to the fit clients' pass rate, with
++   ``tempo_ml.evaluate.metrics.score`` (numpy, independent of the torch code).
+ 4. Personalisation (skipped with ``--no-personalise``): for each client, the
+    first 60 % of its tested reviews (in time order) fine-tune the general
+    parameters with an L2 pull toward them; the last 40 % evaluate. The pull
+@@ -33,49 +43,98 @@ from pathlib import Path
+ 
+ import numpy as np
+ import pandas as pd
++import scipy
++import torch
+ from scipy.optimize import minimize
+ 
+-from ..evaluate.metrics import Truth, bce, metrics, score
+-from .model import DEFAULT_PARAMETERS, LOWER_BOUNDS, UPPER_BOUNDS, Cards, load_cards, predict
++from ..evaluate.metrics import Truth, bce, metrics, predicted_pass, score
++from ..pass_chance import binomial_terms, p_pass
++from .model import DEFAULT_PARAMETERS, LOWER_BOUNDS, UPPER_BOUNDS, Cards, line_lengths, load_cards, predict
++from .torch_model import DTYPE, default_device, replay
+ 
+ SPAN = UPPER_BOUNDS - LOWER_BOUNDS
+ LAMBDA_GRID = (0.01, 0.1, 1.0, 10.0)
++EPS = 1e-6
++ARMS = {  # arm -> (link, target)
++    "line": ("line", "pass"),
++    "pass": ("move", "pass"),
++    "accuracy": ("move", "accuracy"),
++    "true-recall": ("move", "true-recall"),
++}
+ 
+ 
+-def objective(w, cards: Cards, mask: np.ndarray, target: np.ndarray | None = None,
+-              loss: str = "bce", prior=None, lam: float = 0.0) -> float:
+-    """Mean loss of predicted R against ``target`` (default: pass/fail ``cards.y``)."""
+-    target = cards.y if target is None else target
+-    p = predict(w, cards.t, cards.g, cards.valid)
+-    if loss == "bce":
+-        value = float(bce(p[mask], target[mask]).mean())
+-    elif loss == "mse":
+-        value = float(np.mean((p[mask] - target[mask]) ** 2))
+-    else:
+-        raise ValueError(f"unknown loss {loss!r}")
+-    if prior is not None and lam > 0:
+-        value += lam * float(np.mean(((w - prior) / SPAN) ** 2))
+-    return value
+-
+-
+-def fit(w0, cards: Cards, mask: np.ndarray, target: np.ndarray | None = None, loss: str = "bce",
+-        prior=None, lam: float = 0.0, maxiter: int = 300,
+-        ftol: float | None = None, gtol: float | None = None):
+-    """L-BFGS-B within the FSRS-6 bounds. ``ftol``/``gtol`` optionally tighten
+-    scipy's stopping tolerances (defaults otherwise): an MSE loss is about 1e-7
+-    near its optimum, and with the defaults a fit can stop early."""
+-    options = {"maxiter": maxiter, "eps": 1e-6}
+-    if ftol is not None:
+-        options["ftol"] = ftol
+-    if gtol is not None:
+-        options["gtol"] = gtol
+-    res = minimize(
+-        objective, np.clip(w0, LOWER_BOUNDS, UPPER_BOUNDS), args=(cards, mask, target, loss, prior, lam),
+-        method="L-BFGS-B", bounds=list(zip(LOWER_BOUNDS, UPPER_BOUNDS)),
+-        options=options,
+-    )
++class Objective:
++    """Mean loss of an arm on the masked reviews of ``cards``, with its exact gradient.
++
++    ``target`` is required for ``true-recall`` (hidden per-move recall laid
++    out like the cards' arrays) and ignored otherwise.
++    """
++
++    def __init__(self, cards: Cards, mask: np.ndarray, arm: str, target: np.ndarray | None = None,
++                 prior=None, lam: float = 0.0, device: torch.device | None = None):
++        if arm not in ARMS:
++            raise ValueError(f"unknown arm {arm!r}")
++        self.link, kind = ARMS[arm]
++        dev = self.device = device or default_device()
++        as_t = lambda a, dt=DTYPE: torch.as_tensor(np.ascontiguousarray(a), dtype=dt, device=dev)
++        self.t, self.g = as_t(cards.t), as_t(np.where(cards.valid, cards.g, 3))
++        self.valid = as_t(cards.valid, torch.bool)
++        self.mask = as_t(mask, torch.bool)
++        mg = cards.m_grid()[mask]
++        if self.link == "move" and (mg <= 0).any():
++            raise ValueError("per-move arms need every card's line length M")
++        self.m = as_t(mg)
++        self.coef = as_t(binomial_terms(mg)) if self.link == "move" else None
++        if kind == "pass":
++            self.y, self.weight = as_t(cards.y[mask]), None
++        elif kind == "accuracy":
++            self.y, self.weight = as_t(cards.acc[mask]), self.m
++        else:
++            if target is None:
++                raise ValueError("true-recall needs the hidden per-move recall")
++            self.y, self.weight = as_t(target[mask]), self.m
++        self.prior = None if prior is None else as_t(prior)
++        self.span = as_t(SPAN)
++        self.lam = lam
++        self.calls = 0
++
++    def loss(self, w: torch.Tensor) -> torch.Tensor:
++        r, _ = replay(w, self.t, self.g, self.valid)
++        r = r[self.mask]
++        p = p_pass(r, self.m, self.coef) if (self.link == "move" and self.weight is None) else r
++        p = p.clamp(EPS, 1 - EPS)
++        per = -(self.y * torch.log(p) + (1 - self.y) * torch.log(1 - p))
++        value = per.mean() if self.weight is None else (per * self.weight).sum() / self.weight.sum()
++        if self.prior is not None and self.lam > 0:
++            value = value + self.lam * (((w - self.prior) / self.span) ** 2).mean()
++        return value
++
++    def __call__(self, w_np: np.ndarray):
++        self.calls += 1
++        w = torch.tensor(w_np, dtype=DTYPE, device=self.device, requires_grad=True)
++        value = self.loss(w)
++        value.backward()
++        return float(value.detach().cpu()), w.grad.detach().cpu().numpy().astype(float)
++
++
++def fit(w0, cards: Cards, mask: np.ndarray, arm: str = "line", target: np.ndarray | None = None,
++        prior=None, lam: float = 0.0, maxiter: int = 2000, ftol: float = 1e-12, gtol: float = 1e-7,
++        device: torch.device | None = None):
++    """L-BFGS-B within the FSRS-6 bounds, exact gradients from torch.
++
++    Stops when the relative loss change is below ``ftol``, the projected
++    gradient below ``gtol``, or after ``maxiter`` iterations.
++    """
++    obj = Objective(cards, mask, arm, target, prior, lam, device)
++    res = minimize(obj, np.clip(np.asarray(w0, float), LOWER_BOUNDS, UPPER_BOUNDS), jac=True,
++                   method="L-BFGS-B", bounds=list(zip(LOWER_BOUNDS, UPPER_BOUNDS)),
++                   options={"maxiter": maxiter, "ftol": ftol, "gtol": gtol})
+     return res.x, {"loss": float(res.fun), "iterations": int(res.nit), "evaluations": int(res.nfev),
+-                   "converged": bool(res.success), "message": str(res.message)}
++                   "converged": bool(res.success), "message": str(res.message),
++                   "max_abs_projected_gradient": float(np.max(np.abs(np.where(
++                       (res.x <= LOWER_BOUNDS) & (res.jac > 0) | (res.x >= UPPER_BOUNDS) & (res.jac < 0),
++                       0.0, res.jac)))),
++                   "device": str(obj.device)}
+ 
+ 
+ def split_clients(clients: pd.DataFrame, seed: int) -> dict[str, set[str]]:
+@@ -106,10 +165,14 @@ def time_split(cards: Cards, frac: float = 0.6):
+     return early, late
+ 
+ 
+-def personalise(cards: Cards, w_general, lam: float):
+-    """Fine-tune per agent on its early reviews; return predictions for every card."""
++def personalise(cards: Cards, w_general, lam: float, arm: str = "line", target: np.ndarray | None = None,
++                device: torch.device | None = None):
++    """Fine-tune per agent on its early reviews; return pass predictions for every card."""
++    link = ARMS[arm][0]
++    mg = cards.m_grid()
+     early, late = time_split(cards)
+-    p_gen = predict(w_general, cards.t, cards.g, cards.valid)
++    pred = lambda w, c, m: predicted_pass(np.nan_to_num(predict(w, c.t, c.g, c.valid), nan=1.0), m, link)
++    p_gen = pred(w_general, cards, mg)
+     p_per = p_gen.copy()
+     per_agent = []
+     for a in np.unique(cards.agent):
+@@ -118,8 +181,9 @@ def personalise(cards: Cards, w_general, lam: float):
+         e, l = early[sel], late[sel]
+         if e.sum() < 10 or l.sum() < 5:
+             continue
+-        w_a, info = fit(w_general, sub, e, prior=w_general, lam=lam, maxiter=100)
+-        p_a = predict(w_a, sub.t, sub.g, sub.valid)
++        w_a, info = fit(w_general, sub, e, arm=arm, target=None if target is None else target[sel],
++                        prior=w_general, lam=lam, maxiter=100, device=device)
++        p_a = pred(w_a, sub, mg[sel])
+         p_per[sel] = p_a
+         per_agent.append({
+             "agent_name": a, "early_reviews": int(e.sum()), "late_reviews": int(l.sum()),
+@@ -135,15 +199,20 @@ def main(argv: list[str] | None = None) -> None:
+     ap.add_argument("--data", type=Path, required=True, help="directory written by the generator")
+     ap.add_argument("--out", type=Path, required=True)
+     ap.add_argument("--seed", type=int, default=7)
+-    ap.add_argument("--target", choices=("pass", "true"), default="pass",
+-                    help="pass: log-loss on pass/fail; true: MSE on the hidden p_clean (diagnostic)")
++    ap.add_argument("--arm", choices=sorted(ARMS), default="line",
++                    help="line: R = line pass chance; pass: p_pass(R, M) on pass/fail; "
++                         "accuracy: R on accuracy; true-recall: R on the hidden per-move recall (diagnostic)")
++    ap.add_argument("--clock", choices=("app", "exact"), default="app")
++    ap.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+     ap.add_argument("--no-personalise", action="store_true", help="skip the per-client fine-tuning step")
+     a = ap.parse_args(argv)
+     a.out.mkdir(parents=True, exist_ok=True)
++    device = default_device() if a.device == "auto" else torch.device(a.device)
++    link = ARMS[a.arm][0]
+     started = time.time()
+     log = lambda msg: print(f"[{time.time() - started:7.1f}s] {msg}", flush=True)
+ 
+-    cards = load_cards(a.data / "sessions.csv")
++    cards = load_cards(a.data / "sessions.csv", line_lengths(a.data), clock=a.clock)
+     truth = Truth(a.data)
+     gen_manifest = json.loads((a.data / "manifest.json").read_text())
+     horizon = float(gen_manifest["config"]["horizon_days"])
+@@ -151,20 +220,18 @@ def main(argv: list[str] | None = None) -> None:
+     archetype = dict(zip(clients["agent_name"], clients["archetype"]))
+     parts = split_clients(clients, a.seed)
+     in_part = {k: np.isin(cards.agent, sorted(v)) for k, v in parts.items()}
+-    log(f"{len(cards.agent)} cards, {cards.n_reviews} tested reviews; "
++    log(f"{len(cards.agent)} cards, {cards.n_reviews} tested reviews; device {device}; "
+         + ", ".join(f"{k}: {len(v)} clients / {int(cards.loss_mask[in_part[k]].sum())} reviews" for k, v in parts.items()))
+ 
+     fit_cards = cards.subset(in_part["fit"])
+     test_cards = cards.subset(in_part["test"])
+     val_cards = cards.subset(in_part["validation"])
++    target_of = (lambda c: truth.grid(c, truth.r_move)) if a.arm == "true-recall" else (lambda c: None)
+ 
+     # ---- general model
+-    if a.target == "pass":
+-        target, loss = None, "bce"
+-    else:  # hidden truth, fit clients only (fit_cards holds no other client)
+-        target, loss = truth.grid(fit_cards, truth.p_clean), "mse"
+-    log(f"fitting general FSRS-6 parameters on fit clients (target={a.target}, loss={loss}) ...")
+-    w_gen, info = fit(DEFAULT_PARAMETERS, fit_cards, fit_cards.loss_mask, target=target, loss=loss)
++    log(f"fitting general FSRS-6 parameters on fit clients (arm={a.arm}, link={link}, clock={a.clock}) ...")
++    w_gen, info = fit(DEFAULT_PARAMETERS, fit_cards, fit_cards.loss_mask, arm=a.arm,
++                      target=target_of(fit_cards), device=device)
+     log(f"done: {info}")
+ 
+     # ---- evaluation on test clients
+@@ -172,15 +239,16 @@ def main(argv: list[str] | None = None) -> None:
+     y = test_cards.y[m]
+     base_rate = float(fit_cards.y[fit_cards.loss_mask].mean())
+     results = {
+-        "target": a.target,
+-        "loss": loss,
++        "arm": a.arm,
++        "link": link,
++        "clock": a.clock,
+         "test": {
+-            "constant_base_rate": metrics(np.full(len(y), base_rate), y, truth.p_clean[test_cards.row[m]]),
+-            "fsrs6_default": score(DEFAULT_PARAMETERS, test_cards, truth, horizon),
+-            "fsrs6_trained": score(w_gen, test_cards, truth, horizon),
++            "constant_base_rate": metrics(np.full(len(y), base_rate), y, truth.p_pass[test_cards.row[m]]),
++            "fsrs6_default": score(DEFAULT_PARAMETERS, test_cards, truth, horizon, link),
++            "fsrs6_trained": score(w_gen, test_cards, truth, horizon, link),
+         },
+         "test_by_archetype": {},
+-        "fit": {"fsrs6_trained": score(w_gen, fit_cards, truth, horizon)},
++        "fit": {"fsrs6_trained": score(w_gen, fit_cards, truth, horizon, link)},
+         "optimizer": info,
+         "base_rate": base_rate,
+     }
+@@ -188,8 +256,8 @@ def main(argv: list[str] | None = None) -> None:
+     for arch in sorted(set(arch_card)):
+         sub = test_cards.subset(arch_card == arch)
+         results["test_by_archetype"][arch] = {
+-            "fsrs6_default": score(DEFAULT_PARAMETERS, sub, truth, horizon),
+-            "fsrs6_trained": score(w_gen, sub, truth, horizon),
++            "fsrs6_default": score(DEFAULT_PARAMETERS, sub, truth, horizon, link),
++            "fsrs6_trained": score(w_gen, sub, truth, horizon, link),
+         }
+     log("test: " + json.dumps({k: round(v["log_loss"], 4) for k, v in results["test"].items()}))
+ 
+@@ -199,21 +267,23 @@ def main(argv: list[str] | None = None) -> None:
+     else:
+         lam_scores = {}
+         for lam in LAMBDA_GRID:
+-            pg, pp, late, _ = personalise(val_cards, w_gen, lam)
++            pg, pp, late, _ = personalise(val_cards, w_gen, lam, a.arm, target_of(val_cards), device)
+             lam_scores[lam] = {"general": float(bce(pg[late], val_cards.y[late]).mean()),
+                                "personal": float(bce(pp[late], val_cards.y[late]).mean())}
+             log(f"validation lambda={lam}: {lam_scores[lam]}")
+         best_lam = min(LAMBDA_GRID, key=lambda l: lam_scores[l]["personal"])
+         use_personal = lam_scores[best_lam]["personal"] < lam_scores[best_lam]["general"]
+ 
+-        pg, pp, late, per_agent = personalise(test_cards, w_gen, best_lam)
+-        yl, tl = test_cards.y[late], truth.p_clean[test_cards.row[late]]
++        pg, pp, late, per_agent = personalise(test_cards, w_gen, best_lam, a.arm, target_of(test_cards), device)
++        yl, tl = test_cards.y[late], truth.p_pass[test_cards.row[late]]
++        p_def = predicted_pass(np.nan_to_num(predict(DEFAULT_PARAMETERS, test_cards.t, test_cards.g,
++                                                     test_cards.valid), nan=1.0), test_cards.m_grid(), link)
+         results["personalisation"] = {
+             "lambda_grid_validation": {str(k): v for k, v in lam_scores.items()},
+             "chosen_lambda": best_lam,
+             "validation_says_personalise": use_personal,
+             "test_late_reviews": {
+-                "fsrs6_default": metrics(predict(DEFAULT_PARAMETERS, test_cards.t, test_cards.g, test_cards.valid)[late], yl, tl),
++                "fsrs6_default": metrics(p_def[late], yl, tl),
+                 "fsrs6_general": metrics(pg[late], yl, tl),
+                 "fsrs6_personalised": metrics(pp[late], yl, tl),
+             },
+@@ -225,15 +295,18 @@ def main(argv: list[str] | None = None) -> None:
+         log("personalisation (test, late reviews): " + json.dumps(
+             {k: round(v["log_loss"], 4) for k, v in results["personalisation"]["test_late_reviews"].items()}))
+ 
+-    params = {"model": "FSRS-6", "target": a.target, "loss": loss,
+-              "parameters": [round(float(x), 6) for x in w_gen],
++    params = {"model": "FSRS-6", "arm": a.arm, "recall_means": "one move" if link == "move" else "the line",
++              "clock": a.clock, "parameters": [round(float(x), 6) for x in w_gen],
+               "default_parameters": DEFAULT_PARAMETERS.tolist(),
+               "trained_on": {"data": str(a.data), "clients": len(parts["fit"]),
+                              "reviews": int(fit_cards.loss_mask.sum()), "base_rate": base_rate}}
+     (a.out / "fsrs6_general_parameters.json").write_text(json.dumps(params, indent=2) + "\n")
+     results["split"] = {k: sorted(v) for k, v in parts.items()}
+     results["environment"] = {"python": platform.python_version(), "numpy": np.__version__,
+-                              "pandas": pd.__version__, "platform": platform.platform()}
++                              "pandas": pd.__version__, "scipy": scipy.__version__, "torch": torch.__version__,
++                              "device": str(device),
++                              "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None,
++                              "platform": platform.platform()}
+     results["seconds"] = round(time.time() - started, 1)
+     (a.out / "metrics.json").write_text(json.dumps(results, indent=2) + "\n")
+     log(f"wrote {a.out}")
+diff --git a/ml/tempo_ml/simulator/__init__.py b/ml/tempo_ml/simulator/__init__.py
+index 41dd6db..1fe8fb4 100644
+--- a/ml/tempo_ml/simulator/__init__.py
++++ b/ml/tempo_ml/simulator/__init__.py
+@@ -33,25 +33,23 @@ from .clients import (
+ )
+ from .grading import (
+     AGAIN,
++    CAP_MS,
+     CSV_COLUMNS,
+     EASY,
+-    EASY_MAX_DELAY_MS,
+     GOOD,
+-    GOOD_MAX_DELAY_MS,
+     HARD,
+     REVIEW_STATUSES,
++    T_EASY_MS,
++    T_SLOW_MS,
++    T_VERY_SLOW_MS,
+     SessionRecord,
+-    calculate_session_grade,
++    grade_session,
++    mean_timed_ms,
++    time_band,
+     write_sessions_csv,
+ )
+-from .memory.multiplicative import (
+-    BLUNDER_REPS_PENALTY,
+-    LineMemory,
+-    MultiplicativeStability,
+-    StabilityModel,
+-    next_reps,
+-    retrievability,
+-)
++from .memory.fsrs import FSRSMemory
++from .memory.state import BLUNDER_REPS_PENALTY, LineMemory, next_reps, retrievability
+ from .recall import (
+     DEFAULT_MAX_ATTEMPTS_PER_MOVE,
+     MoveEvent,
+@@ -62,11 +60,11 @@ from .recall import (
+ )
+ 
+ __all__ = [
+-    "AGAIN", "ARCHETYPES", "BLUNDER_REPS_PENALTY", "CSV_COLUMNS", "ClientTraits",
+-    "DEFAULT_MAX_ATTEMPTS_PER_MOVE", "EASY", "EASY_MAX_DELAY_MS", "GOOD", "GOOD_MAX_DELAY_MS",
+-    "HARD", "Line", "LineMemory", "LineSpec", "MoveEvent", "MultiplicativeStability",
+-    "REVIEW_STATUSES", "SessionOutcome", "SessionRecord", "StabilityModel", "SyntheticClient",
+-    "TraitDistribution", "build_population", "calculate_session_grade", "clamp_traits",
+-    "cognitive_strain", "next_reps", "play_move", "practice_multiplier", "retrievability",
+-    "sample_move_time_ms", "with_overrides", "write_sessions_csv",
++    "AGAIN", "ARCHETYPES", "BLUNDER_REPS_PENALTY", "CAP_MS", "CSV_COLUMNS", "ClientTraits",
++    "DEFAULT_MAX_ATTEMPTS_PER_MOVE", "EASY", "FSRSMemory", "GOOD", "HARD", "Line", "LineMemory",
++    "LineSpec", "MoveEvent", "REVIEW_STATUSES", "SessionOutcome", "SessionRecord",
++    "SyntheticClient", "T_EASY_MS", "T_SLOW_MS", "T_VERY_SLOW_MS", "TraitDistribution",
++    "build_population", "clamp_traits", "cognitive_strain", "grade_session", "mean_timed_ms",
++    "next_reps", "play_move", "practice_multiplier", "retrievability", "sample_move_time_ms",
++    "time_band", "with_overrides", "write_sessions_csv",
+ ]
+diff --git a/ml/tempo_ml/simulator/clients.py b/ml/tempo_ml/simulator/clients.py
+index 28c1ddf..1735adf 100644
+--- a/ml/tempo_ml/simulator/clients.py
++++ b/ml/tempo_ml/simulator/clients.py
+@@ -24,8 +24,9 @@ from typing import Mapping, Protocol, Sequence
+ 
+ import numpy as np
+ 
+-from .grading import SessionRecord, calculate_session_grade
+-from .memory.multiplicative import LineMemory, MultiplicativeStability, StabilityModel, next_reps, retrievability
++from .grading import AGAIN, SessionRecord, grade_session
++from .memory.fsrs import FSRSMemory
++from .memory.state import LineMemory, next_reps, retrievability
+ from .recall import DEFAULT_MAX_ATTEMPTS_PER_MOVE, MoveEvent, play_move, sample_move_time_ms
+ 
+ # Trait bounds from record section 3.1.
+@@ -196,7 +197,8 @@ class SyntheticClient:
+         name: Dataset ``agent_name``, e.g. ``synth_blitzer_01``.
+         traits: Cognitive trait vector theta.
+         seed: Seed for this client's private random stream.
+-        stability_model: Ground-truth stability dynamics.
++        memory_model: Hidden FSRS-6 memory; defaults to the FSRS-6 default
++            weights with the client's decay C.
+         max_attempts_per_move: Cap on retries after a retracted wrong move; once
+             reached, the client is assumed to find the move on that attempt.
+     """
+@@ -204,7 +206,7 @@ class SyntheticClient:
+     name: str
+     traits: ClientTraits
+     seed: int | np.random.SeedSequence | None = None
+-    stability_model: StabilityModel = field(default_factory=MultiplicativeStability)
++    memory_model: FSRSMemory | None = None
+     max_attempts_per_move: int = DEFAULT_MAX_ATTEMPTS_PER_MOVE
+     archetype: str | None = None
+     _memory: dict[str, LineMemory] = field(default_factory=dict, init=False, repr=False)
+@@ -214,6 +216,8 @@ class SyntheticClient:
+         if self.max_attempts_per_move < 1:
+             raise ValueError("max_attempts_per_move must be >= 1")
+         self._rng = np.random.default_rng(self.seed)
++        if self.memory_model is None:
++            self.memory_model = FSRSMemory.default(self.traits.C)
+ 
+     # ------------------------------------------------------------------ state
+ 
+@@ -256,32 +260,23 @@ class SyntheticClient:
+         )
+ 
+         s_before = mem.stability
+-        if getattr(self.stability_model, "graded", False):
+-            # Graded memory (memory/fsrs.py): the update needs this session's grade,
+-            # computed as in _finish (no random draws, so the streams are unchanged).
+-            grade = calculate_session_grade(blunder_count=0, total_time_ms=sum(m.time_ms for m in moves),
+-                                            num_moves=line.num_moves, baseline_ms=self.traits.baseline_ms)
+-            if s_before is None:
+-                s_after, d_after = self.stability_model.start(grade)
+-            else:
+-                s_after, d_after = self.stability_model.update(s_before, mem.difficulty, t_days, R, grade)
+-            outcome = self._finish(line, mem, day, status, "learning", t_days, R, moves, s_before, s_after)
+-            mem.difficulty = d_after
+-            return outcome
+-        s_after = (
+-            self.stability_model.initial()
+-            if s_before is None
+-            else self.stability_model.after_success(s_before, R)
+-        )
+-        return self._finish(line, mem, day, status, "learning", t_days, R, moves, s_before, s_after)
++        grade = grade_session([True] * line.num_moves, [m.attempt_times_ms[0] for m in moves])
++        if s_before is None:
++            s_after, d_after = self.memory_model.start(grade)
++        else:
++            s_after, d_after = self.memory_model.update(s_before, mem.difficulty, t_days, R, grade)
++        return self._finish(line, mem, day, status, "learning", t_days, R, moves, grade,
++                            s_before, s_after, d_after)
+ 
+     def review(self, line: LineSpec, day: float) -> SessionOutcome:
+         """Run a Repeating Mode session (no hints; wrong moves are retracted).
+ 
+         Each repertoire move's first attempt is correct with probability R.
+         A wrong move is taken back and retried; every attempt's latency counts
+-        toward ``total_time_ms``. Status is ``relearning`` if the previous
+-        Repeating Mode session on this line had a blunder, else ``review``.
++        toward ``total_time_ms``. The grade follows the decided rule
++        (``grading.grade_session``); only Again is a lapse. Status is
++        ``relearning`` if the previous Repeating Mode session on this line was
++        graded Again, else ``review``.
+         """
+         mem = self.memory(line)
+         if not mem.seen:
+@@ -293,26 +288,13 @@ class SyntheticClient:
+         R = retrievability(t_days, mem.stability, self.traits.C)
+ 
+         moves = tuple(self._play_move(i, R, mem.reps) for i in range(line.num_moves))
+-        blundered = any(not m.first_attempt_correct for m in moves)
+-
++        grade = grade_session([m.first_attempt_correct for m in moves],
++                              [m.attempt_times_ms[0] for m in moves])
+         s_before = mem.stability
+-        if getattr(self.stability_model, "graded", False):
+-            grade = calculate_session_grade(
+-                blunder_count=sum(1 for m in moves if not m.first_attempt_correct),
+-                total_time_ms=sum(m.time_ms for m in moves),
+-                num_moves=line.num_moves, baseline_ms=self.traits.baseline_ms)
+-            s_after, d_after = self.stability_model.update(s_before, mem.difficulty, t_days, R, grade)
+-            outcome = self._finish(line, mem, day, status, "repeating", t_days, R, moves, s_before, s_after)
+-            mem.difficulty = d_after
+-            mem.last_review_lapsed = blundered
+-            return outcome
+-        s_after = (
+-            self.stability_model.after_lapse(s_before, R)
+-            if blundered
+-            else self.stability_model.after_success(s_before, R)
+-        )
+-        outcome = self._finish(line, mem, day, status, "repeating", t_days, R, moves, s_before, s_after)
+-        mem.last_review_lapsed = blundered
++        s_after, d_after = self.memory_model.update(s_before, mem.difficulty, t_days, R, grade)
++        outcome = self._finish(line, mem, day, status, "repeating", t_days, R, moves, grade,
++                               s_before, s_after, d_after)
++        mem.last_review_lapsed = grade == AGAIN
+         return outcome
+ 
+     # --------------------------------------------------------------- internal
+@@ -330,17 +312,13 @@ class SyntheticClient:
+         t_days: float,
+         R: float,
+         moves: tuple[MoveEvent, ...],
++        grade: int,
+         s_before: float | None,
+         s_after: float,
++        d_after: float,
+     ) -> SessionOutcome:
+         blunders = sum(1 for m in moves if not m.first_attempt_correct)
+         total_ms = sum(m.time_ms for m in moves)
+-        grade = calculate_session_grade(
+-            blunder_count=blunders,
+-            total_time_ms=total_ms,
+-            num_moves=line.num_moves,
+-            baseline_ms=self.traits.baseline_ms,
+-        )
+         record = SessionRecord(
+             agent_name=self.name,
+             opening_name=line.opening_name,
+@@ -352,8 +330,9 @@ class SyntheticClient:
+         )
+ 
+         reps_before = mem.reps
+-        mem.reps = next_reps(mem.reps, blundered=blunders > 0)
++        mem.reps = next_reps(mem.reps, lapsed=grade == AGAIN)
+         mem.stability = s_after
++        mem.difficulty = d_after
+         mem.last_session_day = day
+         mem.sessions += 1
+ 
+@@ -375,7 +354,7 @@ def build_population(
+     counts: Mapping[str, int],
+     seed: int,
+     distributions: Mapping[str, TraitDistribution] | None = None,
+-    stability_model: StabilityModel | None = None,
++    memory_models: Mapping[str, FSRSMemory] | None = None,
+ ) -> list[SyntheticClient]:
+     """Create named clients per archetype, e.g. ``{"blitzer": 3, "diligent": 2}``.
+ 
+@@ -384,6 +363,9 @@ def build_population(
+     Pass a ``TraitDistribution`` per archetype (e.g. from Stage 2 calibration)
+     to give each client its own sampled trait vector.
+ 
++    ``memory_models`` maps client names to their hidden FSRS-6 memory; a
++    client without one gets the FSRS-6 defaults with its own decay C.
++
+     Names follow the dataset convention ``synth_<archetype>_<NN>``. All
+     randomness derives from ``seed``, so a population is reproducible.
+     """
+@@ -402,14 +384,14 @@ def build_population(
+             raise KeyError(f"unknown archetype {archetype!r}; pass a TraitDistribution for it")
+         for i in range(1, n + 1):
+             traits = dist.sample(trait_rng) if dist is not None else ARCHETYPES[archetype]
+-            kwargs = {} if stability_model is None else {"stability_model": stability_model}
++            name = f"synth_{archetype}_{i:02d}"
+             clients.append(
+                 SyntheticClient(
+-                    name=f"synth_{archetype}_{i:02d}",
++                    name=name,
+                     traits=traits,
+                     seed=child_seeds[k],
+                     archetype=archetype,
+-                    **kwargs,
++                    memory_model=(memory_models or {}).get(name),
+                 )
+             )
+             k += 1
+diff --git a/ml/tempo_ml/simulator/generate.py b/ml/tempo_ml/simulator/generate.py
+index 2f0aac2..8b65a33 100644
+--- a/ml/tempo_ml/simulator/generate.py
++++ b/ml/tempo_ml/simulator/generate.py
+@@ -16,9 +16,10 @@ Outputs in ``<dir>``:
+ - ``sessions.csv``: the review-dataset schema, chronological per client. Within
+   one client every opening name is unique, so (agent_name, opening_name) is a
+   line's identity.
+-- ``ground_truth.csv``: hidden per-session state (true R, S, reps, p_clean).
+-  For evaluation only; never a model input.
++- ``ground_truth.csv``: hidden per-session state (true per-move R, S, reps and
++  the true pass chance ``p_pass``). For evaluation only; never a model input.
+ - ``clients.csv``, ``repertoires.csv``: who the clients are and what they learned.
++- ``memory_weights.csv``: each client's hidden FSRS-6 weights (evaluation only).
+ - ``manifest.json``: config, row counts, SHA-256 of every output and input.
+ """
+ 
+@@ -37,13 +38,14 @@ from pathlib import Path
+ import numpy as np
+ 
+ from ..catalog import DEFAULT_CATALOG_DB, OpeningLine, load_opening_lines
++from ..pass_chance import p_pass
+ from .grading import CSV_COLUMNS, SessionRecord
+ from .practice import GenerationConfig, build_plans, simulate_client
+ 
+ GROUND_TRUTH_COLUMNS = (
+     "agent_name", "archetype", "side", "line_id", "opening_name", "num_moves",
+     "day", "mode", "review_status", "t_days", "grade", "accuracy", "blunders",
+-    "retrievability", "p_clean", "stability_before", "stability_after",
++    "retrievability", "p_pass", "stability_before", "stability_after",
+     "reps_before", "reps_after",
+ )
+ 
+@@ -107,7 +109,7 @@ def generate(out_dir: Path, cfg: GenerationConfig, catalog_db: Path = DEFAULT_CA
+                     "review_status": r.review_status, "t_days": r.t_days, "grade": r.grade,
+                     "accuracy": r.accuracy, "blunders": out.blunder_count,
+                     "retrievability": round(out.retrievability, 6),
+-                    "p_clean": round(out.retrievability ** m, 6) if out.mode == "repeating" else 1.0,
++                    "p_pass": round(float(p_pass(out.retrievability, m)), 6) if out.mode == "repeating" else 1.0,
+                     "stability_before": "" if out.stability_before is None else round(out.stability_before, 6),
+                     "stability_after": round(out.stability_after, 6),
+                     "reps_before": out.reps_before, "reps_after": out.reps_after,
+@@ -129,12 +131,11 @@ def generate(out_dir: Path, cfg: GenerationConfig, catalog_db: Path = DEFAULT_CA
+                         "repertoire_size": len(p.repertoire), "p_active": round(p.p_active, 4),
+                         "review_budget": p.review_budget})
+ 
+-    if cfg.memory == "fsrs":  # each client's hidden FSRS-6 weights (truth, evaluation only)
+-        with (out_dir / "memory_weights.csv").open("w", newline="", encoding="utf-8") as f:
+-            w = csv.writer(f)
+-            w.writerow(["agent_name", *[f"w{i}" for i in range(21)]])
+-            for p in plans:
+-                w.writerow([p.client.name, *[round(x, 6) for x in p.client.stability_model.weights]])
++    with (out_dir / "memory_weights.csv").open("w", newline="", encoding="utf-8") as f:
++        w = csv.writer(f)
++        w.writerow(["agent_name", *[f"w{i}" for i in range(21)]])
++        for p in plans:
++            w.writerow([p.client.name, *[round(x, 6) for x in p.client.memory_model.weights]])
+ 
+     with (out_dir / "repertoires.csv").open("w", newline="", encoding="utf-8") as f:
+         w = csv.writer(f)
+@@ -146,9 +147,8 @@ def generate(out_dir: Path, cfg: GenerationConfig, catalog_db: Path = DEFAULT_CA
+     manifest = {
+         "generator": "tempo_ml.simulator.generate",
+         "config": asdict(cfg),
+-        "stability_model": (asdict(plans[0].client.stability_model) if cfg.memory != "fsrs" else
+-                            {"model": "fsrs", "min_days": plans[0].client.stability_model.min_days,
+-                             "weight_noise": cfg.fsrs_weight_noise, "weights": "memory_weights.csv"}),
++        "memory_model": {"model": "fsrs", "min_days": plans[0].client.memory_model.min_days,
++                         "weight_noise": cfg.fsrs_weight_noise, "weights": "memory_weights.csv"},
+         "max_attempts_per_move": plans[0].client.max_attempts_per_move,
+         "counts": {**counts, "clients": len(plans),
+                    "review_status": dict(sorted(status_counts.items())),
+@@ -178,7 +178,7 @@ def load_config(path: Path) -> dict:
+ def main(argv: list[str] | None = None) -> None:
+     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+     ap.add_argument("--out", type=Path, required=True)
+-    ap.add_argument("--config", type=Path, help="JSON file of GenerationConfig fields, e.g. configs/multiplicative-memory.json")
++    ap.add_argument("--config", type=Path, help="JSON file of GenerationConfig fields, e.g. configs/fsrs-memory.json")
+     ap.add_argument("--seed", type=int)
+     ap.add_argument("--clients-per-archetype", type=int)
+     ap.add_argument("--horizon-days", type=int)
+diff --git a/ml/tempo_ml/simulator/grading.py b/ml/tempo_ml/simulator/grading.py
+index a26c909..b181cb0 100644
+--- a/ml/tempo_ml/simulator/grading.py
++++ b/ml/tempo_ml/simulator/grading.py
+@@ -1,9 +1,13 @@
+ """Session grade (Again / Hard / Good / Easy) and the session record it is
+-written in (review-dataset record, sections 2 and 3).
++written in.
+ 
+-Maps one session's blunder count and latency onto the FSRS 4-point scale.
+-Latency is normalised by the number of repertoire moves ``M`` so lines of
+-different depth are graded on the same footing.
++Grading rule: docs/topics/session-grading/session-grading.md, section 3
++(decided 2026-11-16). Record schema: review-dataset record, section 2.
++
++A mistake is a player move whose first attempt was wrong; ``k`` counts them.
++The mistake limit ``L(M)`` depends on the line length. Time is the mean of the
++first-attempt times of the *timed moves* (right on the first attempt, not the
++line's first move), each capped at ``CAP_MS``; no baseline is subtracted.
+ """
+ 
+ from __future__ import annotations
+@@ -11,51 +15,77 @@ from __future__ import annotations
+ import csv
+ from dataclasses import dataclass
+ from pathlib import Path
+-from typing import Iterable
++from typing import Iterable, Sequence
++
++from ..pass_chance import mistake_limit
+ 
+ AGAIN = 1
+ HARD = 2
+ GOOD = 3
+ EASY = 4
+ 
+-# Thresholds on the average cognitive delay per move, in milliseconds
+-# (review-dataset record, section 3.2).
+-EASY_MAX_DELAY_MS = 500.0
+-GOOD_MAX_DELAY_MS = 1800.0
++# Time constants, milliseconds (session-grading record, section 3.4).
++T_EASY_MS = 1500.0
++T_SLOW_MS = 3500.0
++T_VERY_SLOW_MS = 8000.0
++CAP_MS = 20000.0
+ 
++FAST, NORMAL, SLOW, VERY_SLOW = "fast", "normal", "slow", "very_slow"
+ 
+-def calculate_session_grade(
+-    blunder_count: int,
+-    total_time_ms: float,
+-    num_moves: int,
+-    baseline_ms: float,
+-) -> int:
+-    """Return the FSRS grade (1-4) for one session.
+ 
+-    Args:
+-        blunder_count: Number of moves whose first attempt was wrong.
+-        total_time_ms: Wall-clock time summed over all repertoire moves.
+-        num_moves: Number of repertoire moves ``M`` in the line (> 0).
+-        baseline_ms: The player's physical motor/board-scan latency floor.
+-
+-    Any blunder gives Again. Otherwise the average cognitive delay
+-    ``total_time_ms / M - baseline_ms`` decides Easy (< 500 ms),
+-    Good (500-1800 ms) or Hard (> 1800 ms).
++def mean_timed_ms(first_correct: Sequence[bool], first_times_ms: Sequence[float]) -> float | None:
++    """Mean capped first-attempt time of the timed moves, or None if none is timed."""
++    timed = [min(float(t), CAP_MS) for i, (ok, t) in enumerate(zip(first_correct, first_times_ms))
++             if ok and i > 0]
++    return sum(timed) / len(timed) if timed else None
++
++
++def time_band(t_bar_ms: float | None) -> str:
++    """Fast / Normal / Slow / Very slow from the mean timed move time.
++
++    A review without timed moves (only a one-move line can have none when it
++    has no mistakes) counts as Normal; the record leaves this case open.
+     """
+-    if num_moves <= 0:
+-        raise ValueError(f"num_moves must be positive, got {num_moves}")
+-    if blunder_count < 0:
+-        raise ValueError(f"blunder_count must be >= 0, got {blunder_count}")
++    if t_bar_ms is None:
++        return NORMAL
++    if t_bar_ms < T_EASY_MS:
++        return FAST
++    if t_bar_ms <= T_SLOW_MS:
++        return NORMAL
++    if t_bar_ms <= T_VERY_SLOW_MS:
++        return SLOW
++    return VERY_SLOW
+ 
+-    if blunder_count > 0:
+-        return AGAIN
+ 
+-    cognitive_delay = total_time_ms / num_moves - baseline_ms
+-    if cognitive_delay < EASY_MAX_DELAY_MS:
+-        return EASY
+-    if cognitive_delay <= GOOD_MAX_DELAY_MS:
+-        return GOOD
+-    return HARD
++def grade_session(first_correct: Sequence[bool], first_times_ms: Sequence[float]) -> int:
++    """Return the FSRS grade (1-4) of one review.
++
++    Args:
++        first_correct: For each player move in order, whether its first attempt was right.
++        first_times_ms: For each player move, the time of its first attempt (ms).
++
++    Returns 1 Again, 2 Hard, 3 Good or 4 Easy (section 3.5). Optimizes nothing
++    and has no per-player parameters.
++    """
++    m = len(first_correct)
++    if m == 0:
++        raise ValueError("a review needs at least one move")
++    if len(first_times_ms) != m:
++        raise ValueError("one time per move is required")
++    k = sum(1 for ok in first_correct if not ok)
++    limit = mistake_limit(m)
++    band = time_band(mean_timed_ms(first_correct, first_times_ms))
++    if k > limit:
++        return AGAIN
++    if k == limit and k > 0:
++        return HARD
++    if k == 0:
++        if band == FAST:
++            return EASY
++        if band in (NORMAL, SLOW):
++            return GOOD
++        return HARD
++    return GOOD if band in (FAST, NORMAL) else HARD
+ 
+ 
+ # ---- review-session CSV schema (review-dataset record, section 2)
+diff --git a/ml/tempo_ml/simulator/memory/__init__.py b/ml/tempo_ml/simulator/memory/__init__.py
+index 5678638..e56d7ff 100644
+--- a/ml/tempo_ml/simulator/memory/__init__.py
++++ b/ml/tempo_ml/simulator/memory/__init__.py
+@@ -1,9 +1,6 @@
+-"""Hidden memory models of the synthetic clients.
++"""Hidden memory of the synthetic clients.
+ 
+-``multiplicative``: per-line stability multiplied after a clean session and
+-cut after a lapse; per-move recall follows the forgetting curve
+-(docs/topics/synthetic-clients/record.md). The default.
+-
+-``fsrs``: FSRS-6 itself with per-client weights; stability and difficulty
+-follow the graded FSRS-6 update. Selected with ``"memory": "fsrs"``.
++``state``: per-line memory state, the per-move forgetting curve and practice reps.
++``fsrs``: FSRS-6 with per-client weights; stability and difficulty follow the
++graded FSRS-6 update. The only memory model (move-recall record, section 3.1).
+ """
+diff --git a/ml/tempo_ml/simulator/memory/fsrs.py b/ml/tempo_ml/simulator/memory/fsrs.py
+index a832ef8..6f3e173 100644
+--- a/ml/tempo_ml/simulator/memory/fsrs.py
++++ b/ml/tempo_ml/simulator/memory/fsrs.py
+@@ -1,8 +1,4 @@
+-"""FSRS-6 as the hidden memory of the synthetic clients.
+-
+-Selected with ``"memory": "fsrs"`` in a generation config; the default stays
+-``multiplicative``. Everything else (per-move recall, retries, grading, the
+-practice policy) is shared, so the two memory models differ only here.
++"""FSRS-6 as the hidden memory of the synthetic clients (the only memory model).
+ 
+ Each client gets its own 21 FSRS-6 weights: the FSRS-6 defaults with
+ log-normal noise on w0-w16 (w17-w19 stay at the defaults), w0-w3 sorted so
+@@ -13,20 +9,19 @@ curve is the one the client already uses (``retrievability``).
+ Per line the state is the stability S and the difficulty D. A session's
+ grade drives the update, exactly as in FSRS-6 (``tempo_ml.fsrs.model``):
+ same-day sessions use the short-term update, later ones the recall or
+-forget update. After a lapse S never falls below ``min_days`` unless it was
+-already lower, as for the multiplicative model: the client retries until the
+-line is played correctly, which is itself a relearning pass.
+-
+-Because the clients' memory then follows FSRS-6 exactly, FSRS-6 is correctly
+-specified for each move; with per-move recall a whole line passes with
+-probability R**M, which FSRS-6 does not model.
++forget update. Only an Again review is a lapse; Hard, Good and Easy are
++successes with their grade's update (move-recall record, section 3.1). After a
++lapse S never falls below ``min_days`` unless it was already lower: the client
++retries until the line is played correctly, which is itself a relearning pass.
++
++Because the clients' memory follows FSRS-6 exactly, FSRS-6 is correctly
++specified for each move; a whole line passes with ``p_pass(R, M)``
++(``tempo_ml.pass_chance``).
+ """
+ 
+ from __future__ import annotations
+ 
+ from dataclasses import dataclass
+-from typing import ClassVar
+-
+ import numpy as np
+ 
+ from ...fsrs.model import (DEFAULT_PARAMETERS, LOWER_BOUNDS, UPPER_BOUNDS, initial_difficulty,
+@@ -37,11 +32,18 @@ FROZEN = slice(17, 20)  # same-day weights stay at the defaults
+ 
+ @dataclass(frozen=True)
+ class FSRSMemory:
+-    """FSRS-6 memory of one client. ``graded``: the update needs the session grade."""
++    """FSRS-6 memory of one client; the update needs the session grade."""
+ 
+     weights: tuple[float, ...]
+     min_days: float = 1.0
+-    graded: ClassVar[bool] = True
++
++    @classmethod
++    def default(cls, C: float, min_days: float = 1.0) -> "FSRSMemory":
++        """The FSRS-6 default weights with w20 set to the decay C."""
++        w = np.array(DEFAULT_PARAMETERS, dtype=float)
++        w[20] = C
++        w = np.clip(w, LOWER_BOUNDS, UPPER_BOUNDS)
++        return cls(weights=tuple(float(x) for x in w), min_days=min_days)
+ 
+     @classmethod
+     def sample(cls, C: float, rng: np.random.Generator, noise: float = 0.15,
+diff --git a/ml/tempo_ml/simulator/memory/multiplicative.py b/ml/tempo_ml/simulator/memory/multiplicative.py
+deleted file mode 100644
+index 8f96e3b..0000000
+--- a/ml/tempo_ml/simulator/memory/multiplicative.py
++++ /dev/null
+@@ -1,123 +0,0 @@
+-"""Hidden memory state of one line for one synthetic client.
+-
+-Specified (synthetic-clients record, sections 3.2 and 3.5):
+-- retrievability R(t, S) = (1 + F * t / S) ** (-C)
+-- reps update: +1 after a clean session, max(0, reps - 2) after a blunder
+-
+-Stability S evolves through a pluggable ``StabilityModel``; the default is
+-``MultiplicativeStability``. FSRS's own stability update is deliberately not
+-used as ground truth: FSRS fitted on such data would only recover its own
+-generator.
+-"""
+-
+-from __future__ import annotations
+-
+-from dataclasses import dataclass
+-from typing import Protocol
+-
+-import numpy as np
+-
+-BLUNDER_REPS_PENALTY = 2
+-
+-
+-def retrievability(t_days: float, stability: float, C: float) -> float:
+-    """Power-law forgetting curve R(t, S) with F = 0.9^(-1/C) - 1."""
+-    if t_days < 0.0:
+-        raise ValueError(f"t_days must be >= 0, got {t_days}")
+-    if stability <= 0.0:
+-        raise ValueError(f"stability must be > 0, got {stability}")
+-    F = 0.9 ** (-1.0 / C) - 1.0
+-    return float((1.0 + F * t_days / stability) ** (-C))
+-
+-
+-def next_reps(reps: int, blundered: bool) -> int:
+-    """Practice accumulation with the soft 2-step blunder penalty."""
+-    if blundered:
+-        return max(0, reps - BLUNDER_REPS_PENALTY)
+-    return reps + 1
+-
+-
+-class StabilityModel(Protocol):
+-    """How a line's stability S evolves. Pluggable; see module docstring."""
+-
+-    def initial(self) -> float:
+-        """Stability (days) after the first exposure to a line."""
+-        ...
+-
+-    def after_success(self, stability: float, R: float) -> float:
+-        """Stability after a clean session that started at retrievability R."""
+-        ...
+-
+-    def after_lapse(self, stability: float, R: float) -> float:
+-        """Stability after a session with at least one blunder."""
+-        ...
+-
+-
+-@dataclass(frozen=True)
+-class MultiplicativeStability:
+-    """Default ground-truth stability dynamics.
+-
+-    - first exposure: S = initial_days
+-    - clean session:  S <- S * (1 + growth * exp(spacing_gain * (1 - R)))
+-      (always grows; grows more when retrieval was harder, i.e. a spacing effect)
+-    - lapse:          S <- min(S, max(min_days, S * lapse_factor))
+-
+-    The default values are not calibrated on human data; Stage 2 calibration
+-    is expected to retune them.
+-    """
+-
+-    initial_days: float = 1.0
+-    growth: float = 1.5
+-    spacing_gain: float = 2.0
+-    lapse_factor: float = 0.3
+-    # A lapse ends with the client retrying until the line is played correctly,
+-    # which is itself a relearning pass, so a lapse never leaves the line weaker
+-    # than a freshly learned one (initial_days). With 0.1 a lapsed line could
+-    # not recover: a clean session needs all M moves, probability R**M.
+-    min_days: float = 1.0
+-
+-    def initial(self) -> float:
+-        return self.initial_days
+-
+-    def after_success(self, stability: float, R: float) -> float:
+-        return stability * (1.0 + self.growth * float(np.exp(self.spacing_gain * (1.0 - R))))
+-
+-    def after_lapse(self, stability: float, R: float) -> float:
+-        # The floor never lifts a stability that is already below it.
+-        return min(stability, max(self.min_days, stability * self.lapse_factor))
+-
+-
+-@dataclass
+-class LineMemory:
+-    """Ground-truth memory of one line, hidden from the planner.
+-
+-    Attributes:
+-        stability: Current S in days (None until the line is first seen).
+-        reps: Accumulated practice count driving m_practice.
+-        last_session_day: Simulation day of the last session on this line.
+-        last_review_lapsed: Whether the last Repeating Mode session had a blunder.
+-        sessions: Number of sessions so far (both modes).
+-        difficulty: Line difficulty for memory models that keep one
+-            (``memory/fsrs.py``); None for the multiplicative model.
+-    """
+-
+-    stability: float | None = None
+-    reps: int = 0
+-    last_session_day: float | None = None
+-    last_review_lapsed: bool = False
+-    sessions: int = 0
+-    difficulty: float | None = None
+-
+-    @property
+-    def seen(self) -> bool:
+-        return self.stability is not None
+-
+-    def elapsed(self, now_day: float) -> float:
+-        if self.last_session_day is None:
+-            return 0.0
+-        t = now_day - self.last_session_day
+-        if t < 0.0:
+-            raise ValueError(
+-                f"session day {now_day} is before the last session day {self.last_session_day}"
+-            )
+-        return t
+diff --git a/ml/tempo_ml/simulator/practice.py b/ml/tempo_ml/simulator/practice.py
+index 914c42f..7fe2839 100644
+--- a/ml/tempo_ml/simulator/practice.py
++++ b/ml/tempo_ml/simulator/practice.py
+@@ -38,10 +38,8 @@ class GenerationConfig:
+     active_day_prob: tuple[float, float] = (0.5, 0.95)
+     interval_noise_sigma: float = 0.35
+     max_interval_days: float = 365.0
+-    # Hidden memory model: "multiplicative" (memory/multiplicative.py) or "fsrs"
+-    # (memory/fsrs.py, per-client FSRS-6 weights with this log-normal noise,
+-    # drawn from their own random stream so the other draws stay the same).
+-    memory: str = "multiplicative"
++    # Hidden FSRS-6 memory (memory/fsrs.py): per-client weights with this
++    # log-normal noise, drawn from their own random stream.
+     fsrs_weight_noise: float = 0.15
+     # Std of the per-client trait spread around each archetype (TraitDistribution).
+     trait_std: dict[str, float] = field(
+@@ -104,9 +102,7 @@ def build_plans(lines: list[OpeningLine], cfg: GenerationConfig) -> list[ClientP
+     n = cfg.clients_per_archetype * len(ARCHETYPES)
+     seeds = root.spawn(n + 1)
+     policy_rng = np.random.default_rng(seeds[-1])
+-    if cfg.memory not in ("multiplicative", "fsrs"):
+-        raise ValueError(f"memory must be 'multiplicative' or 'fsrs', got {cfg.memory!r}")
+-    weight_rng = np.random.default_rng(np.random.SeedSequence([cfg.seed, 2])) if cfg.memory == "fsrs" else None
++    weight_rng = np.random.default_rng(np.random.SeedSequence([cfg.seed, 2]))
+ 
+     plans: list[ClientPlan] = []
+     k = 0
+@@ -114,14 +110,12 @@ def build_plans(lines: list[OpeningLine], cfg: GenerationConfig) -> list[ClientP
+         dist = TraitDistribution.diagonal(mean, cfg.trait_std)
+         for i in range(1, cfg.clients_per_archetype + 1):
+             traits = dist.sample(policy_rng)
+-            memory = {} if weight_rng is None else {
+-                "stability_model": FSRSMemory.sample(traits.C, weight_rng, cfg.fsrs_weight_noise)}
+             client = SyntheticClient(
+                 name=f"synth_{archetype}_{i:03d}",
+                 traits=traits,
+                 seed=seeds[k],
+                 archetype=archetype,
+-                **memory,
++                memory_model=FSRSMemory.sample(traits.C, weight_rng, cfg.fsrs_weight_noise),
+             )
+             side = SIDES[int(policy_rng.integers(2))]
+             plans.append(
+diff --git a/ml/tempo_ml/simulator/recall.py b/ml/tempo_ml/simulator/recall.py
+index ecabf24..e19de76 100644
+--- a/ml/tempo_ml/simulator/recall.py
++++ b/ml/tempo_ml/simulator/recall.py
+@@ -4,8 +4,9 @@ Owner: docs/topics/synthetic-clients/record.md, sections 3.3 and 3.4.
+ 
+ Recall is per move: in Repeating Mode each repertoire move's first attempt is
+ correct with probability R, and a wrong move is taken back and retried (at
+-most ``DEFAULT_MAX_ATTEMPTS_PER_MOVE`` attempts). A session is clean only when
+-every first attempt is correct, so its chance is R ** M.
++most ``DEFAULT_MAX_ATTEMPTS_PER_MOVE`` attempts). A review passes with at most
++L(M) first-attempt mistakes, so its chance is ``p_pass(R, M)``
++(``tempo_ml.pass_chance``).
+ 
+ Latency of one attempt:
+ final_time_ms = baseline_ms + total_hesitation_ms
+diff --git a/ml/tests/test_memory_models.py b/ml/tests/test_memory_models.py
+index 52f98c0..b3c6481 100644
+--- a/ml/tests/test_memory_models.py
++++ b/ml/tests/test_memory_models.py
+@@ -1,8 +1,8 @@
+-"""Hidden memory models of the synthetic clients (in memory, no dataset)."""
++"""Hidden memory of the synthetic clients (in memory, no dataset)."""
+ 
+ import pytest
+ 
+-from tempo_ml.simulator import ARCHETYPES, MultiplicativeStability, next_reps, retrievability
++from tempo_ml.simulator import ARCHETYPES, next_reps, retrievability
+ 
+ 
+ @pytest.mark.parametrize("arch", list(ARCHETYPES))
+@@ -18,16 +18,9 @@ def test_retrievability_boundaries():
+ 
+ 
+ def test_reps_soft_penalty():
+-    assert next_reps(5, blundered=False) == 6
+-    assert next_reps(5, blundered=True) == 3
+-    assert next_reps(1, blundered=True) == 0
+-
+-
+-def test_lapse_never_increases_stability():
+-    m = MultiplicativeStability()
+-    assert m.after_lapse(10.0, 0.3) == pytest.approx(3.0)
+-    assert m.after_lapse(2.0, 0.3) == pytest.approx(1.0)
+-    assert m.after_lapse(0.5, 0.3) == 0.5
++    assert next_reps(5, lapsed=False) == 6
++    assert next_reps(5, lapsed=True) == 3
++    assert next_reps(1, lapsed=True) == 0
+ 
+ 
+ # ---- FSRS-6 memory (memory/fsrs.py) ----
+@@ -69,3 +62,9 @@ def test_fsrs_memory_lapse_floor():
+     assert 1.0 <= s <= 20.0
+     s_low, _ = m.update(0.5, 5.0, 3.0, 0.4, 1)
+     assert s_low == 0.5  # the floor never lifts a lower stability
++
++
++def test_fsrs_memory_default_uses_client_decay():
++    m = FSRSMemory.default(0.35)
++    assert m.weights[20] == pytest.approx(0.35)
++    assert m.weights[:20] == pytest.approx(tuple(DEFAULT_PARAMETERS[:20]))
+diff --git a/ml/tests/test_metrics.py b/ml/tests/test_metrics.py
+index 86fd183..3524e85 100644
+--- a/ml/tests/test_metrics.py
++++ b/ml/tests/test_metrics.py
+@@ -1,13 +1,56 @@
+-"""Truth metrics, days metric and the target/loss options of the trainer."""
++"""Pass chance, truth metrics, the days metric and the trainer's objectives."""
++
++from itertools import product
+ 
+ import numpy as np
+ import pytest
++import torch
+ 
+ from tempo_ml.fsrs import model as M
+-from tempo_ml.evaluate.days import days_metrics, true_days
+-from tempo_ml.evaluate.metrics import metrics, rmse_bins
++from tempo_ml.evaluate.days import days_metrics, per_move_targets, true_days
++from tempo_ml.evaluate.metrics import metrics, predicted_pass, rmse_bins
+ from tempo_ml.fsrs.model import Cards
+-from tempo_ml.fsrs.train import objective
++from tempo_ml.fsrs.train import Objective
++from tempo_ml.pass_chance import mistake_limit, p_pass, per_move_target
++
++
++def brute_force_pass(r, m):
++    """Independent reference: enumerate all 2^M right/wrong outcomes and add the passing ones."""
++    limit = {1: 0, 2: 0, 3: 0}.get(m, 1 if m <= 7 else 2 if m <= 12 else 3)
++    total = 0.0
++    for outcome in product((True, False), repeat=m):
++        k = outcome.count(False)
++        if k <= limit:
++            total += r ** (m - k) * (1 - r) ** k
++    return total
++
++
++def test_mistake_limits_match_record():
++    assert [mistake_limit(m) for m in (1, 3, 4, 7, 8, 12, 13, 18)] == [0, 0, 1, 1, 2, 2, 3, 3]
++
++
++@pytest.mark.parametrize("m", [1, 2, 3, 4, 6, 7, 8, 10, 12, 13, 14])
++def test_p_pass_matches_enumeration(m):
++    for r in (0.5, 0.8, 0.9, 0.97):
++        assert float(p_pass(r, m)) == pytest.approx(brute_force_pass(r, m), abs=1e-12)
++
++
++def test_p_pass_torch_matches_numpy():
++    from tempo_ml.pass_chance import binomial_terms
++    m = np.array([3, 6, 10, 14])
++    r = np.array([0.9, 0.85, 0.95, 0.8])
++    coef = torch.tensor(binomial_terms(m))
++    t = p_pass(torch.tensor(r), torch.tensor(m, dtype=torch.float64), coef)
++    assert np.allclose(t.numpy(), p_pass(r, m), atol=1e-14)
++
++
++def test_per_move_target_table_from_record():
++    # move-recall record, section 3.3 (design arithmetic, four decimals)
++    expected = {1: 0.9000, 2: 0.9487, 3: 0.9655, 4: 0.8574, 6: 0.9074, 8: 0.8531, 10: 0.8842,
++                13: 0.8584, 14: 0.8691, 18: 0.8994}
++    for m, r in expected.items():
++        assert per_move_target(m) == pytest.approx(r, abs=5e-5)
++        assert brute_force_pass(per_move_target(m), m) == pytest.approx(0.9, abs=1e-9)
+ 
+ 
+ def test_true_days_one_move_equals_stability():
+@@ -15,11 +58,18 @@ def test_true_days_one_move_equals_stability():
+         assert true_days(12.5, 1, C) == pytest.approx(12.5)
+ 
+ 
+-def test_true_days_solves_clean_session_chance():
+-    S, M_, C = 20.0, 6, 0.45
+-    t = true_days(S, M_, C)
++@pytest.mark.parametrize("m", [3, 6, 10, 14])
++def test_true_days_solves_pass_chance(m):
++    S, C = 20.0, 0.45
++    t = float(true_days(S, m, C))
+     F = 0.9 ** (-1 / C) - 1
+-    assert ((1 + F * t / S) ** (-C)) ** M_ == pytest.approx(0.9)
++    assert brute_force_pass((1 + F * t / S) ** (-C), m) == pytest.approx(0.9, abs=1e-9)
++
++
++def test_record_example_six_moves():
++    # move-recall approaches: C = 0.5, S = 10, 6 moves -> due after about 9.1 days, not 1.5
++    assert float(true_days(10.0, 6, 0.5)) == pytest.approx(9.14, abs=0.01)
++    assert per_move_targets([6, 6]).shape == (2,)
+ 
+ 
+ def test_fsrs_reaches_90_percent_at_stability():
+@@ -57,17 +107,60 @@ def test_truth_metrics_zero_when_prediction_is_truth():
+     assert rmse_bins(np.full(4, 0.75), np.array([1.0, 1.0, 1.0, 0.0])) == pytest.approx(0.0)
+ 
+ 
+-def test_mse_objective_is_zero_at_the_generating_weights():
+-    rng = np.random.default_rng(2)
+-    n, steps = 40, 6
+-    t = rng.uniform(1, 10, (n, steps)); t[:, 0] = 0
++def test_predicted_pass_links():
++    r = np.array([[0.9, 0.9]])
++    mg = np.array([[1, 6]])
++    assert np.allclose(predicted_pass(r, mg, "line"), r)
++    assert np.allclose(predicted_pass(r, mg, "move"), [[0.9, brute_force_pass(0.9, 6)]])
++    with pytest.raises(ValueError):
++        predicted_pass(r, np.array([[0, 6]]), "move")
++
++
++def toy_cards(seed=2, n=40, steps=6):
++    rng = np.random.default_rng(seed)
++    t = np.floor(rng.uniform(1, 10, (n, steps))); t[:, 0] = 0
+     g = rng.integers(1, 5, (n, steps))
+     valid = np.ones((n, steps), bool)
+     mask = np.c_[np.zeros((n, 1), bool), valid[:, 1:]]
+-    c = Cards(agent=np.array(["x"] * n), t=t, g=g, valid=valid, y=(g > 1).astype(float),
+-              loss_mask=mask, row=np.zeros((n, steps), int))
++    m = rng.integers(3, 15, n)
++    acc = rng.uniform(0.5, 1.0, (n, steps))
++    return Cards(agent=np.array(["x"] * n), t=t, g=g, valid=valid, y=(g > 1).astype(float),
++                 loss_mask=mask, row=np.zeros((n, steps), int), acc=acc, m=m), mask
++
++
++def numpy_loss(w, c, mask, arm, target=None):
++    """Independent numpy version of each arm's loss (reference for the torch objective)."""
++    r = M.predict(w, c.t, c.g, c.valid)[mask]
++    mg = c.m_grid()[mask]
++    bce = lambda p, y: -(y * np.log(p) + (1 - y) * np.log(1 - p))
++    if arm == "line":
++        return bce(np.clip(r, 1e-6, 1 - 1e-6), c.y[mask]).mean()
++    if arm == "pass":
++        p = np.array([brute_force_pass(ri, int(mi)) for ri, mi in zip(r, mg)])
++        return bce(np.clip(p, 1e-6, 1 - 1e-6), c.y[mask]).mean()
++    y = c.acc[mask] if arm == "accuracy" else target[mask]
++    return (mg * bce(np.clip(r, 1e-6, 1 - 1e-6), y)).sum() / mg.sum()
++
++
++@pytest.mark.parametrize("arm", ["line", "pass", "accuracy", "true-recall"])
++def test_torch_objective_matches_numpy_and_finite_differences(arm):
++    c, mask = toy_cards()
++    target = np.clip(M.predict(M.DEFAULT_PARAMETERS, c.t, c.g, c.valid), 0, 1) if arm == "true-recall" else None
++    obj = Objective(c, mask, arm, target=target, device=torch.device("cpu"))
++    w = M.DEFAULT_PARAMETERS.copy(); w[20] = 0.3
++    value, grad = obj(w)
++    assert value == pytest.approx(numpy_loss(w, c, mask, arm, target), rel=1e-10)
++    for i in (0, 3, 8, 10, 11, 15, 20):
++        h = 1e-6 * max(1.0, abs(w[i]))
++        up, dn = w.copy(), w.copy(); up[i] += h; dn[i] -= h
++        fd = (numpy_loss(up, c, mask, arm, target) - numpy_loss(dn, c, mask, arm, target)) / (2 * h)
++        assert grad[i] == pytest.approx(fd, rel=1e-4, abs=1e-8), f"w{i}"
++
++
++def test_true_recall_loss_is_smallest_at_the_generating_weights():
++    c, mask = toy_cards(seed=4)
+     w = M.DEFAULT_PARAMETERS
+-    target = M.predict(w, t, g, valid)
+-    assert objective(w, c, mask, target=target, loss="mse") == pytest.approx(0.0)
++    target = M.predict(w, c.t, c.g, c.valid)
++    obj = Objective(c, mask, "true-recall", target=target, device=torch.device("cpu"))
+     w2 = w.copy(); w2[20] = 0.4
+-    assert objective(w2, c, mask, target=target, loss="mse") > 0
++    assert obj(w)[0] < obj(w2)[0]
+diff --git a/ml/tests/test_simulator.py b/ml/tests/test_simulator.py
+index bc8e11c..36013a9 100644
+--- a/ml/tests/test_simulator.py
++++ b/ml/tests/test_simulator.py
+@@ -17,11 +17,11 @@ from tempo_ml.simulator.generate import GenerationConfig, generate
+ from tempo_ml.simulator import (
+     CSV_COLUMNS,
+     SessionRecord,
+-    calculate_session_grade,
++    grade_session,
+     ARCHETYPES,
+     ClientTraits,
++    FSRSMemory,
+     Line,
+-    MultiplicativeStability,
+     SyntheticClient,
+     TraitDistribution,
+     build_population,
+@@ -65,12 +65,46 @@ def test_archetypes_match_record_table():
+ # ------------------------------------------------------------------- grading
+ 
+ 
+-def test_grading_function():
+-    assert calculate_session_grade(1, 100, 4, 300) == 1
+-    assert calculate_session_grade(0, 4 * (300 + 499), 4, 300) == 4
+-    assert calculate_session_grade(0, 4 * (300 + 500), 4, 300) == 3
+-    assert calculate_session_grade(0, 4 * (300 + 1800), 4, 300) == 3
+-    assert calculate_session_grade(0, 4 * (300 + 1801), 4, 300) == 2
++# Test vectors of the session-grading record, section 3.7: move times per player
++# move in order, None marks a mistake (its time is ignored), and the grade.
++X = None
++GRADING_VECTORS = [
++    (1, [5000, 900, 1100], 4),
++    (2, [900, 900, X], 1),
++    (3, [900, 20000, 1000], 2),
++    (4, [900, 20000, 1000, 1000], 3),
++    (5, [900, 2000, 2500, 3000, 2600], 3),
++    (6, [900, 1000, X, 1200, 1100, 1300], 2),
++    (7, [900, X, X, 1000, 1000, 1000], 1),
++    (8, [900, X] + [1000] * 8, 3),
++    (9, [900, X] + [4000] * 8, 2),
++    (10, [900, X, X] + [1000] * 7, 2),
++    (11, [900, X, X] + [2000] * 10, 3),
++    (12, [900, X, X, X] + [2000] * 9, 2),
++    (13, [900] + [9000] * 7, 2),
++    (14, [900, 30000] + [1000] * 6, 3),
++]
++
++
++@pytest.mark.parametrize("number,times,grade", GRADING_VECTORS)
++def test_grading_record_vectors(number, times, grade):
++    correct = [t is not None for t in times]
++    ms = [99999.0 if t is None else float(t) for t in times]  # a mistake's time must not matter
++    assert grade_session(correct, ms) == grade, f"vector {number}"
++
++
++def test_grading_boundaries_and_first_move():
++    ok = [True] * 5
++    assert grade_session(ok, [0, 1499, 1499, 1499, 1499]) == 4   # Fast
++    assert grade_session(ok, [0, 1500, 1500, 1500, 1500]) == 3   # Normal starts at 1500
++    assert grade_session(ok, [0, 3500, 3500, 3500, 3500]) == 3   # Normal ends at 3500
++    assert grade_session(ok, [0, 8000, 8000, 8000, 8000]) == 3   # Slow ends at 8000
++    assert grade_session(ok, [0, 8001, 8001, 8001, 8001]) == 2   # Very slow
++    assert grade_session(ok, [60000, 1000, 1000, 1000, 1000]) == 4  # first move is never timed
++    # one mistake below the limit on an 8-move line: Slow gives Hard
++    assert grade_session([True, False] + [True] * 6, [0, 0] + [3501] * 6) == 2
++    with pytest.raises(ValueError):
++        grade_session([], [])
+ 
+ 
+ # ------------------------------------------------------------------ sessions
+@@ -86,7 +120,8 @@ def test_first_learn_is_new_then_learning():
+     assert first.record.t_days == 0.0
+     assert first.record.accuracy == 1.0
+     assert first.stability_before is None
+-    assert first.stability_after == MultiplicativeStability().initial_days
++    w = make().memory_model.weights
++    assert first.stability_after == pytest.approx(w[first.record.grade - 1])  # S0 = w[grade - 1]
+     second = c.learn(LINE, day=1.0)
+     assert second.record.review_status == "learning"
+     assert second.record.t_days == 1.0
+@@ -115,17 +150,18 @@ def test_record_fields_consistent():
+     assert r.t_days == 2.0
+     assert r.total_time_ms == round(sum(m.time_ms for m in out.moves))
+     assert r.accuracy == (LINE.num_moves - out.blunder_count) / LINE.num_moves
+-    assert out.retrievability == pytest.approx(retrievability(2.0, 1.0, ARCHETYPES["balanced"].C))
+-    expected_grade = calculate_session_grade(
+-        out.blunder_count, sum(m.time_ms for m in out.moves), LINE.num_moves, 300
+-    )
++    assert 0.0 < out.retrievability < 1.0
++    assert out.stability_before is not None
++    expected_grade = grade_session([m.first_attempt_correct for m in out.moves],
++                                   [m.attempt_times_ms[0] for m in out.moves])
+     assert r.grade == expected_grade
+     assert all(t >= 300 for m in out.moves for t in m.attempt_times_ms)
+ 
+ 
+-def test_blunder_gives_again_relearning_and_penalty():
+-    # Force a lapse: tiny stability, long gap -> R near 0.
+-    c = make(seed=1, stability_model=MultiplicativeStability(initial_days=0.01))
++def test_again_lapses_relearning_and_penalty():
++    # Force a lapse: tiny initial stability, long gap -> R near 0.
++    tiny = FSRSMemory(weights=(0.01, 0.01, 0.01, 0.01) + make().memory_model.weights[4:])
++    c = make(seed=1, memory_model=tiny)
+     c.learn(LINE, 0.0)
+     c.learn(LINE, 0.0)
+     c.learn(LINE, 0.0)
+@@ -137,6 +173,7 @@ def test_blunder_gives_again_relearning_and_penalty():
+     assert out.reps_after == max(0, reps_before - 2)
+     assert out.stability_after <= out.stability_before
+     assert any(len(m.attempt_times_ms) > 1 for m in out.moves)
++    assert out.blunder_count > 1  # 6 moves allow one mistake
+     assert all(len(m.attempt_times_ms) <= c.max_attempts_per_move for m in out.moves)
+     nxt = c.review(LINE, day=10_000.0)
+     assert nxt.record.review_status == "relearning"
+@@ -296,3 +333,20 @@ def test_generate_tiny_dataset(tmp_path, tiny_catalog):
+     m2 = generate(tmp_path / "again", cfg, tiny_catalog)
+     assert m2["outputs"]["sessions.csv"] == m["outputs"]["sessions.csv"]
+     json.dumps(m)
++
++
++def test_mistake_within_limit_is_a_pass_not_a_lapse():
++    """A review with one mistake on a 6-move line passes (Hard): no relearning, reps grow."""
++    c = make(seed=0)
++    c.learn(LINE, 0.0)
++    for seed in range(200):
++        c = make(seed=seed)
++        c.learn(LINE, 0.0)
++        reps = c.memory(LINE).reps
++        out = c.review(LINE, day=4.0)
++        if out.blunder_count == 1:
++            assert out.record.grade == 2
++            assert out.reps_after == reps + 1
++            assert c.review(LINE, day=8.0).record.review_status == "review"
++            return
++    pytest.fail("no review with exactly one mistake in 200 seeds")
+diff --git a/ml/tests/test_trainers.py b/ml/tests/test_trainers.py
+index 5e7e9ee..c571538 100644
+--- a/ml/tests/test_trainers.py
++++ b/ml/tests/test_trainers.py
+@@ -5,7 +5,12 @@ import pytest
+ 
+ from tempo_ml.fsrs import model as M
+ from tempo_ml.evaluate.metrics import auc
+-from tempo_ml.fsrs.train import fit, objective, split_clients
++import torch
++
++from tempo_ml.fsrs.train import Objective, fit, split_clients
++from tempo_ml.pass_chance import mistake_limit
++
++CPU = torch.device("cpu")
+ 
+ fsrs = pytest.importorskip("fsrs")
+ 
+@@ -60,11 +65,16 @@ def test_load_cards_and_masks(tmp_path):
+         ("a", "L1", "review", 2.0, 1, 1000, 0.5),    # in loss, failure
+         ("a", "L1", "relearning", 1.5, 3, 1000, 1.0),  # in loss, success
+     ])
+-    c = M.load_cards(p)
++    c = M.load_cards(p, {("a", "L1"): 6, ("a", "L2"): 4})
+     assert c.t.shape == (2, 4)
+     assert c.loss_mask.sum() == 2
+     assert list(c.y[c.loss_mask]) == [0.0, 1.0]
+     assert list(c.row[0]) == [0, 1, 3, 4]
++    assert list(c.t[0]) == [0.0, 0.0, 2.0, 1.0]          # app clock: whole elapsed days
++    assert list(c.acc[c.loss_mask]) == [0.5, 1.0]
++    assert list(c.m) == [6, 4]
++    exact = M.load_cards(p, clock="exact")
++    assert list(exact.t[0]) == [0.0, 0.01, 2.0, 1.5] and list(exact.m) == [0, 0]
+ 
+ 
+ def test_predict_first_step_and_padding():
+@@ -77,31 +87,51 @@ def test_predict_first_step_and_padding():
+     assert p[0, 1] == pytest.approx(float(M.forgetting_curve(M.DEFAULT_PARAMETERS, np.array(1.0), np.array(s0))))
+ 
+ 
+-def test_fit_recovers_known_parameters():
+-    """Data drawn from FSRS itself: fitting from defaults lowers the loss toward the truth."""
+-    rng = np.random.default_rng(1)
+-    w_true = M.DEFAULT_PARAMETERS.copy()
+-    w_true[20] = 0.4
+-    w_true[0:4] = [0.5, 2.0, 4.0, 12.0]
+-    n, steps = 1500, 12
+-    t = rng.uniform(1, 20, (n, steps)); t[:, 0] = 0
++def simulate_cards(w_true, n, steps, rng, per_move=False):
++    """Cards drawn from FSRS itself. ``per_move``: R is per move, lines of 3-14 moves are
++    graded pass (Good) when mistakes are within L(M), as in the simulator."""
++    t = np.floor(rng.uniform(1, 20, (n, steps))); t[:, 0] = 0
+     valid = np.ones((n, steps), bool)
+     g = np.zeros((n, steps), int)
++    acc = np.ones((n, steps))
++    m = rng.integers(3, 15, n) if per_move else np.ones(n, int)
+     g[:, 0] = rng.integers(2, 5, n)
+     s = M.initial_stability(w_true, g[:, 0]); d = M.initial_difficulty(w_true, g[:, 0])
+     for k in range(1, steps):
+         r = M.forgetting_curve(w_true, t[:, k], s)
+-        ok = rng.random(n) < r
+-        g[:, k] = np.where(ok, 3, 1)
++        mistakes = rng.binomial(m, 1 - r)
++        g[:, k] = np.where(mistakes <= mistake_limit(m), 3, 1)
++        acc[:, k] = (m - mistakes) / m
+         s, d = M.next_stability(w_true, d, s, r, g[:, k]), M.next_difficulty(w_true, d, g[:, k])
+-    Cards = M.Cards
+-    c = Cards(agent=np.array(["x"] * n), t=t, g=g, valid=valid, y=(g > 1).astype(float),
+-              loss_mask=np.c_[np.zeros((n, 1), bool), valid[:, 1:]], row=np.zeros((n, steps), int))
+-    l_def = objective(M.DEFAULT_PARAMETERS, c, c.loss_mask)
+-    l_true = objective(w_true, c, c.loss_mask)
+-    w_fit, info = fit(M.DEFAULT_PARAMETERS, c, c.loss_mask, maxiter=150)
++    return M.Cards(agent=np.array(["x"] * n), t=t, g=g, valid=valid, y=(g > 1).astype(float),
++                   loss_mask=np.c_[np.zeros((n, 1), bool), valid[:, 1:]], row=np.zeros((n, steps), int),
++                   acc=acc, m=m)
++
++
++W_TRUE = M.DEFAULT_PARAMETERS.copy()
++W_TRUE[20] = 0.4
++W_TRUE[0:4] = [0.5, 2.0, 4.0, 12.0]
++
++
++def test_fit_recovers_known_parameters():
++    """Line-level data from FSRS itself: fitting from defaults reaches the true weights' loss."""
++    c = simulate_cards(W_TRUE, 1500, 12, np.random.default_rng(1))
++    obj = Objective(c, c.loss_mask, "line", device=CPU)
++    l_def, l_true = obj(M.DEFAULT_PARAMETERS)[0], obj(W_TRUE)[0]
++    w_fit, info = fit(M.DEFAULT_PARAMETERS, c, c.loss_mask, arm="line", device=CPU)
+     assert info["loss"] < l_def
+-    assert info["loss"] <= l_true + 0.005
++    assert info["loss"] <= l_true + 1e-3
++
++
++@pytest.mark.parametrize("arm", ["pass", "accuracy"])
++def test_per_move_arms_recover_the_decay(arm):
++    """Per-move data with the new pass rule: both per-move arms find the true decay w20,
++    and their loss at the fit is no worse than at the true weights."""
++    c = simulate_cards(W_TRUE, 2000, 12, np.random.default_rng(3), per_move=True)
++    obj = Objective(c, c.loss_mask, arm, device=CPU)
++    w_fit, info = fit(M.DEFAULT_PARAMETERS, c, c.loss_mask, arm=arm, device=CPU)
++    assert info["loss"] <= obj(W_TRUE)[0] + 1e-6
++    assert w_fit[20] == pytest.approx(0.4, abs=0.08)
+ 
+ 
+ def test_auc_simple():
+diff --git a/ml/tempo_ml/fsrs/torch_model.py b/ml/tempo_ml/fsrs/torch_model.py
+new file mode 100644
+index 0000000..7af26ea
+--- /dev/null
++++ b/ml/tempo_ml/fsrs/torch_model.py
+@@ -0,0 +1,88 @@
++"""FSRS-6 state replay in torch, for exact gradients on CPU or GPU.
++
++The same formulas as ``model.py`` (numpy), which stays the reference:
++``tests/test_trainers.py`` checks that both give the same predictions and that
++the torch gradient matches finite differences of the numpy objective.
++
++All tensors are float64. ``replay`` returns, for every (card, step), the
++predicted retrievability before the review and the stability after it.
++"""
++
++from __future__ import annotations
++
++import torch
++
++from .model import MAX_DIFFICULTY, MIN_DIFFICULTY, STABILITY_MIN
++
++DTYPE = torch.float64
++
++
++def default_device() -> torch.device:
++    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
++
++
++def forgetting_curve(w, t, s):
++    decay = -w[20]
++    factor = torch.pow(torch.tensor(0.9, dtype=DTYPE, device=w.device), 1.0 / decay) - 1.0
++    return (1.0 + factor * t / s) ** decay
++
++
++def initial_difficulty(w, g, clamp: bool = True):
++    d = w[4] - torch.exp(w[5] * (g - 1)) + 1.0
++    return d.clamp(MIN_DIFFICULTY, MAX_DIFFICULTY) if clamp else d
++
++
++def next_difficulty(w, d, g):
++    arg1 = w[4] - torch.exp(w[5] * 3.0) + 1.0
++    delta = -(w[6] * (g - 3))
++    arg2 = d + (10.0 - d) * delta / 9.0
++    return (w[7] * arg1 + (1.0 - w[7]) * arg2).clamp(MIN_DIFFICULTY, MAX_DIFFICULTY)
++
++
++def short_term_stability(w, s, g):
++    inc = torch.exp(w[17] * (g - 3 + w[18])) * s ** (-w[19])
++    inc = torch.where(g >= 2, inc.clamp_min(1.0), inc)
++    return (s * inc).clamp_min(STABILITY_MIN)
++
++
++def next_stability(w, d, s, r, g):
++    one = torch.ones_like(s)
++    hard = torch.where(g == 2, w[15] * one, one)
++    easy = torch.where(g == 4, w[16] * one, one)
++    recall = s * (1.0 + torch.exp(w[8]) * (11.0 - d) * s ** (-w[9]) * (torch.exp((1.0 - r) * w[10]) - 1.0) * hard * easy)
++    long_term = w[11] * d ** (-w[12]) * ((s + 1.0) ** w[13] - 1.0) * torch.exp((1.0 - r) * w[14])
++    forget = torch.minimum(long_term, s / torch.exp(w[17] * w[18]))
++    return torch.where(g == 1, forget, recall).clamp_min(STABILITY_MIN)
++
++
++def replay(w, t, g, valid):
++    """Predicted R before every review and stability after it.
++
++    Args:
++        w: (21,) weights tensor.
++        t: (cards, steps) elapsed days (step 0 ignored).
++        g: (cards, steps) grades as float (3 at invalid positions).
++        valid: (cards, steps) bool.
++
++    Returns:
++        (r, s_after): (cards, steps) tensors. ``r[:, 0]`` and invalid
++        positions hold 1.0 (no prediction); ``s_after`` holds the stability
++        once review k is applied, carried over at invalid positions.
++    """
++    n, steps = t.shape
++    g0 = g[:, 0]
++    s = w[(g0 - 1).long()].clamp_min(STABILITY_MIN)
++    d = initial_difficulty(w, g0)
++    rs = [torch.ones(n, dtype=DTYPE, device=t.device)]
++    ss = [s]
++    for k in range(1, steps):
++        v = valid[:, k]
++        tk, gk = t[:, k], g[:, k]
++        r = forgetting_curve(w, tk, s)
++        s_new = torch.where(tk < 1.0, short_term_stability(w, s, gk), next_stability(w, d, s, r, gk))
++        d_new = next_difficulty(w, d, gk)
++        rs.append(torch.where(v, r, torch.ones_like(r)))
++        s = torch.where(v, s_new, s)
++        d = torch.where(v, d_new, d)
++        ss.append(s)
++    return torch.stack(rs, 1), torch.stack(ss, 1)
+diff --git a/ml/tempo_ml/pass_chance.py b/ml/tempo_ml/pass_chance.py
+new file mode 100644
+index 0000000..c8134b9
+--- /dev/null
++++ b/ml/tempo_ml/pass_chance.py
+@@ -0,0 +1,74 @@
++"""Mistake limits and the pass chance of a line from per-move recall.
++
++Owners: docs/topics/session-grading/session-grading.md (mistake limits,
++section 3.2) and docs/topics/move-recall/move-recall.md (pass chance and the
++per-move scheduling target, sections 2 and 3.3).
++
++A review passes when it has at most ``L(M)`` mistakes. When each of the M
++player moves is right independently with per-move recall R, the pass chance is
++
++    p_pass(R, M) = sum_{k=0..L(M)} C(M, k) (1 - R)^k R^(M - k).
++
++``per_move_target(M)`` is the R at which ``p_pass(R, M)`` equals the target
++(0.9): a line is due when its per-move recall falls to it.
++
++``p_pass`` works on numpy arrays and torch tensors alike (only arithmetic).
++"""
++
++from __future__ import annotations
++
++from math import comb
++
++import numpy as np
++
++TARGET_PASS = 0.9
++MAX_LIMIT = 3  # largest mistake limit (13 or more moves)
++
++
++def mistake_limit(num_moves):
++    """L(M): 0 for M <= 3, 1 for 4-7, 2 for 8-12, 3 for 13 or more (scalar or array)."""
++    m = np.asarray(num_moves)
++    out = np.where(m <= 3, 0, np.where(m <= 7, 1, np.where(m <= 12, 2, 3)))
++    return int(out) if out.ndim == 0 else out
++
++
++def binomial_terms(num_moves) -> np.ndarray:
++    """(..., MAX_LIMIT + 1) coefficients C(M, k) for k <= L(M), else 0."""
++    m = np.asarray(num_moves, dtype=int)
++    lim = np.asarray(mistake_limit(m))
++    coef = np.zeros(m.shape + (MAX_LIMIT + 1,))
++    for k in range(MAX_LIMIT + 1):
++        c = np.vectorize(lambda x, k=k: comb(int(x), k), otypes=[float])(m) if m.ndim else comb(int(m), k)
++        coef[..., k] = np.where(k <= lim, c, 0.0)
++    return coef
++
++
++def p_pass(R, num_moves, coef=None):
++    """Chance of at most L(M) mistakes with per-move recall R.
++
++    ``R`` and ``num_moves`` broadcast together. ``coef`` (from
++    ``binomial_terms``, shaped like the broadcast plus a last axis of 4) may be
++    passed to avoid recomputing it; it must be a torch tensor when ``R`` is.
++    """
++    if coef is None:
++        coef = binomial_terms(num_moves)
++    m = num_moves
++    total = 0.0
++    for k in range(MAX_LIMIT + 1):
++        total = total + coef[..., k] * (1.0 - R) ** k * R ** (m - k)
++    return total
++
++
++def per_move_target(num_moves: int, target: float = TARGET_PASS) -> float:
++    """R*(M): the per-move recall at which the pass chance equals ``target``."""
++    m = int(num_moves)
++    if m < 1:
++        raise ValueError(f"num_moves must be >= 1, got {m}")
++    lo, hi = 0.0, 1.0  # p_pass increases with R: bisection to machine precision
++    for _ in range(200):
++        mid = 0.5 * (lo + hi)
++        if p_pass(mid, m) < target:
++            lo = mid
++        else:
++            hi = mid
++    return 0.5 * (lo + hi)
+diff --git a/ml/tempo_ml/simulator/memory/state.py b/ml/tempo_ml/simulator/memory/state.py
+new file mode 100644
+index 0000000..e58c8c5
+--- /dev/null
++++ b/ml/tempo_ml/simulator/memory/state.py
+@@ -0,0 +1,66 @@
++"""Hidden memory state of one line for one synthetic client.
++
++Specified (synthetic-clients record, sections 3.2 and 3.5):
++- per-move retrievability R(t, S) = (1 + F * t / S) ** (-C), F = 0.9^(-1/C) - 1
++- reps update: +1 after a passed review, max(0, reps - 2) after a lapse (Again)
++
++Stability and difficulty evolve through the FSRS-6 memory (``memory/fsrs.py``).
++"""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++
++BLUNDER_REPS_PENALTY = 2
++
++
++def retrievability(t_days: float, stability: float, C: float) -> float:
++    """Power-law forgetting curve R(t, S) with F = 0.9^(-1/C) - 1."""
++    if t_days < 0.0:
++        raise ValueError(f"t_days must be >= 0, got {t_days}")
++    if stability <= 0.0:
++        raise ValueError(f"stability must be > 0, got {stability}")
++    F = 0.9 ** (-1.0 / C) - 1.0
++    return float((1.0 + F * t_days / stability) ** (-C))
++
++
++def next_reps(reps: int, lapsed: bool) -> int:
++    """Practice accumulation with the soft 2-step lapse penalty."""
++    if lapsed:
++        return max(0, reps - BLUNDER_REPS_PENALTY)
++    return reps + 1
++
++
++@dataclass
++class LineMemory:
++    """Ground-truth memory of one line, hidden from the planner.
++
++    Attributes:
++        stability: Current S in days (None until the line is first seen).
++        difficulty: Current FSRS-6 difficulty D (None until the line is first seen).
++        reps: Accumulated practice count driving m_practice.
++        last_session_day: Simulation day of the last session on this line.
++        last_review_lapsed: Whether the last Repeating Mode session was graded Again.
++        sessions: Number of sessions so far (both modes).
++    """
++
++    stability: float | None = None
++    difficulty: float | None = None
++    reps: int = 0
++    last_session_day: float | None = None
++    last_review_lapsed: bool = False
++    sessions: int = 0
++
++    @property
++    def seen(self) -> bool:
++        return self.stability is not None
++
++    def elapsed(self, now_day: float) -> float:
++        if self.last_session_day is None:
++            return 0.0
++        t = now_day - self.last_session_day
++        if t < 0.0:
++            raise ValueError(
++                f"session day {now_day} is before the last session day {self.last_session_day}"
++            )
++        return t

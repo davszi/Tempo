@@ -206,13 +206,13 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 - `docs/topics/app-practice/index.md`: App & practice, combining the player journey and browser overview.
 - `docs/topics/system-architecture/index.md`: technical component and deployment boundaries.
 - `docs/topics/catalog-data/index.md`: Catalog & data, combining catalog rules, schema and historical provenance for readers.
-- `docs/topics/synthetic-clients/index.md`, `docs/topics/review-dataset/index.md`, `docs/topics/fsrs-training/index.md`: producer model (including both hidden memory implementations), telemetry/grading contract and parameter fitting/evaluation, respectively.
-- `docs/topics/session-grading/session-grading.md`: the decided session grading rule (mistake limits by line length, time bands), its rationale, implementation targets and validation plan; implemented in the app and the simulator, with training data and weights still from the earlier rule.
+- `docs/topics/synthetic-clients/index.md`, `docs/topics/review-dataset/index.md`, `docs/topics/fsrs-training/index.md`: producer model (FSRS hidden memory; the multiplicative model is historical), telemetry/grading contract and parameter fitting/evaluation, respectively.
+- `docs/topics/session-grading/session-grading.md`: the decided session grading rule (mistake limits by line length, time bands), its rationale, implementation targets and validation plan; implemented in the app, the simulator, training and evaluation.
 - `docs/topics/move-recall/move-recall.md`, `approaches.md` (page `index.md`): the decided meaning of FSRS recall (one player move), the pass-chance scheduling target, the training arms and the two per-move training approaches; not implemented yet.
 - `docs/topics/fsrs-training/fsrs-training.md`: fitting, evaluation, accepted metric criteria and scoped historical results.
 - `docs/topics/catalog-data/provenance.md`: historical opening-library classifier, inputs and side evidence within Catalog & Data.
 - `docs/development/ml.md`, `ml/pyproject.toml`: install and run commands for the `tempo_ml` package.
-- `ml/tempo_ml/`: catalog reader (`catalog.py`), FSRS-6 model and trainer (`fsrs/`), the synthetic-client simulator (`simulator/`: clients, memory models `memory/multiplicative.py` and `memory/fsrs.py`, recall, practice, grading, generate) and metrics (`evaluate/`); tests in `ml/tests/`.
+- `ml/tempo_ml/`: catalog reader (`catalog.py`), FSRS-6 model and trainer (`fsrs/`), the synthetic-client simulator (`simulator/`: clients, hidden FSRS memory `memory/fsrs.py` with state in `memory/state.py`, recall, practice, grading, generate) and metrics (`evaluate/`); tests in `ml/tests/`.
 - `ml/configs/`: generator settings for `tempo_ml` datasets.
 - `ml/experiments/`: one dated folder per `tempo_ml` run; `SUMMARY.md` is its record, `results/` its weights and metrics, `dataset_MANIFEST.txt` where its data lives.
 - `ml/data/`: generated datasets of `tempo_ml` runs, ignored by Git.

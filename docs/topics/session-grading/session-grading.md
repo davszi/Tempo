@@ -16,15 +16,18 @@ into an FSRS grade (1 Again, 2 Hard, 3 Good, 4 Easy).
 | Synthetic move times and hidden memory | [Synthetic-client record](../synthetic-clients/record.md) |
 | Pass label and fitting | [FSRS training record](../fsrs-training/fsrs-training.md) |
 
-**Status (2026-11-17): decided and implemented in the app and the
-simulator; data and weights not yet regenerated.** The rule in section 3 was
-decided in the 2026-11-16 grading discussion and implemented in commit
-`52e9535` (sections 5.1 and 5.3): the simulator
+**Status (2026-11-17): decided and implemented in the app, the simulator,
+training and evaluation; synthetic data regenerated and weights retrained.**
+The rule in section 3 was decided in the 2026-11-16 grading discussion and
+implemented in commit `52e9535` (sections 5.1 and 5.3): the simulator
 (`ml/tempo_ml/simulator/grading.py`) and the app (`backend/ml_engine.py`)
-both apply it. Every recorded synthetic dataset and trained weight,
-including the app's `backend/fitted_global.csv`, was still graded with the
-earlier rule (section 7.1); sections 5.2 and 5.4 are not done. Section 5
-tracks the implementation work; section 6 lists what is still open.
+both apply it. The move-recall change completes section 5.2 and retrains on
+regenerated data in the dated experiment
+[`ml/experiments/2026-11-16-move-recall`](../../../ml/experiments/2026-11-16-move-recall/SUMMARY.md)
+(section 5.4). Synthetic datasets and weights recorded before it, and the
+app's `backend/fitted_global.csv`, were graded with the earlier rule
+(section 7.1). Section 5 tracks the implementation work; section 6 lists
+what is still open.
 
 The time boundaries in section 3.4 are **starting values chosen from
 published orders of magnitude, not calibrated against human data**
@@ -217,8 +220,8 @@ sessions is not covered (section 6.2).
 ## 5. Implementation targets
 
 Sections 5.1 and 5.3 are done (commit `52e9535`, 2026-11-16). Section 5.2
-is done only for the docstring (item 1); its truth column (item 2) and all
-of section 5.4 are not started. The items below keep their original
+is done (item 1 in `52e9535`, item 2 in the move-recall change); section 5.4
+items 1 and 2 are done, item 3 is open. The items below keep their original
 wording; each subsection states its status.
 
 ### 5.1 Simulator (`ml/tempo_ml/simulator/`)
@@ -228,7 +231,7 @@ wording; each subsection states its status.
 and `time_band` with the section 3.4 constants; `clients.py` grades from
 each move's first attempt and treats a review as a lapse only when it is
 Again. Item 3's `reps` rule and the memory update for a non-Again review
-with mistakes remain open (section 6.1).
+with mistakes were settled by the move-recall change (section 6.1).
 
 1. `grading.py`: replace `calculate_session_grade(blunder_count,
    total_time_ms, num_moves, baseline_ms)` with a function implementing
@@ -252,10 +255,14 @@ with mistakes remain open (section 6.1).
 
 ### 5.2 Training and evaluation (`ml/tempo_ml/fsrs/`, `ml/tempo_ml/evaluate/`)
 
-**Partly done.** Item 1 is done in `52e9535`: the `fsrs/model.py` docstring
-now says a pass means the review was not Again. Item 2 is not started:
-`generate.py` still writes `p_clean = R^M` and `evaluate/metrics.py` still
-reads `p_clean`.
+**Done.** Item 1 in `52e9535`: the `fsrs/model.py` docstring says a pass
+means the review was not Again. Item 2 in the move-recall change:
+`generate.py` writes `p_pass` (the chance of at most `L(M)` mistakes,
+`ml/tempo_ml/pass_chance.py`) instead of `p_clean`; `evaluate/metrics.py`
+`Truth` reads it, and the simulator-only arm `--arm true-recall`, which
+replaces `--target true`, reads the hidden per-move recall. The days metric
+follows the 0.9 pass chance
+([move recall record, section 3.5](../move-recall/move-recall.md#35-evaluation-follows-the-pass-meaning)).
 
 1. The pass label stays `grade > 1` (`fsrs/model.py`, `load_cards`), but its
    meaning changes from "no mistakes" to "mistakes within `L(M)`". Update
@@ -299,7 +306,12 @@ unchanged.
 
 ### 5.4 Data and documentation
 
-**Not started.**
+**Items 1 and 2 done, item 3 open.** Item 1: the move-recall experiment
+regenerated three populations under this rule and retrained the weights
+([summary](../../../ml/experiments/2026-11-16-move-recall/SUMMARY.md)); the
+app's weights are not replaced, which is a team decision
+([move recall record, section 7.4](../move-recall/move-recall.md#74-which-weights-ship)).
+Item 2: the review dataset, synthetic-player and training records follow.
 
 1. Regenerate synthetic datasets and retrain weights; record them as new
    dated experiments. Existing experiments stay as historical results of
@@ -312,7 +324,7 @@ unchanged.
 
 ## 6. Open items
 
-Items 6.1–6.3 and 6.5 are open. Item 6.4 is a trade-off accepted on
+Items 6.2, 6.3 and 6.5 are open; 6.1 is resolved. Item 6.4 is a trade-off accepted on
 2026-11-16, kept here because it qualifies `CAP_MS`.
 
 ### 6.1 Memory update for a passed review with mistakes
@@ -328,6 +340,12 @@ Current behaviour since `52e9535`, not a decision: a non-Again review with
 mistakes updates stability as a success (option a) in both memory models,
 while `reps` still drops by 2 on any mistake (`clients.py` `_finish`,
 `next_reps(..., blundered=blunders > 0)`).
+
+Resolved on 2026-11-16 by the move-recall decisions
+([move recall record, section 3.1](../move-recall/move-recall.md#31-fsrs-memory-is-the-only-hidden-memory-model)):
+FSRS memory is the only hidden memory and updates by grade, so a passed
+review with mistakes is a success with its grade's update (option a), and
+`reps` drops only after Again (`next_reps(..., lapsed=grade == AGAIN)`).
 
 ### 6.2 Guided Learning sessions
 

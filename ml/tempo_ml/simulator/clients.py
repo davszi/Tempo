@@ -25,7 +25,8 @@ from typing import Mapping, Protocol, Sequence
 import numpy as np
 
 from .grading import AGAIN, SessionRecord, calculate_session_grade
-from .memory.multiplicative import LineMemory, MultiplicativeStability, StabilityModel, next_reps, retrievability
+from .memory.fsrs import FSRSMemory
+from .memory.state import LineMemory, next_reps, retrievability
 from .recall import DEFAULT_MAX_ATTEMPTS_PER_MOVE, MoveEvent, play_move, sample_move_time_ms
 
 # Trait bounds from record section 3.1.
@@ -196,7 +197,8 @@ class SyntheticClient:
         name: Dataset ``agent_name``, e.g. ``synth_blitzer_01``.
         traits: Cognitive trait vector theta.
         seed: Seed for this client's private random stream.
-        stability_model: Ground-truth stability dynamics.
+        memory_model: Hidden FSRS-6 memory; defaults to the FSRS-6 default
+            weights with the client's decay C.
         max_attempts_per_move: Cap on retries after a retracted wrong move; once
             reached, the client is assumed to find the move on that attempt.
     """
@@ -204,7 +206,7 @@ class SyntheticClient:
     name: str
     traits: ClientTraits
     seed: int | np.random.SeedSequence | None = None
-    stability_model: StabilityModel = field(default_factory=MultiplicativeStability)
+    memory_model: FSRSMemory | None = None
     max_attempts_per_move: int = DEFAULT_MAX_ATTEMPTS_PER_MOVE
     archetype: str | None = None
     _memory: dict[str, LineMemory] = field(default_factory=dict, init=False, repr=False)
@@ -214,6 +216,8 @@ class SyntheticClient:
         if self.max_attempts_per_move < 1:
             raise ValueError("max_attempts_per_move must be >= 1")
         self._rng = np.random.default_rng(self.seed)
+        if self.memory_model is None:
+            self.memory_model = FSRSMemory.default(self.traits.C)
 
     # ------------------------------------------------------------------ state
 
@@ -256,23 +260,13 @@ class SyntheticClient:
         )
 
         s_before = mem.stability
-        if getattr(self.stability_model, "graded", False):
-            # Graded memory (memory/fsrs.py): the update needs this session's grade,
-            # computed as in _finish (no random draws, so the streams are unchanged).
-            grade = self._grade(moves)
-            if s_before is None:
-                s_after, d_after = self.stability_model.start(grade)
-            else:
-                s_after, d_after = self.stability_model.update(s_before, mem.difficulty, t_days, R, grade)
-            outcome = self._finish(line, mem, day, status, "learning", t_days, R, moves, s_before, s_after)
-            mem.difficulty = d_after
-            return outcome
-        s_after = (
-            self.stability_model.initial()
-            if s_before is None
-            else self.stability_model.after_success(s_before, R)
-        )
-        return self._finish(line, mem, day, status, "learning", t_days, R, moves, s_before, s_after)
+        grade = self._grade(moves)
+        if s_before is None:
+            s_after, d_after = self.memory_model.start(grade)
+        else:
+            s_after, d_after = self.memory_model.update(s_before, mem.difficulty, t_days, R, grade)
+        return self._finish(line, mem, day, status, "learning", t_days, R, moves, grade,
+                            s_before, s_after, d_after)
 
     def review(self, line: LineSpec, day: float) -> SessionOutcome:
         """Run a Repeating Mode session (no hints; wrong moves are retracted).
@@ -294,22 +288,11 @@ class SyntheticClient:
 
         moves = tuple(self._play_move(i, R, mem.reps) for i in range(line.num_moves))
         grade = self._grade(moves)
-        lapsed = grade == AGAIN
-
         s_before = mem.stability
-        if getattr(self.stability_model, "graded", False):
-            s_after, d_after = self.stability_model.update(s_before, mem.difficulty, t_days, R, grade)
-            outcome = self._finish(line, mem, day, status, "repeating", t_days, R, moves, s_before, s_after)
-            mem.difficulty = d_after
-            mem.last_review_lapsed = lapsed
-            return outcome
-        s_after = (
-            self.stability_model.after_lapse(s_before, R)
-            if lapsed
-            else self.stability_model.after_success(s_before, R)
-        )
-        outcome = self._finish(line, mem, day, status, "repeating", t_days, R, moves, s_before, s_after)
-        mem.last_review_lapsed = lapsed
+        s_after, d_after = self.memory_model.update(s_before, mem.difficulty, t_days, R, grade)
+        outcome = self._finish(line, mem, day, status, "repeating", t_days, R, moves, grade,
+                               s_before, s_after, d_after)
+        mem.last_review_lapsed = grade == AGAIN
         return outcome
 
     # --------------------------------------------------------------- internal
@@ -335,12 +318,13 @@ class SyntheticClient:
         t_days: float,
         R: float,
         moves: tuple[MoveEvent, ...],
+        grade: int,
         s_before: float | None,
         s_after: float,
+        d_after: float,
     ) -> SessionOutcome:
         blunders = sum(1 for m in moves if not m.first_attempt_correct)
         total_ms = sum(m.time_ms for m in moves)
-        grade = self._grade(moves)
         record = SessionRecord(
             agent_name=self.name,
             opening_name=line.opening_name,
@@ -352,8 +336,9 @@ class SyntheticClient:
         )
 
         reps_before = mem.reps
-        mem.reps = next_reps(mem.reps, blundered=blunders > 0)
+        mem.reps = next_reps(mem.reps, lapsed=grade == AGAIN)
         mem.stability = s_after
+        mem.difficulty = d_after
         mem.last_session_day = day
         mem.sessions += 1
 
@@ -375,7 +360,7 @@ def build_population(
     counts: Mapping[str, int],
     seed: int,
     distributions: Mapping[str, TraitDistribution] | None = None,
-    stability_model: StabilityModel | None = None,
+    memory_models: Mapping[str, FSRSMemory] | None = None,
 ) -> list[SyntheticClient]:
     """Create named clients per archetype, e.g. ``{"blitzer": 3, "diligent": 2}``.
 
@@ -383,6 +368,9 @@ def build_population(
     benchmark traits from ``ARCHETYPES`` and differs only in its random stream.
     Pass a ``TraitDistribution`` per archetype (e.g. from Stage 2 calibration)
     to give each client its own sampled trait vector.
+
+    ``memory_models`` maps client names to their hidden FSRS-6 memory; a
+    client without one gets the FSRS-6 defaults with its own decay C.
 
     Names follow the dataset convention ``synth_<archetype>_<NN>``. All
     randomness derives from ``seed``, so a population is reproducible.
@@ -402,14 +390,14 @@ def build_population(
             raise KeyError(f"unknown archetype {archetype!r}; pass a TraitDistribution for it")
         for i in range(1, n + 1):
             traits = dist.sample(trait_rng) if dist is not None else ARCHETYPES[archetype]
-            kwargs = {} if stability_model is None else {"stability_model": stability_model}
+            name = f"synth_{archetype}_{i:02d}"
             clients.append(
                 SyntheticClient(
-                    name=f"synth_{archetype}_{i:02d}",
+                    name=name,
                     traits=traits,
                     seed=child_seeds[k],
                     archetype=archetype,
-                    **kwargs,
+                    memory_model=(memory_models or {}).get(name),
                 )
             )
             k += 1

@@ -1,0 +1,10 @@
+host cloud-206  job 39789  start 2026-11-16T14:42:00Z
+name, driver_version, memory.total [MiB]
+NVIDIA A100 80GB PCIe, 580.196.07, 81920 MiB
+torch 2.15.0+cu132 cuda 13.2 NVIDIA A100 80GB PCIe
+........................................................................ [ 84%]
+.............                                                            [100%]
+85 passed in 51.87s
+seed 20261111: reduced data is a per-client prefix (40598 of 54068 sessions)
+seed 20261121: reduced data is a per-client prefix (42660 of 57340 sessions)
+seed 20261131: reduced data is a per-client prefix (42081 of 57002 sessions)

@@ -54,7 +54,7 @@ names unique within each client's sampled repertoire, so its trainer can
 key a card by `(agent_name, opening_name)`. That sampling guarantee is not
 an app-wide identity contract. The backend uses `line_id`; deciding how a
 human-data training export retains that identity is still open. Hidden
-state, including `line_id`, `p_clean` and stability, is in the separate
+state, including `line_id`, `p_pass` and stability, is in the separate
 `ground_truth.csv`; it is not part of the seven-column telemetry schema.
 
 **Decision needed:** how will human training rows retain catalog identity?
@@ -87,11 +87,11 @@ times of first-try correct moves, without the line's first move and without
 a baseline. That record owns the rule, its rationale, test vectors,
 implementation targets, open items and validation plan.
 
-**Implementation status.** Not implemented. `ml/tempo_ml/simulator/grading.py`
-and the app (`backend/ml_engine.py`, see
-[system architecture](../system-architecture/system-architecture.md#initial-card-grading-and-update))
-still apply the earlier rule (section 3.2). All recorded synthetic datasets
-and results were graded with it.
+**Implementation status.** Implemented on 2026-11-16 (`52e9535`) in
+`ml/tempo_ml/simulator/grading.py` and the app (`backend/ml_engine.py`, see
+[system architecture](../system-architecture/system-architecture.md#initial-card-grading-and-update)).
+Synthetic datasets and results recorded before then were graded with the
+earlier rule (section 3.2).
 
 This section keeps what belongs to the session export: the grading inputs
 the export carries (3.1), the earlier rule (3.2), the synthetic timing model
@@ -110,6 +110,10 @@ inputs to the export is an open item of the
 [session grading record](../session-grading/session-grading.md#63-exported-inputs).
 
 ### 3.2 The earlier rule (still implemented)
+
+Since 2026-11-16 the simulator and the app grade with the decided rule
+([session grading, section 1](../session-grading/session-grading.md#1-scope-and-status));
+this earlier rule is historical.
 
 Any first-attempt error gives Again. Otherwise the mean time per move minus
 the player's physical baseline, `total_time_ms / M − baseline_ms`, gives
@@ -329,19 +333,21 @@ source-control-flow inference, not evidence that any retained historical run
 was contaminated. The manifest alone does not prove every listed file was
 produced by its latest invocation.
 
-Offline `p_clean` is R raised to repertoire move count for repeating sessions
-and 1 for guided sessions. Hidden R/stability/reps are unavailable from human
+Offline `p_pass` is the chance of at most L(M) mistakes at the hidden
+per-move R, `p_pass(R, M)` (`ml/tempo_ml/pass_chance.py`), for repeating
+sessions and 1 for guided sessions; before 2026-11-16 the column was
+`p_clean = R^M`. Hidden R/stability/reps are unavailable from human
 telemetry. The producer rounds `t_days` to four decimals, simulation day to
 six, hidden probabilities/stabilities to six and total latency to integer
-milliseconds. Grading uses the underlying unrounded attempt sum first.
+milliseconds. Grading uses the unrounded first-attempt times of the moves.
 Move events exist in memory but are not exported here, so the seven columns
 cannot reconstruct individual attempt latencies, move order or whether the
 final retry succeeded.
 
 `SessionRecord` validates status, nonnegative elapsed/time, grade 1–4 and
-accuracy in [0,1]. `calculate_session_grade` requires positive move count
-and nonnegative blunders. Move count and physical baseline are additional
-grading inputs, absent from the seven-column row. The trainer reads CSV
+accuracy in [0,1]. `calculate_session_grade` requires at least one move and one time
+per move. Per-move first-attempt correctness and times are its inputs,
+absent from the seven-column row. The trainer reads CSV
 values directly rather than validating arbitrary imports with this class.
 
 The backend demo emits `new`, `review` and `relearning`, not guided
@@ -365,7 +371,7 @@ and app submission to App & practice.
 
 | Source / symbols | Canonical section or owner |
 |---|---|
-| `ml/tempo_ml/simulator/grading.py`: `calculate_session_grade`, `CSV_COLUMNS`, `REVIEW_STATUSES`, `SessionRecord`, `write_sessions_csv` | Sections 2–3 and 5 |
+| `ml/tempo_ml/simulator/grading.py`: `calculate_session_grade` (since 2026-11-16 per-move first attempts and times), `CSV_COLUMNS`, `REVIEW_STATUSES`, `SessionRecord`, `write_sessions_csv` | Sections 2–3 and 5 |
 | `simulator/clients.py`: `_finish`, `SessionOutcome` | Section 5 rounding/observable boundary; Synthetic Players owns memory |
 | `simulator/generate.py`: `GROUND_TRUTH_COLUMNS`, `generate` output writers/manifest | Section 5; Synthetic Players owns collection |
 | `fsrs/model.py`: `load_cards`, `Cards.row`, `loss_mask` | Section 2 identity limits; FSRS Training owns ingestion/masking |

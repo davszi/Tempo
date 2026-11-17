@@ -92,7 +92,7 @@ The current implementation caps attempts at five. If the last draw fails, the se
 
 ## Two hidden memory models update the same per-line state
 
-<p class="bs-lead">Both worlds share everything except one rule: how a line's stability changes after a session. Multiplicative memory looks only at recall; FSRS memory also weighs the grade, the line's difficulty and how strong the memory already is.</p>
+<p class="bs-lead">Since 2026-11-16 the simulator keeps only FSRS memory; this comparison explains the historical 2026-11-13 and 2026-11-14 studies. Both worlds shared everything except one rule: how a line's stability changes after a session. Multiplicative memory looks only at recall; FSRS memory also weighs the grade, the line's difficulty and how strong the memory already is.</p>
 
 <figure id="fig-hidden-models">
 <div class="bs-flow">

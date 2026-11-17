@@ -17,5 +17,6 @@ a new harness or move existing domain source.
 
 ## Seen but not built
 
-No new supporting-tool need was approved by this documentation audit. Future
-needs and the owner's decisions belong here under the shared guide.
+| Need | Seen | Decision |
+|---|---|---|
+| Run a batch of jobs on the university Slurm cluster and collect their output | 2026-11-16, [move-recall experiment](../ml/experiments/2026-11-16-move-recall/PLAN.md) | 2026-11-16, the person: build the minimum inside the experiment (`run.sbatch`); no shared tool |

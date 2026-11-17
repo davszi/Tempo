@@ -1,8 +1,4 @@
-"""FSRS-6 as the hidden memory of the synthetic clients.
-
-Selected with ``"memory": "fsrs"`` in a generation config; the default stays
-``multiplicative``. Everything else (per-move recall, retries, grading, the
-practice policy) is shared, so the two memory models differ only here.
+"""FSRS-6 as the hidden memory of the synthetic clients (the only memory model).
 
 Each client gets its own 21 FSRS-6 weights: the FSRS-6 defaults with
 log-normal noise on w0-w16 (w17-w19 stay at the defaults), w0-w3 sorted so
@@ -13,20 +9,19 @@ curve is the one the client already uses (``retrievability``).
 Per line the state is the stability S and the difficulty D. A session's
 grade drives the update, exactly as in FSRS-6 (``tempo_ml.fsrs.model``):
 same-day sessions use the short-term update, later ones the recall or
-forget update. After a lapse S never falls below ``min_days`` unless it was
-already lower, as for the multiplicative model: the client retries until the
-line is played correctly, which is itself a relearning pass.
+forget update. Only an Again review is a lapse; Hard, Good and Easy are
+successes with their grade's update (move-recall record, section 3.1). After a
+lapse S never falls below ``min_days`` unless it was already lower: the client
+retries until the line is played correctly, which is itself a relearning pass.
 
-Because the clients' memory then follows FSRS-6 exactly, FSRS-6 is correctly
-specified for each move; with per-move recall a whole line passes with
-probability R**M, which FSRS-6 does not model.
+Because the clients' memory follows FSRS-6 exactly, FSRS-6 is correctly
+specified for each move; a whole line passes with ``p_pass(R, M)``
+(``tempo_ml.pass_chance``).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar
-
 import numpy as np
 
 from ...fsrs.model import (DEFAULT_PARAMETERS, LOWER_BOUNDS, UPPER_BOUNDS, initial_difficulty,
@@ -37,11 +32,18 @@ FROZEN = slice(17, 20)  # same-day weights stay at the defaults
 
 @dataclass(frozen=True)
 class FSRSMemory:
-    """FSRS-6 memory of one client. ``graded``: the update needs the session grade."""
+    """FSRS-6 memory of one client; the update needs the session grade."""
 
     weights: tuple[float, ...]
     min_days: float = 1.0
-    graded: ClassVar[bool] = True
+
+    @classmethod
+    def default(cls, C: float, min_days: float = 1.0) -> "FSRSMemory":
+        """The FSRS-6 default weights with w20 set to the decay C."""
+        w = np.array(DEFAULT_PARAMETERS, dtype=float)
+        w[20] = C
+        w = np.clip(w, LOWER_BOUNDS, UPPER_BOUNDS)
+        return cls(weights=tuple(float(x) for x in w), min_days=min_days)
 
     @classmethod
     def sample(cls, C: float, rng: np.random.Generator, noise: float = 0.15,

@@ -1,0 +1,5 @@
+[    0.3s] 8197 cards, 39330 tested reviews; device cuda; fit: 210 clients / 27608 reviews, validation: 30 clients / 3956 reviews, test: 60 clients / 7766 reviews
+[    0.3s] fitting general FSRS-6 parameters on fit clients (arm=pass, link=move, clock=app) ...
+[   87.4s] done: {'loss': 0.20218903257543996, 'iterations': 265, 'evaluations': 323, 'converged': True, 'message': 'CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH', 'max_abs_projected_gradient': 0.000482531540337402, 'device': 'cuda'}
+[   88.1s] test: {"constant_base_rate": 0.2521, "fsrs6_default": 0.1938, "fsrs6_trained": 0.1907}
+[   88.1s] wrote experiments/2026-11-16-move-recall/results/seed-20261131/A1c-pass

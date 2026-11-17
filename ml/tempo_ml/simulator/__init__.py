@@ -33,29 +33,23 @@ from .clients import (
 )
 from .grading import (
     AGAIN,
-    CSV_COLUMNS,
     CAP_MS,
+    CSV_COLUMNS,
     EASY,
     GOOD,
     HARD,
+    REVIEW_STATUSES,
     T_EASY_MS,
     T_SLOW_MS,
     T_VERY_SLOW_MS,
-    mistake_limit,
-    time_band,
-    REVIEW_STATUSES,
     SessionRecord,
     calculate_session_grade,
+    mistake_limit,
+    time_band,
     write_sessions_csv,
 )
-from .memory.multiplicative import (
-    BLUNDER_REPS_PENALTY,
-    LineMemory,
-    MultiplicativeStability,
-    StabilityModel,
-    next_reps,
-    retrievability,
-)
+from .memory.fsrs import FSRSMemory
+from .memory.state import BLUNDER_REPS_PENALTY, LineMemory, next_reps, retrievability
 from .recall import (
     DEFAULT_MAX_ATTEMPTS_PER_MOVE,
     MoveEvent,
@@ -66,11 +60,11 @@ from .recall import (
 )
 
 __all__ = [
-    "AGAIN", "ARCHETYPES", "BLUNDER_REPS_PENALTY", "CSV_COLUMNS", "ClientTraits",
-    "CAP_MS", "DEFAULT_MAX_ATTEMPTS_PER_MOVE", "EASY", "GOOD", "T_EASY_MS", "T_SLOW_MS", "T_VERY_SLOW_MS",
-    "HARD", "Line", "LineMemory", "LineSpec", "MoveEvent", "MultiplicativeStability",
-    "REVIEW_STATUSES", "SessionOutcome", "SessionRecord", "StabilityModel", "SyntheticClient",
-    "TraitDistribution", "build_population", "calculate_session_grade", "clamp_traits",
-    "cognitive_strain", "mistake_limit", "next_reps", "play_move", "practice_multiplier", "retrievability",
+    "AGAIN", "ARCHETYPES", "BLUNDER_REPS_PENALTY", "CAP_MS", "CSV_COLUMNS", "ClientTraits",
+    "DEFAULT_MAX_ATTEMPTS_PER_MOVE", "EASY", "FSRSMemory", "GOOD", "HARD", "Line", "LineMemory",
+    "LineSpec", "MoveEvent", "REVIEW_STATUSES", "SessionOutcome", "SessionRecord",
+    "SyntheticClient", "T_EASY_MS", "T_SLOW_MS", "T_VERY_SLOW_MS", "TraitDistribution",
+    "build_population", "calculate_session_grade", "clamp_traits", "cognitive_strain",
+    "mistake_limit", "next_reps", "play_move", "practice_multiplier", "retrievability",
     "sample_move_time_ms", "time_band", "with_overrides", "write_sessions_csv",
 ]

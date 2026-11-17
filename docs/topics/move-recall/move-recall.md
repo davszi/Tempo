@@ -18,11 +18,13 @@ that follow from that meaning. The two training approaches are described in
 | Fitting, metrics and dated results | [FSRS training record](../fsrs-training/fsrs-training.md) |
 | Runtime scheduling in the app | [System architecture record](../system-architecture/system-architecture.md) |
 
-**Status (2026-11-16): decided, not implemented.** The decisions in
-section 3 were taken on 2026-11-16 by the ML owner. No code, data or weights
-have changed. The simulator and the app still grade with the earlier rule
-and the app still schedules on line-level FSRS recall. Section 6 lists the
-work and who does it; section 7 lists what is still open.
+**Status (2026-11-16): decided; implemented in the simulator, training and
+evaluation; the app's per-length scheduling is not implemented.** The decisions in section 3 were taken on
+2026-11-16 by the ML owner. The ML implementation (section 6) landed the
+same day; the retraining is the experiment
+[`ml/experiments/2026-11-16-move-recall/`](../../../ml/experiments/2026-11-16-move-recall/PLAN.md).
+The app grades with the decided rule (`52e9535`) but still schedules on
+line-level FSRS recall. Section 7 lists what is still open.
 
 This record answers the unresolved choice in the
 [move/line recall proposal](../../open/recall-target-mismatch.md): the
@@ -174,7 +176,15 @@ real players; section 7.3 says how to check it.
 
 ## 6. Implementation targets
 
-Not started.
+The ML rows were implemented on 2026-11-16: `ml/tempo_ml/pass_chance.py`
+(`mistake_limit`, `p_pass`, `per_move_target`), the arms of
+`tempo_ml.fsrs.train` (`--arm line | pass | accuracy | true-recall`), the
+link-aware scoring in `evaluate/metrics.py` and the days metric in
+`evaluate/days.py`. The reference `p_pass` and `R*(M)` for the app are
+`pass_chance.py` and its tests in `ml/tests/test_metrics.py` (enumeration
+of all outcomes, and the section 3.3 table). Of the app rows, the grading
+rule and browser timing landed in `52e9535`; per-line scheduling at `R*(M)`
+is not started.
 
 | Work | Owner |
 |---|---|
@@ -192,17 +202,16 @@ for the shipped weights.
 
 ### 7.1 Loss weighting for the accuracy target
 
-Per review, either plain binary cross-entropy on the accuracy, or the same
-loss weighted by `M`, which equals the binomial likelihood of `k`. See
-[Training approaches](approaches.md#3-approach-1-accuracy-target). To be fixed
-in the experiment's `PLAN.md`.
+Decided 2026-11-16: weighted by `M`, which equals the binomial likelihood of
+`k`, so every move counts the same. See
+[Training approaches](approaches.md#3-approach-1-accuracy-target).
 
 ### 7.2 Reference arms
 
-Proposed, not decided: a simulator-only arm A1c-R trained on the hidden
-per-move recall (an upper reference for the per-move curve, as B1 was for
-the line-level curve), and a reduced-data run with fewer reviews per player,
-where the two approaches are expected to differ most.
+Decided 2026-11-16 and part of the experiment: a simulator-only arm A1c-R
+trained on the hidden per-move recall (an upper reference for the per-move
+curve, as B1 was for the line-level curve), and a reduced-data run (the
+first 60 of 180 days), where the two approaches are expected to differ most.
 
 ### 7.3 Checking the binomial assumption on real reviews
 
@@ -215,5 +224,21 @@ need not change.
 
 ### 7.4 Which weights ship
 
-A team decision after the retraining, together with the app's scheduler
-change.
+A team decision, together with the app's scheduler change. Input from the
+retraining (section 8): either per-move arm, not a line-level arm; the two
+per-move arms did not differ on simulated clients.
+
+## 8. Results (2026-11-16)
+
+The [move-recall experiment](../../../ml/experiments/2026-11-16-move-recall/SUMMARY.md)
+trained the four arms of section 3.4 plus the reference A1c-R on three
+simulated populations. Per-move recall predicted the pass outcome better
+than line-level recall in every population and on hold-out: against a
+perfect predictor the per-move arms closed 80–81% of the gap from the
+FSRS-6 defaults, the line-level arms 33–34%. A1c-pass and A1c-acc did not
+differ, also with 60 of 180 days of history, so the expectation in
+[training approaches, section 6](approaches.md#6-expectations-and-how-they-are-tested)
+was not borne out. The line-level arms predicted about the same pass rate
+for every line length, while the observed rate jumps where one more mistake
+is allowed; the per-move arms followed it. Numbers, attempts and limits are
+in the run's summary; simulated clients only.

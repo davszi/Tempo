@@ -38,10 +38,8 @@ class GenerationConfig:
     active_day_prob: tuple[float, float] = (0.5, 0.95)
     interval_noise_sigma: float = 0.35
     max_interval_days: float = 365.0
-    # Hidden memory model: "multiplicative" (memory/multiplicative.py) or "fsrs"
-    # (memory/fsrs.py, per-client FSRS-6 weights with this log-normal noise,
-    # drawn from their own random stream so the other draws stay the same).
-    memory: str = "multiplicative"
+    # Hidden FSRS-6 memory (memory/fsrs.py): per-client weights with this
+    # log-normal noise, drawn from their own random stream.
     fsrs_weight_noise: float = 0.15
     # Std of the per-client trait spread around each archetype (TraitDistribution).
     trait_std: dict[str, float] = field(
@@ -104,9 +102,7 @@ def build_plans(lines: list[OpeningLine], cfg: GenerationConfig) -> list[ClientP
     n = cfg.clients_per_archetype * len(ARCHETYPES)
     seeds = root.spawn(n + 1)
     policy_rng = np.random.default_rng(seeds[-1])
-    if cfg.memory not in ("multiplicative", "fsrs"):
-        raise ValueError(f"memory must be 'multiplicative' or 'fsrs', got {cfg.memory!r}")
-    weight_rng = np.random.default_rng(np.random.SeedSequence([cfg.seed, 2])) if cfg.memory == "fsrs" else None
+    weight_rng = np.random.default_rng(np.random.SeedSequence([cfg.seed, 2]))
 
     plans: list[ClientPlan] = []
     k = 0
@@ -114,14 +110,12 @@ def build_plans(lines: list[OpeningLine], cfg: GenerationConfig) -> list[ClientP
         dist = TraitDistribution.diagonal(mean, cfg.trait_std)
         for i in range(1, cfg.clients_per_archetype + 1):
             traits = dist.sample(policy_rng)
-            memory = {} if weight_rng is None else {
-                "stability_model": FSRSMemory.sample(traits.C, weight_rng, cfg.fsrs_weight_noise)}
             client = SyntheticClient(
                 name=f"synth_{archetype}_{i:03d}",
                 traits=traits,
                 seed=seeds[k],
                 archetype=archetype,
-                **memory,
+                memory_model=FSRSMemory.sample(traits.C, weight_rng, cfg.fsrs_weight_noise),
             )
             side = SIDES[int(policy_rng.integers(2))]
             plans.append(

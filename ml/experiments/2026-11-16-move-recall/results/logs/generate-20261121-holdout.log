@@ -1,0 +1,18 @@
+{
+  "sessions": 10862,
+  "learning_mode": 1602,
+  "repeating_mode": 9260,
+  "clients": 60,
+  "review_status": {
+    "new": 1602,
+    "relearning": 516,
+    "review": 8744
+  },
+  "grade": {
+    "1": 518,
+    "2": 1291,
+    "3": 1666,
+    "4": 7387
+  }
+}
+wrote data/move-recall/seed-20261121/holdout in 2.0 s

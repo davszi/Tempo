@@ -10,9 +10,9 @@ requires-python = ">=3.12"
 dependencies = ["numpy>=1.26"]
 
 [project.optional-dependencies]
-train = ["scipy>=1.11", "pandas>=2.1"]
-# py-fsrs supplies reference-formula tests and the retained historical A1 optimizer run.
-test = ["pytest>=8", "scipy>=1.11", "pandas>=2.1", "fsrs==6.3.2"]
+train = ["scipy>=1.11", "pandas>=2.1", "torch>=2.4"]
+# py-fsrs supplies reference-formula tests and the A1 optimizer arm; torch the trainer's exact gradients.
+test = ["pytest>=8", "scipy>=1.11", "pandas>=2.1", "torch>=2.4", "fsrs[optimizer]==6.3.2"]
 
 [tool.setuptools.packages.find]
 include = ["tempo_ml*"]

@@ -1,9 +1,6 @@
-"""Hidden memory models of the synthetic clients.
+"""Hidden memory of the synthetic clients.
 
-``multiplicative``: per-line stability multiplied after a clean session and
-cut after a lapse; per-move recall follows the forgetting curve
-(docs/topics/synthetic-clients/record.md). The default.
-
-``fsrs``: FSRS-6 itself with per-client weights; stability and difficulty
-follow the graded FSRS-6 update. Selected with ``"memory": "fsrs"``.
+``state``: per-line memory state, the per-move forgetting curve and practice reps.
+``fsrs``: FSRS-6 with per-client weights; stability and difficulty follow the
+graded FSRS-6 update. The only memory model (move-recall record, section 3.1).
 """

@@ -1,34 +1,53 @@
-"""Error in days: predicted minus true days until the chance of a clean
-session drops to 90 % (negative = the review would come too early).
+"""Error in days: predicted minus true days until the chance of passing the
+line drops to 90 % (negative = the review would come too early).
 
-Definition: docs/topics/fsrs-training/retraining-plan.md (days metric).
+Definition: docs/topics/move-recall/move-recall.md, section 3.5. A pass is a
+review with at most L(M) mistakes; with per-move recall R it has chance
+``p_pass(R, M)``, which falls to 0.9 when R falls to ``per_move_target(M)``.
 """
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 import numpy as np
 
-TARGET_RETENTION = 0.9
+from ..pass_chance import TARGET_PASS, per_move_target
 
 
-def true_days(stability, num_moves, C, retention: float = TARGET_RETENTION):
-    """Days until the true chance of a clean session drops to ``retention``.
+@lru_cache(maxsize=None)
+def _target(m: int) -> float:
+    return per_move_target(m, TARGET_PASS)
 
-    The hidden memory is per move, R(t) = (1 + F t / S) ** -C with
-    F = 0.9 ** (-1 / C) - 1, and a clean session needs all M moves, so the
-    chance is R(t) ** M. Solving R(t) ** M = retention gives
-    t = S / F * ((retention ** (1 / M)) ** (-1 / C) - 1). For M = 1 and
-    retention 0.9 this is S.
+
+def per_move_targets(num_moves) -> np.ndarray:
+    """R*(M) for an array of line lengths."""
+    m = np.asarray(num_moves, dtype=int)
+    table = {int(x): _target(int(x)) for x in np.unique(m)}
+    return np.vectorize(table.get, otypes=[float])(m)
+
+
+def days_to_pass_target(stability, decay, num_moves):
+    """Days after a review until the pass chance falls to 0.9.
+
+    Per-move recall follows R(t) = (1 + F t / S) ** -C with F = 0.9 ** (-1/C) - 1,
+    so it reaches R*(M) at t = S / F * (R*(M) ** (-1/C) - 1). For one move this is S.
+    Used for the hidden truth (the client's S and C) and for per-move arms
+    (fitted S and decay w20).
     """
-    stability, num_moves, C = (np.asarray(x, dtype=float) for x in (stability, num_moves, C))
-    F = 0.9 ** (-1.0 / C) - 1.0
-    r_move = retention ** (1.0 / num_moves)
-    return stability / F * (r_move ** (-1.0 / C) - 1.0)
+    stability, decay = (np.asarray(x, dtype=float) for x in (stability, decay))
+    F = 0.9 ** (-1.0 / decay) - 1.0
+    return stability / F * (per_move_targets(num_moves) ** (-1.0 / decay) - 1.0)
+
+
+def true_days(stability, num_moves, C):
+    """True days until the hidden pass chance drops to 0.9."""
+    return days_to_pass_target(stability, C, num_moves)
 
 
 def days_metrics(d_pred: np.ndarray, d_true: np.ndarray, after_learning: np.ndarray,
                  horizon_days: float) -> dict:
-    """Error in days, predicted minus true days to 90 % (negative = review too early)."""
+    """Error in days, predicted minus true days to a 90 % pass chance (negative = review too early)."""
     e = d_pred - d_true
 
     def block(sel: np.ndarray) -> dict:

@@ -22,8 +22,8 @@ from tempo_ml.simulator import (
     time_band,
     ARCHETYPES,
     ClientTraits,
+    FSRSMemory,
     Line,
-    MultiplicativeStability,
     SyntheticClient,
     TraitDistribution,
     build_population,
@@ -101,6 +101,20 @@ def test_mistake_limits_and_time_bands():
         "normal", "fast", "normal", "normal", "slow", "slow", "very_slow"]
 
 
+def test_grading_boundaries_first_move_and_mistake_times():
+    ok = [True] * 5
+    assert calculate_session_grade(ok, [0, 1499, 1499, 1499, 1499]) == 4   # Fast
+    assert calculate_session_grade(ok, [0, 1500, 1500, 1500, 1500]) == 3   # Normal starts at 1500
+    assert calculate_session_grade(ok, [0, 8001, 8001, 8001, 8001]) == 2   # Very slow
+    assert calculate_session_grade(ok, [60000, 1000, 1000, 1000, 1000]) == 4  # first move is never timed
+    # a wrong move's time does not count: vector 6 with a huge time on the mistake
+    assert calculate_session_grade([True, True, False, True, True, True], [900, 1000, 99999, 1200, 1100, 1300]) == 2
+    # one mistake below the limit on an 8-move line: Slow gives Hard
+    assert calculate_session_grade([True, False] + [True] * 6, [0, 0] + [3501] * 6) == 2
+    with pytest.raises(ValueError):
+        calculate_session_grade([], [])
+
+
 # ------------------------------------------------------------------ sessions
 
 def make(arch="balanced", seed=0, **kw):
@@ -114,7 +128,8 @@ def test_first_learn_is_new_then_learning():
     assert first.record.t_days == 0.0
     assert first.record.accuracy == 1.0
     assert first.stability_before is None
-    assert first.stability_after == MultiplicativeStability().initial_days
+    w = make().memory_model.weights
+    assert first.stability_after == pytest.approx(w[first.record.grade - 1])  # S0 = w[grade - 1]
     second = c.learn(LINE, day=1.0)
     assert second.record.review_status == "learning"
     assert second.record.t_days == 1.0
@@ -143,7 +158,8 @@ def test_record_fields_consistent():
     assert r.t_days == 2.0
     assert r.total_time_ms == round(sum(m.time_ms for m in out.moves))
     assert r.accuracy == (LINE.num_moves - out.blunder_count) / LINE.num_moves
-    assert out.retrievability == pytest.approx(retrievability(2.0, 1.0, ARCHETYPES["balanced"].C))
+    assert 0.0 < out.retrievability < 1.0
+    assert out.stability_before is not None
     expected_grade = calculate_session_grade(
         [m.first_attempt_correct for m in out.moves], [m.attempt_times_ms[0] for m in out.moves]
     )
@@ -151,9 +167,10 @@ def test_record_fields_consistent():
     assert all(t >= 300 for m in out.moves for t in m.attempt_times_ms)
 
 
-def test_blunder_gives_again_relearning_and_penalty():
-    # Force a lapse: tiny stability, long gap -> R near 0.
-    c = make(seed=1, stability_model=MultiplicativeStability(initial_days=0.01))
+def test_again_lapses_relearning_and_penalty():
+    # Force a lapse: tiny initial stability, long gap -> R near 0.
+    tiny = FSRSMemory(weights=(0.01, 0.01, 0.01, 0.01) + make().memory_model.weights[4:])
+    c = make(seed=1, memory_model=tiny)
     c.learn(LINE, 0.0)
     c.learn(LINE, 0.0)
     c.learn(LINE, 0.0)
@@ -165,6 +182,7 @@ def test_blunder_gives_again_relearning_and_penalty():
     assert out.reps_after == max(0, reps_before - 2)
     assert out.stability_after <= out.stability_before
     assert any(len(m.attempt_times_ms) > 1 for m in out.moves)
+    assert out.blunder_count > 1  # 6 moves allow one mistake
     assert all(len(m.attempt_times_ms) <= c.max_attempts_per_move for m in out.moves)
     nxt = c.review(LINE, day=10_000.0)
     assert nxt.record.review_status == "relearning"
@@ -324,3 +342,20 @@ def test_generate_tiny_dataset(tmp_path, tiny_catalog):
     m2 = generate(tmp_path / "again", cfg, tiny_catalog)
     assert m2["outputs"]["sessions.csv"] == m["outputs"]["sessions.csv"]
     json.dumps(m)
+
+
+def test_mistake_within_limit_is_a_pass_not_a_lapse():
+    """A review with one mistake on a 6-move line passes (Hard): no relearning, reps grow."""
+    c = make(seed=0)
+    c.learn(LINE, 0.0)
+    for seed in range(200):
+        c = make(seed=seed)
+        c.learn(LINE, 0.0)
+        reps = c.memory(LINE).reps
+        out = c.review(LINE, day=4.0)
+        if out.blunder_count == 1:
+            assert out.record.grade == 2
+            assert out.reps_after == reps + 1
+            assert c.review(LINE, day=8.0).record.review_status == "review"
+            return
+    pytest.fail("no review with exactly one mistake in 200 seeds")

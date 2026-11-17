@@ -1,8 +1,8 @@
-"""Hidden memory models of the synthetic clients (in memory, no dataset)."""
+"""Hidden memory of the synthetic clients (in memory, no dataset)."""
 
 import pytest
 
-from tempo_ml.simulator import ARCHETYPES, MultiplicativeStability, next_reps, retrievability
+from tempo_ml.simulator import ARCHETYPES, next_reps, retrievability
 
 
 @pytest.mark.parametrize("arch", list(ARCHETYPES))
@@ -18,16 +18,9 @@ def test_retrievability_boundaries():
 
 
 def test_reps_soft_penalty():
-    assert next_reps(5, blundered=False) == 6
-    assert next_reps(5, blundered=True) == 3
-    assert next_reps(1, blundered=True) == 0
-
-
-def test_lapse_never_increases_stability():
-    m = MultiplicativeStability()
-    assert m.after_lapse(10.0, 0.3) == pytest.approx(3.0)
-    assert m.after_lapse(2.0, 0.3) == pytest.approx(1.0)
-    assert m.after_lapse(0.5, 0.3) == 0.5
+    assert next_reps(5, lapsed=False) == 6
+    assert next_reps(5, lapsed=True) == 3
+    assert next_reps(1, lapsed=True) == 0
 
 
 # ---- FSRS-6 memory (memory/fsrs.py) ----
@@ -69,3 +62,9 @@ def test_fsrs_memory_lapse_floor():
     assert 1.0 <= s <= 20.0
     s_low, _ = m.update(0.5, 5.0, 3.0, 0.4, 1)
     assert s_low == 0.5  # the floor never lifts a lower stability
+
+
+def test_fsrs_memory_default_uses_client_decay():
+    m = FSRSMemory.default(0.35)
+    assert m.weights[20] == pytest.approx(0.35)
+    assert m.weights[:20] == pytest.approx(tuple(DEFAULT_PARAMETERS[:20]))

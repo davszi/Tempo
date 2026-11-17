@@ -1,0 +1,898 @@
+{
+  "arm": "pass",
+  "link": "move",
+  "clock": "app",
+  "test": {
+    "constant_base_rate": {
+      "reviews": 4906,
+      "log_loss": 0.23868042133838077,
+      "brier": 0.06011749297279912,
+      "rmse_bins": 0.005740248673277937,
+      "auc": 0.5,
+      "mean_predicted": 0.9415331553182025,
+      "observed_success": 0.9357929066449245,
+      "rmse_vs_truth": 0.10879043162180872,
+      "mae_vs_truth": 0.07059845112847841
+    },
+    "fsrs6_default": {
+      "reviews": 4906,
+      "log_loss": 0.1723679866641105,
+      "brier": 0.04917693451374289,
+      "rmse_bins": 0.04194895231949635,
+      "auc": 0.8775997206404526,
+      "mean_predicted": 0.9302501546236591,
+      "observed_success": 0.9357929066449245,
+      "rmse_vs_truth": 0.05669147571139082,
+      "mae_vs_truth": 0.0222706148495635,
+      "move_recall": {
+        "rmse_vs_truth": 0.031169031470368085,
+        "mae_vs_truth": 0.015051662392651105
+      },
+      "days": {
+        "sessions": 8268,
+        "median_error": -0.04504231162584915,
+        "median_abs_error": 2.445329983780894,
+        "median_rel_error": -0.009731517480228553,
+        "share_too_early": 0.51548137397194,
+        "mean_error": -0.6147930277963563,
+        "n_beyond_horizon": 2262,
+        "median_true_days": 18.758077216870156,
+        "median_pred_days": 18.826654978149016,
+        "bands": {
+          "lt7": {
+            "sessions": 2044,
+            "median_error": -0.15325052185244878,
+            "median_abs_error": 0.3703220600670272,
+            "median_rel_error": -0.08277818524271811
+          },
+          "7to30": {
+            "sessions": 2869,
+            "median_error": 0.14266392516460513,
+            "median_abs_error": 1.5399812854029538,
+            "median_rel_error": 0.00770200018649203
+          },
+          "ge30": {
+            "sessions": 3355,
+            "median_error": 1.7054758395636327,
+            "median_abs_error": 21.428688963089357,
+            "median_rel_error": 0.027045023588267984
+          }
+        },
+        "session_type": {
+          "after_learning": {
+            "sessions": 1606,
+            "median_error": 0.05166145611935424,
+            "median_abs_error": 0.6596836884527875,
+            "median_rel_error": 0.0044349539945250285
+          },
+          "after_review": {
+            "sessions": 6662,
+            "median_error": -0.09323375675924694,
+            "median_abs_error": 4.6044879611887435,
+            "median_rel_error": -0.015129360983525592
+          }
+        }
+      }
+    },
+    "fsrs6_trained": {
+      "reviews": 4906,
+      "log_loss": 0.1697103838991247,
+      "brier": 0.04794816209876153,
+      "rmse_bins": 0.021549379667842972,
+      "auc": 0.87935366987861,
+      "mean_predicted": 0.9338238644503631,
+      "observed_success": 0.9357929066449245,
+      "rmse_vs_truth": 0.036964126161157185,
+      "mae_vs_truth": 0.01798453957567188,
+      "move_recall": {
+        "rmse_vs_truth": 0.020009254398850925,
+        "mae_vs_truth": 0.01286322454048795
+      },
+      "days": {
+        "sessions": 8268,
+        "median_error": -0.010286925770986999,
+        "median_abs_error": 4.970396567267594,
+        "median_rel_error": -0.003055810777757434,
+        "share_too_early": 0.501693275278181,
+        "mean_error": -2.5441313565578425,
+        "n_beyond_horizon": 2262,
+        "median_true_days": 18.758077216870156,
+        "median_pred_days": 24.657962637653508,
+        "bands": {
+          "lt7": {
+            "sessions": 2044,
+            "median_error": -0.34178297194668295,
+            "median_abs_error": 0.532516571138115,
+            "median_rel_error": -0.21975173272965212
+          },
+          "7to30": {
+            "sessions": 2869,
+            "median_error": 2.371486941134716,
+            "median_abs_error": 4.0794117419792215,
+            "median_rel_error": 0.15790797542679003
+          },
+          "ge30": {
+            "sessions": 3355,
+            "median_error": -1.2806776248755796,
+            "median_abs_error": 20.734106072511096,
+            "median_rel_error": -0.017162466663564968
+          }
+        },
+        "session_type": {
+          "after_learning": {
+            "sessions": 1606,
+            "median_error": 4.3460493808211265,
+            "median_abs_error": 4.3460493808211265,
+            "median_rel_error": 0.5168141864155618
+          },
+          "after_review": {
+            "sessions": 6662,
+            "median_error": -0.23932627922806304,
+            "median_abs_error": 5.209594466395291,
+            "median_rel_error": -0.04421777631701823
+          }
+        }
+      }
+    }
+  },
+  "test_by_archetype": {
+    "balanced": {
+      "fsrs6_default": {
+        "reviews": 1444,
+        "log_loss": 0.13931728817193365,
+        "brier": 0.03750311587259389,
+        "rmse_bins": 0.034143875859533705,
+        "auc": 0.8847285122960798,
+        "mean_predicted": 0.9442277137482302,
+        "observed_success": 0.9480609418282548,
+        "rmse_vs_truth": 0.052459974882841764,
+        "mae_vs_truth": 0.01738648597658767,
+        "move_recall": {
+          "rmse_vs_truth": 0.03343110684715712,
+          "mae_vs_truth": 0.012895203940741099
+        },
+        "days": {
+          "sessions": 2514,
+          "median_error": -0.05307767264833885,
+          "median_abs_error": 3.133732446282661,
+          "median_rel_error": -0.006700825179330469,
+          "share_too_early": 0.5147175815433572,
+          "mean_error": -3.067685900423282,
+          "n_beyond_horizon": 779,
+          "median_true_days": 21.295269711364497,
+          "median_pred_days": 22.773269319347683,
+          "bands": {
+            "lt7": {
+              "sessions": 454,
+              "median_error": -0.08267124469708757,
+              "median_abs_error": 0.3751341873980407,
+              "median_rel_error": -0.04764427514691366
+            },
+            "7to30": {
+              "sessions": 954,
+              "median_error": 0.2417133996989813,
+              "median_abs_error": 1.5103731169975179,
+              "median_rel_error": 0.012252769606475382
+            },
+            "ge30": {
+              "sessions": 1106,
+              "median_error": -3.727089893075112,
+              "median_abs_error": 23.06795290293077,
+              "median_rel_error": -0.050497281685679504
+            }
+          },
+          "session_type": {
+            "after_learning": {
+              "sessions": 521,
+              "median_error": 0.05441411844667243,
+              "median_abs_error": 0.8834153156311633,
+              "median_rel_error": 0.004268742981814917
+            },
+            "after_review": {
+              "sessions": 1993,
+              "median_error": -0.14427247699610746,
+              "median_abs_error": 6.255796723579749,
+              "median_rel_error": -0.020696924060712177
+            }
+          }
+        }
+      },
+      "fsrs6_trained": {
+        "reviews": 1444,
+        "log_loss": 0.13876898849576672,
+        "brier": 0.03724285192758583,
+        "rmse_bins": 0.042492769532576045,
+        "auc": 0.8852885317750183,
+        "mean_predicted": 0.946616760848326,
+        "observed_success": 0.9480609418282548,
+        "rmse_vs_truth": 0.03525975876374013,
+        "mae_vs_truth": 0.014569141566901133,
+        "move_recall": {
+          "rmse_vs_truth": 0.01905899204148971,
+          "mae_vs_truth": 0.010871673957584135
+        },
+        "days": {
+          "sessions": 2514,
+          "median_error": 0.5528693796180209,
+          "median_abs_error": 6.121877702201871,
+          "median_rel_error": 0.04454900037389283,
+          "share_too_early": 0.4498806682577566,
+          "mean_error": -4.345918891790336,
+          "n_beyond_horizon": 779,
+          "median_true_days": 21.295269711364497,
+          "median_pred_days": 24.657962637653508,
+          "bands": {
+            "lt7": {
+              "sessions": 454,
+              "median_error": -0.1963652867374809,
+              "median_abs_error": 0.5480883929856212,
+              "median_rel_error": -0.12707595348880046
+            },
+            "7to30": {
+              "sessions": 954,
+              "median_error": 2.790035198231463,
+              "median_abs_error": 4.086711198229459,
+              "median_rel_error": 0.20209583546815263
+            },
+            "ge30": {
+              "sessions": 1106,
+              "median_error": -5.763176066269313,
+              "median_abs_error": 22.273138824353886,
+              "median_rel_error": -0.07075132126330752
+            }
+          },
+          "session_type": {
+            "after_learning": {
+              "sessions": 521,
+              "median_error": 5.26932939365074,
+              "median_abs_error": 5.26932939365074,
+              "median_rel_error": 0.6342977858383425
+            },
+            "after_review": {
+              "sessions": 1993,
+              "median_error": -0.2176350816746379,
+              "median_abs_error": 6.5560213276694626,
+              "median_rel_error": -0.033194009391598056
+            }
+          }
+        }
+      }
+    },
+    "blitzer": {
+      "fsrs6_default": {
+        "reviews": 1569,
+        "log_loss": 0.10903110648670698,
+        "brier": 0.02805575971162805,
+        "rmse_bins": 0.05334445287474495,
+        "auc": 0.8669910887638771,
+        "mean_predicted": 0.9682318903509247,
+        "observed_success": 0.9662205226258763,
+        "rmse_vs_truth": 0.03579430833512558,
+        "mae_vs_truth": 0.010295231337261648,
+        "move_recall": {
+          "rmse_vs_truth": 0.017916679225479907,
+          "mae_vs_truth": 0.008457567540672652
+        },
+        "days": {
+          "sessions": 2741,
+          "median_error": 0.7487814384749178,
+          "median_abs_error": 3.0631431352937923,
+          "median_rel_error": 0.05078706097781331,
+          "share_too_early": 0.39511127325793505,
+          "mean_error": 5.948506137592913,
+          "n_beyond_horizon": 859,
+          "median_true_days": 23.763062047571438,
+          "median_pred_days": 23.96779639109902,
+          "bands": {
+            "lt7": {
+              "sessions": 230,
+              "median_error": -0.3033275547001639,
+              "median_abs_error": 0.4475032481695099,
+              "median_rel_error": -0.1251374876375801
+            },
+            "7to30": {
+              "sessions": 1235,
+              "median_error": 0.34523928807860926,
+              "median_abs_error": 1.3277252010309466,
+              "median_rel_error": 0.027682152127461553
+            },
+            "ge30": {
+              "sessions": 1276,
+              "median_error": 10.159809451081156,
+              "median_abs_error": 21.070291624246607,
+              "median_rel_error": 0.13731154789460132
+            }
+          },
+          "session_type": {
+            "after_learning": {
+              "sessions": 575,
+              "median_error": 0.1106789579603813,
+              "median_abs_error": 0.8929658419127673,
+              "median_rel_error": 0.00770200018649203
+            },
+            "after_review": {
+              "sessions": 2166,
+              "median_error": 1.5571596810813144,
+              "median_abs_error": 6.336320751435586,
+              "median_rel_error": 0.0654082824414314
+            }
+          }
+        }
+      },
+      "fsrs6_trained": {
+        "reviews": 1569,
+        "log_loss": 0.1082412884218125,
+        "brier": 0.027505722601590715,
+        "rmse_bins": 0.03785216765915913,
+        "auc": 0.8707248469159158,
+        "mean_predicted": 0.9700588072909546,
+        "observed_success": 0.9662205226258763,
+        "rmse_vs_truth": 0.024367789541904293,
+        "mae_vs_truth": 0.00883362130478271,
+        "move_recall": {
+          "rmse_vs_truth": 0.01294474496687789,
+          "mae_vs_truth": 0.007866135801279667
+        },
+        "days": {
+          "sessions": 2741,
+          "median_error": 3.8239356126765216,
+          "median_abs_error": 6.739501485193685,
+          "median_rel_error": 0.15734413613921255,
+          "share_too_early": 0.2958774170010945,
+          "mean_error": 4.546141093115061,
+          "n_beyond_horizon": 859,
+          "median_true_days": 23.763062047571438,
+          "median_pred_days": 26.047495792391516,
+          "bands": {
+            "lt7": {
+              "sessions": 230,
+              "median_error": -0.06002309100839723,
+              "median_abs_error": 0.6061282114697597,
+              "median_rel_error": -0.07143444798568878
+            },
+            "7to30": {
+              "sessions": 1235,
+              "median_error": 3.746225908157548,
+              "median_abs_error": 4.3460493808211265,
+              "median_rel_error": 0.2478649454129191
+            },
+            "ge30": {
+              "sessions": 1276,
+              "median_error": 7.801486894200249,
+              "median_abs_error": 19.30557935433066,
+              "median_rel_error": 0.11508847590801777
+            }
+          },
+          "session_type": {
+            "after_learning": {
+              "sessions": 575,
+              "median_error": 6.9654280041373475,
+              "median_abs_error": 6.9654280041373475,
+              "median_rel_error": 0.6976792287938011
+            },
+            "after_review": {
+              "sessions": 2166,
+              "median_error": 2.1805522222793083,
+              "median_abs_error": 6.51757555009042,
+              "median_rel_error": 0.08575071239633739
+            }
+          }
+        }
+      }
+    },
+    "diligent": {
+      "fsrs6_default": {
+        "reviews": 1893,
+        "log_loss": 0.25007573818077683,
+        "brier": 0.07558798437234687,
+        "rmse_bins": 0.06593137036295572,
+        "auc": 0.8496310599269016,
+        "mean_predicted": 0.88810702798237,
+        "observed_success": 0.90121500264131,
+        "rmse_vs_truth": 0.07188980157298465,
+        "mae_vs_truth": 0.03592199299186604,
+        "move_recall": {
+          "rmse_vs_truth": 0.03740591036180767,
+          "mae_vs_truth": 0.022162101287163644
+        },
+        "days": {
+          "sessions": 3013,
+          "median_error": -0.2469406774515474,
+          "median_abs_error": 1.3148893875739756,
+          "median_rel_error": -0.07763499178198618,
+          "share_too_early": 0.6256223033521408,
+          "mean_error": -4.538931869664228,
+          "n_beyond_horizon": 624,
+          "median_true_days": 10.150358173671247,
+          "median_pred_days": 8.92693736188643,
+          "bands": {
+            "lt7": {
+              "sessions": 1360,
+              "median_error": -0.14188826174932176,
+              "median_abs_error": 0.3349774442511524,
+              "median_rel_error": -0.07996260868454806
+            },
+            "7to30": {
+              "sessions": 680,
+              "median_error": -0.7437675466298836,
+              "median_abs_error": 2.6088208835494346,
+              "median_rel_error": -0.06064617897154746
+            },
+            "ge30": {
+              "sessions": 973,
+              "median_error": -7.028786881631952,
+              "median_abs_error": 20.643033605511228,
+              "median_rel_error": -0.10282663687154772
+            }
+          },
+          "session_type": {
+            "after_learning": {
+              "sessions": 510,
+              "median_error": -0.019413816063351297,
+              "median_abs_error": 0.3245891057230309,
+              "median_rel_error": -0.010095099384571168
+            },
+            "after_review": {
+              "sessions": 2503,
+              "median_error": -0.37100551837565654,
+              "median_abs_error": 2.4902998578224853,
+              "median_rel_error": -0.1193197204868253
+            }
+          }
+        }
+      },
+      "fsrs6_trained": {
+        "reviews": 1893,
+        "log_loss": 0.24426103670755142,
+        "brier": 0.0730578585901713,
+        "rmse_bins": 0.03247037172191739,
+        "auc": 0.8525885362138035,
+        "mean_predicted": 0.8940322280448979,
+        "observed_success": 0.90121500264131,
+        "rmse_vs_truth": 0.04583202454618468,
+        "mae_vs_truth": 0.028174516063622264,
+        "move_recall": {
+          "rmse_vs_truth": 0.02493286019219079,
+          "mae_vs_truth": 0.018524202497979182
+        },
+        "days": {
+          "sessions": 3013,
+          "median_error": -0.5925234340193559,
+          "median_abs_error": 1.7957594145737437,
+          "median_rel_error": -0.21734792109845044,
+          "share_too_early": 0.7321606372386326,
+          "mean_error": -7.490942813902328,
+          "n_beyond_horizon": 624,
+          "median_true_days": 10.150358173671247,
+          "median_pred_days": 8.674616877174007,
+          "bands": {
+            "lt7": {
+              "sessions": 1360,
+              "median_error": -0.4397605186921639,
+              "median_abs_error": 0.5116965112063185,
+              "median_rel_error": -0.25647810241292796
+            },
+            "7to30": {
+              "sessions": 680,
+              "median_error": -0.9993964882847877,
+              "median_abs_error": 3.821511860134147,
+              "median_rel_error": -0.07202024293260943
+            },
+            "ge30": {
+              "sessions": 973,
+              "median_error": -11.841820240675172,
+              "median_abs_error": 20.64499414416781,
+              "median_rel_error": -0.16537731388784976
+            }
+          },
+          "session_type": {
+            "after_learning": {
+              "sessions": 510,
+              "median_error": -0.5071408715602119,
+              "median_abs_error": 0.7370460680938851,
+              "median_rel_error": -0.21975173272965212
+            },
+            "after_review": {
+              "sessions": 2503,
+              "median_error": -0.7166791385932771,
+              "median_abs_error": 2.8591962807828963,
+              "median_rel_error": -0.21734792109845044
+            }
+          }
+        }
+      }
+    }
+  },
+  "fit": {
+    "fsrs6_trained": {
+      "reviews": 17976,
+      "log_loss": 0.16935068214598692,
+      "brier": 0.04645791927617634,
+      "rmse_bins": 0.009636074040636804,
+      "auc": 0.855614136919611,
+      "mean_predicted": 0.9412504136354221,
+      "observed_success": 0.941533155318202,
+      "rmse_vs_truth": 0.03195665517811902,
+      "mae_vs_truth": 0.01526480584746841,
+      "move_recall": {
+        "rmse_vs_truth": 0.0167887200134846,
+        "mae_vs_truth": 0.011052617915882787
+      },
+      "days": {
+        "sessions": 30105,
+        "median_error": 0.521069956574749,
+        "median_abs_error": 4.82103281104747,
+        "median_rel_error": 0.03907407165882731,
+        "share_too_early": 0.4598239495100482,
+        "mean_error": 2.797357156564328,
+        "n_beyond_horizon": 7799,
+        "median_true_days": 17.6970102412944,
+        "median_pred_days": 24.657962637653508,
+        "bands": {
+          "lt7": {
+            "sessions": 7600,
+            "median_error": -0.31717985181418573,
+            "median_abs_error": 0.5176014900252484,
+            "median_rel_error": -0.17566646124886717
+          },
+          "7to30": {
+            "sessions": 10618,
+            "median_error": 3.384646675005799,
+            "median_abs_error": 4.28839937486361,
+            "median_rel_error": 0.22355598433518253
+          },
+          "ge30": {
+            "sessions": 11887,
+            "median_error": 3.341457932736567,
+            "median_abs_error": 17.432132007003908,
+            "median_rel_error": 0.044392223981418115
+          }
+        },
+        "session_type": {
+          "after_learning": {
+            "sessions": 5838,
+            "median_error": 4.807512816384298,
+            "median_abs_error": 4.807512816384298,
+            "median_rel_error": 0.5754820081513118
+          },
+          "after_review": {
+            "sessions": 24267,
+            "median_error": -0.0009564332718846602,
+            "median_abs_error": 4.8398401509340125,
+            "median_rel_error": -0.00016127620055463515
+          }
+        }
+      }
+    }
+  },
+  "optimizer": {
+    "loss": 0.16935068214598692,
+    "iterations": 169,
+    "evaluations": 212,
+    "converged": true,
+    "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+    "max_abs_projected_gradient": 0.0001773144730152219,
+    "device": "cuda"
+  },
+  "base_rate": 0.941533155318202,
+  "personalisation": "skipped (--no-personalise)",
+  "split": {
+    "fit": [
+      "synth_balanced_001",
+      "synth_balanced_004",
+      "synth_balanced_006",
+      "synth_balanced_007",
+      "synth_balanced_009",
+      "synth_balanced_010",
+      "synth_balanced_012",
+      "synth_balanced_014",
+      "synth_balanced_015",
+      "synth_balanced_016",
+      "synth_balanced_018",
+      "synth_balanced_019",
+      "synth_balanced_021",
+      "synth_balanced_022",
+      "synth_balanced_023",
+      "synth_balanced_026",
+      "synth_balanced_028",
+      "synth_balanced_030",
+      "synth_balanced_031",
+      "synth_balanced_032",
+      "synth_balanced_034",
+      "synth_balanced_035",
+      "synth_balanced_036",
+      "synth_balanced_038",
+      "synth_balanced_039",
+      "synth_balanced_040",
+      "synth_balanced_042",
+      "synth_balanced_044",
+      "synth_balanced_045",
+      "synth_balanced_046",
+      "synth_balanced_048",
+      "synth_balanced_050",
+      "synth_balanced_052",
+      "synth_balanced_053",
+      "synth_balanced_056",
+      "synth_balanced_057",
+      "synth_balanced_058",
+      "synth_balanced_059",
+      "synth_balanced_060",
+      "synth_balanced_061",
+      "synth_balanced_062",
+      "synth_balanced_063",
+      "synth_balanced_064",
+      "synth_balanced_065",
+      "synth_balanced_066",
+      "synth_balanced_067",
+      "synth_balanced_068",
+      "synth_balanced_070",
+      "synth_balanced_072",
+      "synth_balanced_073",
+      "synth_balanced_075",
+      "synth_balanced_076",
+      "synth_balanced_077",
+      "synth_balanced_078",
+      "synth_balanced_079",
+      "synth_balanced_080",
+      "synth_balanced_082",
+      "synth_balanced_083",
+      "synth_balanced_084",
+      "synth_balanced_085",
+      "synth_balanced_086",
+      "synth_balanced_087",
+      "synth_balanced_088",
+      "synth_balanced_090",
+      "synth_balanced_091",
+      "synth_balanced_093",
+      "synth_balanced_096",
+      "synth_balanced_098",
+      "synth_balanced_099",
+      "synth_balanced_100",
+      "synth_blitzer_002",
+      "synth_blitzer_004",
+      "synth_blitzer_005",
+      "synth_blitzer_007",
+      "synth_blitzer_009",
+      "synth_blitzer_010",
+      "synth_blitzer_011",
+      "synth_blitzer_013",
+      "synth_blitzer_014",
+      "synth_blitzer_017",
+      "synth_blitzer_018",
+      "synth_blitzer_019",
+      "synth_blitzer_020",
+      "synth_blitzer_023",
+      "synth_blitzer_024",
+      "synth_blitzer_025",
+      "synth_blitzer_026",
+      "synth_blitzer_027",
+      "synth_blitzer_030",
+      "synth_blitzer_031",
+      "synth_blitzer_033",
+      "synth_blitzer_037",
+      "synth_blitzer_038",
+      "synth_blitzer_040",
+      "synth_blitzer_041",
+      "synth_blitzer_042",
+      "synth_blitzer_043",
+      "synth_blitzer_045",
+      "synth_blitzer_046",
+      "synth_blitzer_048",
+      "synth_blitzer_049",
+      "synth_blitzer_050",
+      "synth_blitzer_052",
+      "synth_blitzer_053",
+      "synth_blitzer_054",
+      "synth_blitzer_057",
+      "synth_blitzer_059",
+      "synth_blitzer_060",
+      "synth_blitzer_061",
+      "synth_blitzer_062",
+      "synth_blitzer_063",
+      "synth_blitzer_065",
+      "synth_blitzer_066",
+      "synth_blitzer_067",
+      "synth_blitzer_068",
+      "synth_blitzer_069",
+      "synth_blitzer_071",
+      "synth_blitzer_074",
+      "synth_blitzer_075",
+      "synth_blitzer_076",
+      "synth_blitzer_077",
+      "synth_blitzer_078",
+      "synth_blitzer_079",
+      "synth_blitzer_082",
+      "synth_blitzer_083",
+      "synth_blitzer_084",
+      "synth_blitzer_086",
+      "synth_blitzer_088",
+      "synth_blitzer_089",
+      "synth_blitzer_090",
+      "synth_blitzer_091",
+      "synth_blitzer_092",
+      "synth_blitzer_093",
+      "synth_blitzer_094",
+      "synth_blitzer_095",
+      "synth_blitzer_096",
+      "synth_blitzer_097",
+      "synth_blitzer_098",
+      "synth_blitzer_099",
+      "synth_blitzer_100",
+      "synth_diligent_001",
+      "synth_diligent_002",
+      "synth_diligent_003",
+      "synth_diligent_004",
+      "synth_diligent_005",
+      "synth_diligent_006",
+      "synth_diligent_007",
+      "synth_diligent_008",
+      "synth_diligent_009",
+      "synth_diligent_010",
+      "synth_diligent_011",
+      "synth_diligent_012",
+      "synth_diligent_013",
+      "synth_diligent_016",
+      "synth_diligent_019",
+      "synth_diligent_020",
+      "synth_diligent_023",
+      "synth_diligent_024",
+      "synth_diligent_025",
+      "synth_diligent_026",
+      "synth_diligent_027",
+      "synth_diligent_028",
+      "synth_diligent_029",
+      "synth_diligent_030",
+      "synth_diligent_032",
+      "synth_diligent_033",
+      "synth_diligent_035",
+      "synth_diligent_036",
+      "synth_diligent_040",
+      "synth_diligent_042",
+      "synth_diligent_043",
+      "synth_diligent_044",
+      "synth_diligent_045",
+      "synth_diligent_046",
+      "synth_diligent_047",
+      "synth_diligent_048",
+      "synth_diligent_049",
+      "synth_diligent_051",
+      "synth_diligent_052",
+      "synth_diligent_053",
+      "synth_diligent_056",
+      "synth_diligent_057",
+      "synth_diligent_058",
+      "synth_diligent_060",
+      "synth_diligent_062",
+      "synth_diligent_063",
+      "synth_diligent_065",
+      "synth_diligent_066",
+      "synth_diligent_068",
+      "synth_diligent_069",
+      "synth_diligent_070",
+      "synth_diligent_072",
+      "synth_diligent_073",
+      "synth_diligent_077",
+      "synth_diligent_079",
+      "synth_diligent_080",
+      "synth_diligent_083",
+      "synth_diligent_085",
+      "synth_diligent_086",
+      "synth_diligent_087",
+      "synth_diligent_088",
+      "synth_diligent_089",
+      "synth_diligent_090",
+      "synth_diligent_091",
+      "synth_diligent_092",
+      "synth_diligent_093",
+      "synth_diligent_094",
+      "synth_diligent_097",
+      "synth_diligent_098",
+      "synth_diligent_099"
+    ],
+    "validation": [
+      "synth_balanced_008",
+      "synth_balanced_013",
+      "synth_balanced_017",
+      "synth_balanced_029",
+      "synth_balanced_037",
+      "synth_balanced_049",
+      "synth_balanced_074",
+      "synth_balanced_081",
+      "synth_balanced_094",
+      "synth_balanced_097",
+      "synth_blitzer_016",
+      "synth_blitzer_021",
+      "synth_blitzer_028",
+      "synth_blitzer_036",
+      "synth_blitzer_051",
+      "synth_blitzer_055",
+      "synth_blitzer_056",
+      "synth_blitzer_070",
+      "synth_blitzer_081",
+      "synth_blitzer_087",
+      "synth_diligent_015",
+      "synth_diligent_017",
+      "synth_diligent_018",
+      "synth_diligent_022",
+      "synth_diligent_038",
+      "synth_diligent_050",
+      "synth_diligent_054",
+      "synth_diligent_071",
+      "synth_diligent_082",
+      "synth_diligent_096"
+    ],
+    "test": [
+      "synth_balanced_002",
+      "synth_balanced_003",
+      "synth_balanced_005",
+      "synth_balanced_011",
+      "synth_balanced_020",
+      "synth_balanced_024",
+      "synth_balanced_025",
+      "synth_balanced_027",
+      "synth_balanced_033",
+      "synth_balanced_041",
+      "synth_balanced_043",
+      "synth_balanced_047",
+      "synth_balanced_051",
+      "synth_balanced_054",
+      "synth_balanced_055",
+      "synth_balanced_069",
+      "synth_balanced_071",
+      "synth_balanced_089",
+      "synth_balanced_092",
+      "synth_balanced_095",
+      "synth_blitzer_001",
+      "synth_blitzer_003",
+      "synth_blitzer_006",
+      "synth_blitzer_008",
+      "synth_blitzer_012",
+      "synth_blitzer_015",
+      "synth_blitzer_022",
+      "synth_blitzer_029",
+      "synth_blitzer_032",
+      "synth_blitzer_034",
+      "synth_blitzer_035",
+      "synth_blitzer_039",
+      "synth_blitzer_044",
+      "synth_blitzer_047",
+      "synth_blitzer_058",
+      "synth_blitzer_064",
+      "synth_blitzer_072",
+      "synth_blitzer_073",
+      "synth_blitzer_080",
+      "synth_blitzer_085",
+      "synth_diligent_014",
+      "synth_diligent_021",
+      "synth_diligent_031",
+      "synth_diligent_034",
+      "synth_diligent_037",
+      "synth_diligent_039",
+      "synth_diligent_041",
+      "synth_diligent_055",
+      "synth_diligent_059",
+      "synth_diligent_061",
+      "synth_diligent_064",
+      "synth_diligent_067",
+      "synth_diligent_074",
+      "synth_diligent_075",
+      "synth_diligent_076",
+      "synth_diligent_078",
+      "synth_diligent_081",
+      "synth_diligent_084",
+      "synth_diligent_095",
+      "synth_diligent_100"
+    ]
+  },
+  "environment": {
+    "python": "3.13.3",
+    "numpy": "2.5.4",
+    "pandas": "3.1.1",
+    "scipy": "1.18.1",
+    "torch": "2.15.0+cu132",
+    "device": "cuda",
+    "gpu": "NVIDIA A100 80GB PCIe",
+    "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39"
+  },
+  "seconds": 25.9
+}

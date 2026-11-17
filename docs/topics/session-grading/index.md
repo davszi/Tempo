@@ -19,7 +19,7 @@ math = true
 
 <div class="bs-checks">
 <div class="bs-check"><span class="bs-badge bs-ok">Decided</span><h3>Rule decided on 2026-11-16</h3><p>Mistake limits by line length, four time bands, Easy only without mistakes.</p></div>
-<div class="bs-check"><span class="bs-badge bs-ok">Implemented</span><h3>The app and the simulator use the rule</h3><p>Added in commit <code>52e9535</code>. Every recorded synthetic dataset and trained weight, including the app's weights, was still graded with the earlier rule.</p></div>
+<div class="bs-check"><span class="bs-badge bs-ok">Implemented</span><h3>The app and the simulator use the rule</h3><p>Added in commit <code>52e9535</code>. Synthetic datasets and weights recorded before the move-recall retraining, including the app's weights, were graded with the earlier rule.</p></div>
 <div class="bs-check"><span class="bs-badge bs-wait">Not calibrated</span><h3>The time values are starting values</h3><p>Chosen from published orders of magnitude, not from human data. They are checked once the app records browser times.</p></div>
 </div>
 
@@ -610,15 +610,15 @@ The rule grades unassisted Repeating reviews only. Grading of guided Learning se
 
 <section class="card" id="next">
 
-## The app and the simulator run the rule; data, weights, four questions and the time calibration remain open
+## The app and the simulator run the rule; the app's weights, four questions and the time calibration remain open
 
-<p class="bs-lead">The simulator and the app changed in commit <code>52e9535</code>. The hidden truth, the recorded data and the weights still have to follow; the time values then wait for checks against real browser times.</p>
+<p class="bs-lead">The simulator and the app changed in commit <code>52e9535</code>. The move-recall change then switched the hidden truth and retrained on regenerated data; the app's weights are a team decision, and the time values wait for checks against real browser times.</p>
 
 <div class="bs-checks">
 <div class="bs-check"><span class="bs-badge bs-ok">Done</span><h3>Simulator</h3><p>A new grading function from per-move data replaces the old one. A lapse is now "graded Again" instead of "any mistake". The test vectors replace the old threshold tests.</p></div>
-<div class="bs-check"><span class="bs-badge bs-wait">Partly done</span><h3>Training and evaluation</h3><p>A pass is still a grade above Again, but it now means "mistakes within the limit" instead of "no mistakes"; the training code says so. The hidden truth has not been changed to match yet.</p></div>
+<div class="bs-check"><span class="bs-badge bs-ok">Done</span><h3>Training and evaluation</h3><p>A pass is still a grade above Again, but it now means "mistakes within the limit" instead of "no mistakes". The hidden truth is now the chance of passing under the limit.</p></div>
 <div class="bs-check"><span class="bs-badge bs-ok">Done</span><h3>App</h3><p>The browser times each move and sends the time with it. The backend grades with the new rule, without a baseline, and the result screen explains each grade from its mistakes and pace.</p></div>
-<div class="bs-check"><span class="bs-badge bs-wait">Not started</span><h3>Data and pages</h3><p>Synthetic datasets are regenerated and weights retrained as new dated experiments; existing experiments stay as results of the earlier rule. Pages describing the grade are updated.</p></div>
+<div class="bs-check"><span class="bs-badge bs-ok">Done</span><h3>Data and pages</h3><p>The move-recall experiment regenerated the synthetic data and retrained the weights; existing experiments stay as results of the earlier rule. Exporting the grading inputs is still open. Pages describing the grade are updated.</p></div>
 </div>
 
 The hidden truth for the new pass is the chance of at most $L(M)$ mistakes when each move is recalled with chance $R$, instead of the chance $R^M$ of a clean line:

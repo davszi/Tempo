@@ -7,8 +7,9 @@ means one player move, decided on 2026-11-16 to be trained side by side
 (arms A1c-acc and A1c-pass in the
 [move recall record, section 3.4](move-recall.md#34-training-arms)). Terms
 (`M`, `k`, `L(M)`, `R`, `p_pass`, accuracy) are defined in
-[section 2 of that record](move-recall.md#2-terms). Both approaches are
-specified, not implemented; no results exist yet.
+[section 2 of that record](move-recall.md#2-terms). Both approaches were
+implemented on 2026-11-16 (`tempo_ml.fsrs.train --arm accuracy` and
+`--arm pass`); their results are in the 2026-11-16 move-recall experiment.
 
 ## 2. What the two approaches share
 
@@ -51,7 +52,7 @@ M · loss = −[ (M − k) · log R + k · log(1 − R) ]
 
 which is the negative log-likelihood of `k` mistakes under the binomial,
 up to a constant. Unweighted, every review counts the same; weighted, every
-move counts the same. The choice is open
+move counts the same. The weighted form was chosen
 ([move recall record, section 7.1](move-recall.md#71-loss-weighting-for-the-accuracy-target)).
 
 **Example.** A 6-move line, one mistake (`k = 1`, a pass under the decided
@@ -137,7 +138,9 @@ a review without mistakes. The loss compares 1 with
 In the simulator, moves are drawn independently, so both approaches are
 correctly specified and Approach 1 is expected to fit at least as well,
 with the difference growing with line length and with fewer reviews per
-player. This is a prediction, not a result. The retraining compares both
+player. This is a prediction, not a result. The 2026-11-16 retraining did not
+bear it out: the two approaches did not differ, also with a third of the
+history ([move recall record, section 8](move-recall.md#8-results-2026-11-16)). The retraining compares both
 with each other and with the line-level arms A1 and A1c on the same pass
 labels and hidden pass chance; the experiment's `PLAN.md` states what
 counts as a difference. Which approach suits real players depends on

@@ -32,9 +32,15 @@ after every valid row, including initialization; padding stays NaN.
 The loss mask contains only `review`/`relearning` rows at least one elapsed
 day after the previous session, never a card's first row. Guided rows and
 short-delay reviews still update state; they are neither negative examples
-nor discarded from replay. Binary success is `grade > 1`. The clock is the
-exported floating-point `t_days` (rounded to four decimals by the package),
-not calendar days. The historical A1 comparison scores both clocks below.
+nor discarded from replay. Binary success is `grade > 1`, which under the
+[session grading rule](../session-grading/session-grading.md) means at most
+L(M) mistakes. Since 2026-11-16 `load_cards` uses the app clock by default:
+whole elapsed days, the floor of the exported `t_days` (`clock="app"`), as
+the app's py-fsrs scheduler counts them; `clock="exact"` keeps the
+floating-point `t_days` (rounded to four decimals by the package), the
+clock of the 2026-11-13 and 2026-11-14 studies. `load_cards` also reads
+each card's player move count M from `repertoires.csv` (`line_lengths`) and
+each review's `accuracy`.
 
 `split_clients` shuffles within each archetype using the seed (default 7),
 allocates rounded 20% test and 10% validation, and fits on the remainder.
@@ -42,18 +48,30 @@ Test clients do not fit general weights; validation selects personalization
 settings when enabled. The dated studies also use separately generated
 hold-out clients.
 
-| CLI target | Fit target and objective | Boundary |
-|---|---|---|
-| `pass` (default) | Mean binary cross-entropy against `grade > 1` | Predictions use session fields; current CLI still loads synthetic truth for scoring |
-| `true` | Mean squared error against hidden `p_clean` on fit clients | Diagnostic B arms only; unavailable for real players |
+Since 2026-11-16 the CLI selects an **arm** (`--arm`); the meaning of R and
+the two per-move targets are decided in the
+[move recall record](../move-recall/move-recall.md#34-training-arms) and
+described in [training approaches](../move-recall/approaches.md):
 
-`objective` optionally adds an L2 pull toward a prior, normalized by each
-parameter's allowed range. `fit` clips starting weights and uses SciPy
-L-BFGS-B with FSRS bounds, finite-difference step 1e-6 and default
-`maxiter=300`. Python API `ftol`/`gtol` can tighten tolerances; the CLI uses
-SciPy defaults. It records loss, iterations, evaluations, convergence and
-termination message. Saving weights proves neither convergence nor a global
-optimum.
+| CLI arm | R means | Fit target and objective | Boundary |
+|---|---|---|---|
+| `line` (default) | the line | Mean binary cross-entropy of R against `grade > 1` | The earlier `--target pass`; predictions use session fields |
+| `pass` | one move | Mean binary cross-entropy of `p_pass(R, M)` against `grade > 1` | Needs M per card |
+| `accuracy` | one move | Binary cross-entropy of R against the review's accuracy, weighted by M (the binomial likelihood of the mistakes) | Needs M per card |
+| `true-recall` | one move | As `accuracy`, against the hidden per-move recall on fit clients | Diagnostic only; unavailable for real players. Replaces the earlier `--target true` (MSE against hidden `p_clean`) |
+
+`Objective` computes the arm's loss and its exact gradient with the torch
+replay in `fsrs/torch_model.py`, on a CUDA GPU when available (`--device`);
+`fsrs/model.py` stays the numpy reference, and tests check that both give
+the same loss and that the gradient matches finite differences. The loss
+optionally adds an L2 pull toward a prior, normalized by each parameter's
+allowed range. `fit` clips starting weights and uses SciPy L-BFGS-B with
+FSRS bounds, `maxiter=2000`, `ftol=1e-12` and `gtol=1e-7`. It records loss,
+iterations, evaluations, convergence, termination message, the largest
+projected gradient and the device. Saving weights proves neither
+convergence nor a global optimum. Until 2026-11-16 `fit` used
+finite-difference gradients (step 1e-6), `maxiter=300` and SciPy's default
+tolerances; the dated studies below used that version.
 
 Personalization is implemented and optional, not an accepted rollout policy.
 Without `--no-personalise`, the first 60% of each client's tested rows fit
@@ -62,13 +80,15 @@ order. Fewer than ten tested rows gives no time split; fitting additionally
 requires ten early and five late rows. Local fits start from general weights
 with at most 100 iterations. Validation selects the L2 strength from
 0.01/0.1/1/10; late test results compare defaults, general and personalized
-predictions. Local fitting uses binary cross-entropy even when the general
-CLI target is `true`. The dated A/B arms skip personalization.
+predictions. Local fitting uses the general arm's loss. The dated arms skip
+personalization.
 
 ## Evaluation metrics
 
 `evaluate.metrics.score` computes probability metrics on the loss mask,
-then days metrics on **every valid session**, guided rows included. The
+then days metrics on **every valid session**, guided rows included. Its
+`link` says how the fitted R becomes a pass prediction: `line` uses R,
+`move` uses `p_pass(R, M)`. The
 constant baseline is the fit clients' binary success rate; it has no
 state-based days prediction.
 
@@ -78,7 +98,8 @@ state-based days prediction.
 | `brier` | Mean `(prediction - outcome)^2`, probability squared |
 | `rmse_bins` | Weighted RMSE of mean prediction versus observed success in 20 equal-width probability bins; probability |
 | `auc` | Rank AUC with averaged tied ranks; assumes both classes occur |
-| `rmse_vs_truth`, `mae_vs_truth` | Error against hidden `p_clean`; probability, ×100 for percentage points |
+| `rmse_vs_truth`, `mae_vs_truth` | Error against the hidden pass chance `p_pass` (before 2026-11-16 `p_clean = R^M`); probability, ×100 for percentage points |
+| `move_recall` | Per-move arms only: RMSE and MAE of R against the hidden per-move recall |
 | `mean_predicted`, `observed_success`, `reviews` | Mean prediction, success rate and masked count |
 
 `Truth` reads `ground_truth.csv` and C from `clients.csv`, aligning through
@@ -89,17 +110,24 @@ B-arm diagnostics, a target for **fit clients only**, never a planner input.
 
 ### Days metric
 
-Accepted on 2026-11-13: error is predicted minus true days until the chance
-of a clean session falls to 90%; negative means an early review. Predicted
-days equal fitted FSRS stability after the session. For the current
-per-move producer, `evaluate.days.true_days` uses hidden stability after the
-session S, move count M and client C:
+Since 2026-11-16 ([move recall record, section 3.5](../move-recall/move-recall.md#35-evaluation-follows-the-pass-meaning)):
+error is predicted minus true days until the chance of **passing** the line
+(at most L(M) mistakes) falls to 90%; negative means an early review.
+`evaluate.days.true_days` uses hidden stability after the session S, move
+count M, client C and the per-move target `R*(M)` at which
+`p_pass(R*, M) = 0.9`:
 
 `F = 0.9**(-1/C) - 1`
 
-`d_true = S / F * ((0.9**(1/M))**(-1/C) - 1)`
+`d_true = S / F * (R*(M)**(-1/C) - 1)`
 
-For one move this equals S. The removed simulator sampled once per line,
+A line-link arm predicts its fitted stability; a move-link arm predicts the
+same expression with its fitted stability and decay w20. For one move this
+equals S.
+
+Accepted on 2026-11-13 and used by the dated studies below: the chance of a
+**clean** session, `d_true = S / F * ((0.9**(1/M))**(-1/C) - 1)`. Days results
+under the two definitions are not comparable. The removed simulator sampled once per line,
 so its true days simply equaled hidden stability; do not interchange these
 definitions. The 90% threshold expresses the team's requested stability
 difference and matches the app's default desired retention. Medians were
@@ -189,6 +217,36 @@ reviews pass; 60 hold-out clients agree):
    compatible elapsed-time conventions.
 4. Trained weights call about 89% of reviews early; on lines whose true time
    is 30 days or more, the median error is −21 days for A1c and −11 for B1.
+
+## Per-move recall under the decided grading rule (2026-11-16)
+
+Run: [line-level versus per-move FSRS](../../../ml/experiments/2026-11-16-move-recall/SUMMARY.md),
+protocol fixed in its [PLAN.md](../../../ml/experiments/2026-11-16-move-recall/PLAN.md).
+FSRS hidden memory, the decided [grading rule](../session-grading/session-grading.md),
+app clock, three populations of 300 clients (seeds 20261111, 20261121,
+20261131) and 60 hold-out clients each. Arms as decided in the
+[move recall record](../move-recall/move-recall.md#34-training-arms):
+
+| Arm | Trainer | R means | Target | File per seed |
+|---|---|---|---|---|
+| A1 | py-fsrs 6.3.2 `Optimizer` | the line | pass/fail | `results/seed-<s>/A1/fsrs6_general_parameters.json` |
+| A1c | `tempo_ml.fsrs.train --arm line` | the line | pass/fail | `results/seed-<s>/A1c/…` |
+| A1c-pass | `--arm pass` | one move | pass/fail through `p_pass(R, M)` | `results/seed-<s>/A1c-pass/…` |
+| A1c-acc | `--arm accuracy` | one move | accuracy, weighted by M | `results/seed-<s>/A1c-acc/…` |
+| A1c-R | `--arm true-recall` | one move | hidden per-move recall (diagnostic) | `results/seed-<s>/A1c-R/…` |
+
+Test log-loss, mean of the seeds (22,851 reviews, 92.7% passed):
+defaults 0.2123, A1 0.2033, A1c 0.2029, A1c-pass 0.1902, A1c-acc 0.1900,
+A1c-R 0.1898, perfect predictor 0.1848. Against the perfect predictor the
+line-level arms close 33–34% of the gap and the per-move arms 80–81%
+(hold-out 30–31% and 75–76%). By the plan's bar, per-move recall beats
+line-level recall (A1c → A1c-pass −0.0121, 95% [−0.0143, −0.0099], all
+seeds); the two per-move targets show no difference, also on the first 60
+days only; A1 against A1c is inconclusive (−0.0003, seeds disagree). Median
+absolute days error: per-move arms 5.5–5.8 days, A1 8.5, A1c 11.5, defaults
+6.4. All 21 shared-trainer fits converged. Days results use the 0.9
+pass-chance definition and are not comparable with the two studies above.
+Simulated clients only; limits and attempts are in the run's summary.
 
 ## Earlier 1,000-client simulator (removed)
 
@@ -450,7 +508,7 @@ Source facts and historical measurements remain distinct.
 
 Tests were inspected, not executed. No training, benchmark, generation,
 app run or human calibration occurred. No new numerical equivalence,
-convergence or performance claim follows. Current `--target pass` still
+convergence or performance claim follows. Every current `--arm` still
 requires synthetic truth sidecars; production human export/fitting remains
 future work in [Review Dataset](../review-dataset/record.md). Missing-data
 robustness, single-class AUC, arbitrary human chronology and calibration

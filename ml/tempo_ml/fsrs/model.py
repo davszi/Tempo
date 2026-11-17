@@ -14,20 +14,27 @@ DECAY = -w[20], FACTOR = 0.9 ** (1 / DECAY) - 1.
 Input layout (``Cards``, ``load_cards``): a review-session CSV turned into
 padded per-card arrays.
 
-Only the review-dataset schema columns are used, so the same code works on
-human data. A card is (agent_name, opening_name); rows must be chronological
-per card (generator output is). Same-day reviews (t_days < 1) still update the
-card but are excluded from the loss, as in the FSRS optimizers; so are
-Learning Mode sessions (``new``/``learning``), which test nothing because the
-arrow shows the move.
+Only observable columns are used, so the same code works on human data: the
+review-dataset schema plus each line's player move count M (``repertoires.csv``;
+the app knows its lines). A card is (agent_name, opening_name); rows must be
+chronological per card (generator output is). Same-day reviews (elapsed < 1
+day) still update the card but are excluded from the loss, as in the FSRS
+optimizers; so are Learning Mode sessions (``new``/``learning``), which test
+nothing because the arrow shows the move.
 
-Label: success = grade > 1, i.e. the review was not Again: its mistakes stayed within the line's limit.
+Clock (``clock``): ``app`` (default) uses whole elapsed days, the floor of the
+exact elapsed time, as the app's py-fsrs scheduler does; ``exact`` uses the
+exact elapsed time.
+
+Label: pass = grade > 1, i.e. at most L(M) mistakes (session-grading record).
+``acc`` holds the review's accuracy (M - k) / M.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Mapping
 
 import numpy as np
 import pandas as pd
@@ -173,16 +180,31 @@ class Cards:
     y: np.ndarray            # (n, steps) 1.0 if grade > 1
     loss_mask: np.ndarray    # (n, steps) review counts toward loss/metrics
     row: np.ndarray          # (n, steps) row number in the CSV, -1 if none
+    acc: np.ndarray          # (n, steps) accuracy (M - k) / M of the review
+    m: np.ndarray            # (n,) player moves M of the card's line, 0 if unknown
 
     def subset(self, keep: np.ndarray) -> "Cards":
         return Cards(*(getattr(self, f)[keep] for f in self.__dataclass_fields__))
+
+    def m_grid(self) -> np.ndarray:
+        """M laid out like the (n, steps) arrays."""
+        return np.broadcast_to(self.m[:, None], self.t.shape)
 
     @property
     def n_reviews(self) -> int:
         return int(self.loss_mask.sum())
 
 
-def load_cards(sessions_csv: str | Path) -> Cards:
+def line_lengths(data_dir: str | Path) -> dict[tuple[str, str], int]:
+    """(agent_name, opening_name) -> player moves M, from ``repertoires.csv``."""
+    rep = pd.read_csv(Path(data_dir) / "repertoires.csv")
+    return {(a, o): int(m) for a, o, m in zip(rep["agent_name"], rep["opening_name"], rep["num_moves"])}
+
+
+def load_cards(sessions_csv: str | Path, num_moves: Mapping[tuple[str, str], int] | None = None,
+               clock: str = "app") -> Cards:
+    if clock not in ("app", "exact"):
+        raise ValueError(f"clock must be 'app' or 'exact', got {clock!r}")
     df = pd.read_csv(sessions_csv)
     df["row"] = np.arange(len(df))
     key = df["agent_name"] + "\x1f" + df["opening_name"]
@@ -196,11 +218,17 @@ def load_cards(sessions_csv: str | Path) -> Cards:
         return a
 
     valid = grid(True, False, bool)
-    t = grid(df["t_days"].to_numpy(float), 0.0, float)
+    elapsed = df["t_days"].to_numpy(float)
+    t = grid(np.floor(elapsed + 1e-9) if clock == "app" else elapsed, 0.0, float)
     g = grid(df["grade"].to_numpy(int), 3, int)
     row = grid(df["row"].to_numpy(int), -1, int)
     tested = grid(df["review_status"].isin(TEST_STATUSES).to_numpy(), False, bool)
     loss_mask = valid & tested & (t >= 1.0)
     loss_mask[:, 0] = False
-    agent = df.groupby("card")["agent_name"].first().to_numpy()
-    return Cards(agent=agent, t=t, g=g, valid=valid, y=(g > 1).astype(float), loss_mask=loss_mask, row=row)
+    acc = grid(df["accuracy"].to_numpy(float), 1.0, float)
+    first = df.groupby("card")[["agent_name", "opening_name"]].first()
+    agent = first["agent_name"].to_numpy()
+    m = np.array([num_moves.get((a, o), 0) if num_moves else 0
+                  for a, o in zip(first["agent_name"], first["opening_name"])], dtype=int)
+    return Cards(agent=agent, t=t, g=g, valid=valid, y=(g > 1).astype(float), loss_mask=loss_mask,
+                 row=row, acc=acc, m=m)

@@ -1,0 +1,18 @@
+{
+  "sessions": 40598,
+  "learning_mode": 7903,
+  "repeating_mode": 32695,
+  "clients": 300,
+  "review_status": {
+    "new": 7903,
+    "relearning": 1378,
+    "review": 31317
+  },
+  "grade": {
+    "1": 1398,
+    "2": 4003,
+    "3": 7645,
+    "4": 27552
+  }
+}
+wrote data/move-recall/seed-20261111/reduced in 6.9 s

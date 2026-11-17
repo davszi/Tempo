@@ -5,9 +5,10 @@ training and evaluation. Method, results and decisions:
 [FSRS training](../topics/fsrs-training/fsrs-training.md).
 
 Use Python 3.12 or later in an isolated environment. The `train` extra installs
-SciPy and pandas; the `test` extra also installs pytest and py-fsrs 6.3.2.
-Py-fsrs is used for reference checks and the retained A1 optimizer experiment,
-not by the package's L-BFGS-B trainer.
+SciPy, pandas and torch; the `test` extra also installs pytest and py-fsrs
+6.3.2. Torch computes the trainer's exact gradients, on a CUDA GPU when one
+is available (`--device`). Py-fsrs is used for reference checks and the A1
+optimizer arm, not by the package's L-BFGS-B trainer.
 
 ```bash
 cd ml
@@ -15,15 +16,16 @@ python -m pip install -e ".[train,test]"
 python -m pytest
 
 # generate a synthetic dataset (reads backend/tempo_demo.sqlite), then fit FSRS-6 on it
-python -m tempo_ml.simulator.generate --config configs/multiplicative-memory.json --out data/<name>   # or configs/fsrs-memory.json
-python -m tempo_ml.fsrs.train --data data/<name> --out experiments/<date>-<name>/results/binary --seed 7 --target pass --no-personalise
+python -m tempo_ml.simulator.generate --config configs/fsrs-memory.json --out data/<name>
+python -m tempo_ml.fsrs.train --data data/<name> --out experiments/<date>-<name>/results/<arm> --seed 7 --arm pass --no-personalise
 ```
 
 - `tempo_ml/catalog.py`: reads the opening catalog from `backend/tempo_demo.sqlite`.
-- `tempo_ml/fsrs/`: the vectorised FSRS-6 model and input layout (`model.py`) and the L-BFGS-B trainer (`train.py`, target pass/fail or true recall).
-- `tempo_ml/simulator/`: virtual players. `clients.py` archetypes, per-player spread and the client; `memory/multiplicative.py` (default) and `memory/fsrs.py` (`"memory": "fsrs"`) their hidden memory; `recall.py` per-move recall, retries and move times; `practice.py` repertoire, new lines and scheduling; `grading.py` Again/Hard/Good/Easy and the session record; `generate.py` writes a dataset.
-- `tempo_ml/evaluate/`: `metrics.py` (log-loss, Brier, calibration, AUC, error against the true chance) and `days.py` (error in days to 90%).
-- `configs/`: generator settings for multiplicative or FSRS hidden memory. The published November 13 and 14 runs used different catalog groupings (91 and 82 families). Running a configuration against today's SQLite file is not, by itself, an exact historical reproduction; use each experiment's source pin, input identity and instructions.
+- `tempo_ml/pass_chance.py`: mistake limits `L(M)`, the pass chance `p_pass(R, M)` and the per-move target `R*(M)`.
+- `tempo_ml/fsrs/`: the vectorised FSRS-6 model and input layout (`model.py`, numpy reference), its torch replay (`torch_model.py`) and the L-BFGS-B trainer (`train.py`, arms `line`, `pass`, `accuracy`, `true-recall`).
+- `tempo_ml/simulator/`: virtual players. `clients.py` archetypes, per-player spread and the client; `memory/fsrs.py` the hidden FSRS-6 memory and `memory/state.py` its per-line state; `recall.py` per-move recall, retries and move times; `practice.py` repertoire, new lines and scheduling; `grading.py` the decided grading rule and the session record; `generate.py` writes a dataset.
+- `tempo_ml/evaluate/`: `metrics.py` (log-loss, Brier, calibration, AUC, error against the true pass chance) and `days.py` (error in days to a 90% pass chance).
+- `configs/`: generator settings (FSRS hidden memory; the multiplicative configs were removed on 2026-11-16 and are retrievable at `b854419`). The published November 13 and 14 runs used different catalog groupings (91 and 82 families) and the earlier grading rule. Running a configuration against today's SQLite file is not, by itself, an exact historical reproduction; use each experiment's source pin, input identity and instructions.
 - `experiments/<date>-<name>/`: one folder per run; `SUMMARY.md` is its record, scripts that belong only to it sit beside it.
 - `tests/`: `test_simulator.py`, `test_memory_models.py`, `test_trainers.py`, `test_metrics.py`.
 - `data/`: generated datasets, ignored by Git; each experiment's `dataset_MANIFEST.txt` says how to rebuild them.
@@ -31,14 +33,14 @@ python -m tempo_ml.fsrs.train --data data/<name> --out experiments/<date>-<name>
 ## CLI contracts
 
 Run from `ml/` after installation. `pyproject.toml` requires Python >=3.12
-and NumPy >=1.26; `train` adds SciPy >=1.11 and pandas >=2.1; `test` adds
-pytest >=8 and fsrs==6.3.2. There is no packaged console-script entrypoint;
+and NumPy >=1.26; `train` adds SciPy >=1.11, pandas >=2.1 and torch >=2.4;
+`test` adds pytest >=8, torch >=2.4 and fsrs==6.3.2. There is no packaged console-script entrypoint;
 invoke modules with `python -m`.
 
 | Module | Required and optional arguments |
 |---|---|
 | `tempo_ml.simulator.generate` | Required `--out`; optional `--config`, `--seed`, `--clients-per-archetype`, `--horizon-days`, `--catalog` |
-| `tempo_ml.fsrs.train` | Required `--data`, `--out`; optional `--seed` (7), `--target pass` or `true`, `--no-personalise` |
+| `tempo_ml.fsrs.train` | Required `--data`, `--out`; optional `--seed` (7), `--arm line`, `pass`, `accuracy` or `true-recall` (default `line`), `--clock app` or `exact` (default `app`), `--device auto`, `cpu` or `cuda`, `--no-personalise` |
 
 Generator JSON must contain `GenerationConfig` fields; unknown keys are
 rejected and lists become tuples. CLI seed, client count and horizon override
@@ -47,12 +49,14 @@ JSON. The default catalog path resolves from the source tree to
 another read-only SQLite catalog. Population, scheduling and memory settings
 belong to [Synthetic Players](../topics/synthetic-clients/record.md#9-practice-policy-generation-and-demo-producer).
 
-The trainer currently requires `sessions.csv`, `ground_truth.csv`,
-`clients.csv` and `manifest.json` even for the binary target. It is a
+The trainer currently requires `sessions.csv`, `repertoires.csv` (line
+lengths), `ground_truth.csv`, `clients.csv` and `manifest.json` for every arm. It is a
 synthetic-experiment CLI, not a completed human-data fitting flow. Artifacts
 and optimizer limits belong to [FSRS Training](../topics/fsrs-training/fsrs-training.md#artifacts-and-reproduction).
-The `true` target is diagnostic; its weights must never replace the app's
-`backend/fitted_global.csv`.
+The `true-recall` arm is diagnostic; its weights must never replace the app's
+`backend/fitted_global.csv`. Weights of the `pass`, `accuracy` and
+`true-recall` arms describe per-move recall and need the app's per-line
+scheduler ([move recall record, section 3.3](../topics/move-recall/move-recall.md#33-the-scheduler-targets-a-09-pass-chance)).
 
 The independent demo producer runs from the repository root using the
 backend environment in [project context](../PROJECT_CONTEXT.md#python-backend):

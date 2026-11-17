@@ -100,7 +100,12 @@ $$\text{total\_hesitation\_ms} = (\text{raw\_hesitation} \times 1000) \times \te
 
 After a review session for an opening line:
 
-$$\text{reps}_{k+1} = \begin{cases} \text{reps}_k + 1 & \text{if session completed without blunder} \\ \max(0, \text{reps}_k - 2) & \text{if a blunder occurred} \end{cases}$$
+$$\text{reps}_{k+1} = \begin{cases} \text{reps}_k + 1 & \text{if the review passed (Hard, Good or Easy)} \\ \max(0, \text{reps}_k - 2) & \text{if it was graded Again} \end{cases}$$
+
+Since 2026-11-16 a lapse is a review graded Again under the
+[session grading rule](../session-grading/session-grading.md); a review with
+mistakes within the line's limit is a pass. Before, any first-attempt mistake
+was a lapse.
 
 ---
 
@@ -137,9 +142,10 @@ collection policy and producer differences. The [FSRS training record](../fsrs-t
 owns fitting, evaluation and historical results.
 
 - Every repertoire move has an independent first-attempt recall draw with
-  the same line-level R. A clean session therefore has probability R^M,
-  where M is the number of the player's moves. Hidden stability and
-  familiarity remain per line, not separate states for each move.
+  the same line-level R. A review passes with at most L(M) mistakes, so its
+  chance is `p_pass(R, M)` (`ml/tempo_ml/pass_chance.py`), where M is the
+  number of the player's moves. Hidden stability and familiarity remain per
+  line, not separate states for each move.
 - Learning follows the arrows: every move is correct and latency uses
   R = 1. Guided sessions also increment familiarity and update hidden
   stability. The generator adds an unassisted test after the guided session
@@ -163,6 +169,7 @@ owns fitting, evaluation and historical results.
   retry semantics.
 - The current CSV omits individual move events; `total_time_ms` includes
   all attempted moves, including retries. Accuracy counts only first attempts.
+  The grade uses each move's first-attempt time (`grading.calculate_session_grade`).
   The [review dataset record](../review-dataset/record.md) owns those fields.
 - Archetype values are benchmark settings, not fitted human cohorts.
   `TraitDistribution` supplies bounded multivariate-normal sampling as a
@@ -177,18 +184,26 @@ one of the package experiment datasets or as a validated human calibration.
 ## 7. Offline simulator and hidden memory
 
 Code: `ml/tempo_ml/`; setup: [ML development](../../development/ml.md).
-The hidden memory is chosen in the generation config:
+Since 2026-11-16 FSRS memory is the only hidden memory
+([move recall record, section 3.1](../move-recall/move-recall.md#31-fsrs-memory-is-the-only-hidden-memory-model)):
 
-| `memory` | Implementation | Initial state and updates |
-|---|---|---|
-| `multiplicative` (default) | `simulator/memory/multiplicative.py`, `MultiplicativeStability` | First exposure S = 1 day. Clean session: S × (1 + 1.5·exp(2(1−R))). Lapse: min(previous S, max(1 day, S × 0.3)) |
-| `fsrs` | `simulator/memory/fsrs.py`, `FSRSMemory` | First grade initializes S and D. Later sessions below one elapsed day use short-term stability; later sessions use recall/forget update. After a lapse, S is clamped to min(previous S, max(1 day, updated S)) |
+| Implementation | Initial state and updates |
+|---|---|
+| `simulator/memory/fsrs.py`, `FSRSMemory`; state in `simulator/memory/state.py`, `LineMemory` | First grade initializes S and D. Later sessions below one elapsed day use short-term stability; later sessions use the recall update for Hard, Good and Easy and the forget update for Again. After Again, S is clamped to min(previous S, max(1 day, updated S)) |
 
-Both use section 3.2's power-law recall curve. State is per client and line:
-stability, familiarity, last session time, last-review lapse, session count,
-and difficulty for FSRS memory. Guided Learning updates hidden memory too;
-the multiplicative model treats it as success, while FSRS memory uses its
-latency-derived grade. `LineMemory.elapsed` rejects time going backwards.
+The multiplicative model (`memory/multiplicative.py`, `MultiplicativeStability`;
+first exposure S = 1 day, clean session S × (1 + 1.5·exp(2(1−R))), lapse
+min(previous S, max(1 day, S × 0.3))) was removed on 2026-11-16 and is
+retrievable at commit `b854419`. It remains the hidden memory of the
+historical 2026-11-13 experiment; the two subsections below describe it for
+reading that experiment.
+
+Recall follows section 3.2's power-law curve. State is per client and line:
+stability, difficulty, familiarity, last session time, last-review lapse and
+session count. Guided Learning updates hidden memory too, with its
+latency-derived grade. A client built without sampled weights gets the
+FSRS-6 defaults with w20 = its C (`FSRSMemory.default`).
+`LineMemory.elapsed` rejects time going backwards.
 
 FSRS hidden weights start at defaults with log-normal noise (sd 0.15) on
 w0–w16; w17–w19 stay at defaults, w0–w3 are sorted, and w20 is assigned the
@@ -206,9 +221,12 @@ populations.
 
 ### How the two updates differ
 
-Everything except the stability update is shared: the recall curve and
-per-move draws (clean-session chance R^M), latency, grading, retries and the
-collection policy. With the same seed and catalog the clients, sides and
+Historical: the multiplicative model was removed on 2026-11-16.
+
+Until 2026-11-16, with the earlier grading rule, everything except the
+stability update was shared: the recall curve and per-move draws
+(clean-session chance R^M), latency, grading, retries and the collection
+policy. With the same seed and catalog the clients, sides and
 repertoires are identical (2026-11-14 experiment). The two update rules, read
 from `memory/multiplicative.py` and `fsrs/model.py` (`recall_stability`,
 `forget_stability`, `next_difficulty`):
@@ -230,6 +248,9 @@ difference causes the lower FSRS-memory pass rate was not measured, and the
 catalog grouping also differed.
 
 ### Worked example: one review under both rules
+
+Historical: the multiplicative model was removed on 2026-11-16, and the
+pass chance R^6 below is the earlier no-mistake rule.
 
 Computed on 2026-11-16 with the package's own update functions
 (`MultiplicativeStability.after_success/after_lapse` and
@@ -270,9 +291,10 @@ results do not isolate the hidden-memory change alone.
 
 ## 8. Simulator, app and accepted specification
 
-The offline producer uses grade-based noisy intervals and each synthetic
-client's known baseline. The app uses py-fsrs scheduling, persisted move
-events and a default grading baseline of 0 ms unless configured. Its runtime
+The offline producer uses grade-based noisy intervals and, since
+2026-11-16, the decided grading rule without a baseline. The app uses py-fsrs
+scheduling, persisted move events with browser-measured times and, since
+`52e9535`, the decided rule. Its runtime
 selection/storage boundary belongs to [App & practice](../app-practice/app-practice.md).
 
 The package grades guided sessions, updates hidden memory, then tests after
@@ -288,8 +310,8 @@ transfer to human app practice has not been measured.
 
 Hidden FSRS memory is not an exact unmodified FSRS process: its stability
 update has a lapse floor and the whole session's grade, while the chance
-of a clean line is R^M. Multiplicative memory is not FSRS. Which resembles
-human players remains open; Stage 2 calibration is future work.
+of passing a line is `p_pass(R, M)`. Whether it resembles human players
+remains open; Stage 2 calibration is future work.
 
 ## 9. Practice policy, generation and demo producer
 
@@ -379,8 +401,8 @@ their own records; no additional ML topic is needed for the inspected package.
 |---|---|
 | `simulator/clients.py`: `ClientTraits`, `TraitDistribution`, `Line`, `SyntheticClient`, `build_population` | Sections 3–4, 6–9 |
 | `simulator/recall.py`: `MoveEvent`, `sample_move_time_ms`, `play_move` | Sections 3.3–3.4 and 6 retry discrepancy |
-| `simulator/memory/multiplicative.py`: `LineMemory`, `StabilityModel`, `MultiplicativeStability`, `retrievability`, `next_reps` | Sections 3.2, 3.5 and 7 |
-| `simulator/memory/fsrs.py`: `FSRSMemory.sample`, `start`, `update` | Section 7; FSRS Training owns fitting formulas |
+| `simulator/memory/state.py`: `LineMemory`, `retrievability`, `next_reps` (2026-11-16; before, in the removed `memory/multiplicative.py` with `StabilityModel` and `MultiplicativeStability`) | Sections 3.2, 3.5 and 7 |
+| `simulator/memory/fsrs.py`: `FSRSMemory.default`, `sample`, `start`, `update` | Section 7; FSRS Training owns fitting formulas |
 | `simulator/practice.py`: `GenerationConfig`, `_pick_repertoire`, `build_plans`, `_next_interval`, `simulate_client` | Section 9 |
 | `simulator/generate.py`: `generate`, `load_config`, `main`, `_catalog_sha256` | Section 9; Review Dataset owns files; ML development owns commands |
 | `catalog.py`: `OpeningLine`, `load_opening_lines` | Section 9 consumer contract; Catalog & data owns source tables |

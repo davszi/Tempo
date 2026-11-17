@@ -2,6 +2,60 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-17 Record the move-recall retraining: per-move recall beats line-level recall
+
+Experiment [`ml/experiments/2026-11-16-move-recall`](../ml/experiments/2026-11-16-move-recall/SUMMARY.md),
+run on 2026-11-16 on one A100 of the TU Clausthal cluster (Slurm job 39789,
+47 min of the agreed 3 A100-hours) with CPU jobs 39793, 39797 and 39800.
+Five arms on three simulated populations under the decided grading rule
+and FSRS hidden memory, plus three arms on the first 60 days. Test
+log-loss: defaults 0.2123, A1 0.2033, A1c 0.2029, A1c-pass 0.1902, A1c-acc
+0.1900, A1c-R 0.1898, perfect predictor 0.1848; per-move arms close 80–81%
+of the gap to the perfect predictor, line-level arms 33–34%. By the plan's
+bar per-move beats line-level (−0.0121, 95% [−0.0143, −0.0099]); the two
+per-move targets do not differ; A1 against A1c is inconclusive. Attempts:
+A1 failed twice on cluster setup (package path, missing `tqdm`) and
+succeeded on the third; all 21 shared-trainer fits converged. Scores were
+recomputed locally (largest difference 6e-17) and all nine datasets
+regenerate byte for byte, also after merging `7ef4fe7`. `compare.py`
+version 2 adds the perfect predictor and pass rate by line length; the
+cluster's version-1 output is kept. `fsrs[optimizer]` is declared in the
+`test` extra. The move recall, approaches and FSRS training records and
+`OPEN.md` follow (grading line narrowed to its open items; a route for the
+app's per-length scheduling added). Open: whether the 17 MB of datasets
+stay outside Git, cleanup of the cluster copy, and the kit's step-back
+review after this third finished experiment. Documentation build,
+freshness, reader check and strict lint pass. Commit hash assigned by its
+landing commit.
+
+## 2026-11-17 Implement the decided grading rule and per-move training in the ML package
+
+Implements section 5.2 of the [session grading record](topics/session-grading/session-grading.md)
+and the ML rows of the [move recall record](topics/move-recall/move-recall.md#6-implementation-targets),
+on top of the simulator grading of `52e9535` (`calculate_session_grade`,
+`mistake_limit`, lapse only on Again), which it keeps unchanged;
+`pass_chance.mistake_limit` wraps that rule for arrays. Only Again also
+drives relearning status and the `reps` penalty. FSRS memory is the only hidden memory: `memory/multiplicative.py`, its two
+configs and the `memory` config key are removed (retrievable at `b854419`);
+per-line state moves to `memory/state.py`. `ground_truth.csv` writes
+`p_pass` instead of `p_clean`. New `tempo_ml/pass_chance.py` holds
+`mistake_limit`, `p_pass` and `per_move_target`. Training: `--arm line |
+pass | accuracy | true-recall` replaces `--target`; the loss and its exact
+gradient come from a torch replay (`fsrs/torch_model.py`) on the GPU when
+available, with L-BFGS-B to `maxiter=2000`, `ftol=1e-12`, `gtol=1e-7`;
+`load_cards` uses the app clock (whole elapsed days) by default and reads
+line lengths and accuracy. Evaluation: link-aware scoring and true days to
+a 0.9 pass chance. Torch is declared in the `train` and `test` extras.
+The synthetic-player, review-dataset, session-grading, training and ML
+development records, the capability map and three topic pages follow.
+
+Checks: 73 ML tests pass (Python 3.13.3, numpy 2.5.4, pandas 3.1.1,
+scipy 1.18.1, torch 2.15.0), including the 14 grading vectors of session
+grading section 3.7, the pass chance against enumeration of all outcomes,
+the torch loss against an independent numpy loss (relative 1e-10) with
+gradients against finite differences for all four arms, and recovery of the
+true decay by both per-move arms on FSRS-drawn data. Documentation build,
+freshness check and strict lint pass. Commit hash assigned by its landing
 ## 2026-11-17 Mark the session grading rule as implemented in its record and page
 
 The [session grading record](topics/session-grading/session-grading.md) and its page still said the rule was not implemented, although `52e9535` had implemented it in the app and the simulator. Commit `d99bb49` updated both: the status now says the rule runs in the app and the simulator while every recorded dataset and trained weight, including `backend/fitted_global.csv`, was graded with the earlier rule; sections 5.1 and 5.3 are marked done, 5.2 partly done (the docstring, not the `p_pass` truth column) and 5.4 not started; the earlier rule (section 7.1) is labelled historical; open items 6.1 and 6.2 note the code's interim behaviour without treating it as a decision. The project context's route to the record no longer says "not implemented yet".

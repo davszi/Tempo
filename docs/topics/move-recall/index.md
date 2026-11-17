@@ -19,8 +19,8 @@ math = true
 
 <div class="bs-checks">
 <div class="bs-check"><span class="bs-badge bs-ok">Decided</span><h3>Decided on 2026-11-16</h3><p>Per-move recall, a 0.9 pass-chance target and four training arms.</p></div>
-<div class="bs-check"><span class="bs-badge bs-wait">Not implemented</span><h3>No code, data or weights changed</h3><p>The simulator and the app still use line-level recall and the earlier grading rule.</p></div>
-<div class="bs-check"><span class="bs-badge bs-wait">Not trained</span><h3>No results yet</h3><p>Both new training targets are trained side by side; neither is chosen before the results.</p></div>
+<div class="bs-check"><span class="bs-badge bs-ok">Implemented in ML</span><h3>Simulator, training and scoring use per-move recall</h3><p>The app grades with the new rule, but still schedules reviews on line-level recall.</p></div>
+<div class="bs-check"><span class="bs-badge bs-ok">Trained</span><h3>Retrained on 2026-11-16</h3><p>Both new training targets were trained side by side in the move-recall experiment.</p></div>
 </div>
 
 <figure id="fig-meaning">
