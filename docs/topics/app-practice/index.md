@@ -34,7 +34,7 @@ page_css = ["build-sheet.css"]
 
 Learning shows an arrow and notation for the expected move. Click, keyboard and drag interactions submit moves; the opponent's reply follows a correct move. The browser uses the opening family's side automatically. Backend and terminal callers also support White, Black or Both.
 
-The dashboard shows a 30-day view of saved due dates, grouping overdue lines into today. It does not predict new dates after future practice. Repertoire shows learned lines, review grades and the latest fetched memory estimates. The displayed “days until forgetting” means time until a scheduled review, not a measured time when memory disappears.
+The dashboard shows a 30-day view of saved due dates, grouping overdue lines into today. It does not predict new dates after future practice. Repertoire groups your learned lines by opening family; opening a family lists its learned lines first with their current recall, review grades and due dates, then lessons in progress and the family's other lines. The displayed “days until forgetting” means time until a scheduled review, not a measured time when memory disappears.
 
 The <a href="opening-catalog.html">Catalog & Data overview</a> explains which lines are learnable. The <a href="docs.topics.app-practice.app-practice.md.html#http-interface">App &amp; Practice Reference</a> holds the API, screen details and display limits.
 
@@ -52,7 +52,7 @@ The <a href="opening-catalog.html">Catalog & Data overview</a> explains which li
 
 <figure id="practice-cycle">
 <div class="bs-flow">
-<div class="bs-node"><span class="bs-label">Player chooses</span><b>Complete Learning</b><small>A new line joins the repertoire with an initial card due now.</small></div>
+<div class="bs-node"><span class="bs-label">Player chooses</span><b>Complete Learning</b><small>A new line joins the repertoire with its first test due on your next day.</small></div>
 <div class="bs-arrow"><span>start review</span></div>
 <div class="bs-node"><span class="bs-label">Planner chooses</span><b>Recall a due line</b><small>The normal Start review action selects the earliest due line and records a suggestion.</small></div>
 <div class="bs-arrow"><span>complete</span></div>
@@ -164,7 +164,7 @@ The demo player UUID, preferences and unfinished lessons live under this browser
 </div>
 
 
-Opening memory screens and completing sessions refreshes repertoire data. Due labels refresh against the browser clock each minute, while recall percentages wait for another request. The <a href="docs.topics.app-practice.app-practice.md.html#memory-displays-and-limits">display record</a> details date bins and target-color bands; <a href="system-architecture.html#practice">runtime scheduling</a> explains the card update behind those dates.
+Opening memory screens and completing sessions refreshes repertoire data. Due labels and recall percentages both refresh against the browser clock each minute. The <a href="docs.topics.app-practice.app-practice.md.html#memory-displays-and-limits">display record</a> details date bins and target-color bands; <a href="system-architecture.html#practice">runtime scheduling</a> explains the card update behind those dates.
 
 The browser uses relative <code>/api/</code> requests carrying its player UUID. Catalog/repertoire failures show a Retry banner; session failures show a toast. JSON errors surface the server message, and a non-JSON response gives a backend-start message. The client supplies no automatic retry, timeout or response-shape validation. The <a href="docs.topics.app-practice.app-practice.md.html#http-interface">HTTP Reference</a> holds endpoint/field lookup and <a href="docs.topics.app-practice.app-practice.md.html#validation-and-failure-boundaries">validation/error details</a>.
 

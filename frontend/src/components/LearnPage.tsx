@@ -133,7 +133,8 @@ export function LearnPage() {
   </>;
 }
 
-function OpeningPreview({ line, flipped, playing }: { line: OpeningLine; flipped: boolean; playing: boolean }) {
+/** A family card's board: six half-moves at rest, the whole line played out while hovered. */
+export function OpeningPreview({ line, flipped, playing }: { line: OpeningLine; flipped: boolean; playing: boolean }) {
   const moves = useMemo(() => line.moves_uci.split(" "), [line.moves_uci]);
   const [ply, setPly] = useState(0);
   useEffect(() => {

@@ -2,6 +2,31 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-17 Show opening families in the Repertoire tab
+
+At the user's request the Repertoire tab lists opening families instead of
+individual lines. `RepertoirePage` now shows a grid of the families the
+player has started, in the Learning page's card style (`OpeningPreview` is
+exported from `LearnPage` for it), with lines learned out of the family's
+learnable lines, the weakest current recall, and due, in-progress or
+next-test chips; tabs, search and side chips filter families, and families
+with due lines come first. A new route `#/repertoire/<family>` opens a family
+page laid out like the Learning family page: learned lines first with recall
+and due status, then lessons in progress, then the family's other lines; the
+selected item's panel keeps the earlier repertoire detail (status, actions,
+board, moves, dates, memory strength, review history), or offers Continue or
+Start learning. The App & Practice record and page follow; the page also
+loses two sentences made stale by the first review timing and live recall
+changes. Checks: type check, `npm test` 18 of 18 and build. In the browser, on
+a copy of the demo database with a test player (two reviewed Alekhine Defense
+lines, one of them due, a Barnes Opening line before its first test and an
+Alekhine lesson in progress): the grid showed both families with the
+expected counts, recall and chips; the family page showed the three groups in
+order and the most urgent line's detail; at 1440 by 900 the two-column layout
+held, and at 375 by 812 the page stacked with no sideways scroll; no console
+errors. The user then tested the app by hand and confirmed it works. The
+commit hash is assigned by this entry's landing commit.
+
 ## 2026-11-17 Describe the four review hints on the Repeating page
 
 The Repeating page's introduction still described the hint behavior from

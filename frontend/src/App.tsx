@@ -232,7 +232,7 @@ export default function App() {
     case "lesson": page = session ? <LessonPage key={session.session_id} initial={session} withoutHints={session.withoutHints} onExit={(hash) => { setSession(null); go(hash); }} />
       : <LearnPage />; break;
     case "review": page = <ReviewPage />; break;
-    case "repertoire": page = <RepertoirePage />; break;
+    case "repertoire": page = <RepertoirePage family={route.arg} />; break;
     case "settings": page = <SettingsPage appearance={appearance} onChange={setAppearance}
       profile={<ProfileSettings key={route.arg ?? "settings"} startEditing={route.arg === "profile"} />} />; break;
     default: page = <DashboardPage />;

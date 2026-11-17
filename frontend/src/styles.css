@@ -243,6 +243,14 @@ button.item:hover:not(:disabled) { border-color: var(--accent); background: var(
 .fam:hover { border-color: var(--accent); box-shadow: var(--shadow); transform: translateY(-2px); }
 .fam-body { padding: 14px 4px 4px; display: grid; gap: 8px; }
 .fam-body h3 { font-size: 16px; line-height: 1.3; }
+.fam-recall { display: grid; gap: 4px; }
+.fam-recall small { color: var(--muted); font-size: 11.5px; }
+.var-group { display: grid; gap: 6px; }
+.var-group + .var-group { margin-top: 10px; }
+.var-group-head { margin: 2px 2px 0; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.var-memory { display: grid; gap: 4px; justify-items: end; width: 112px; flex-shrink: 0; }
+.var-memory .meter { width: 100%; min-width: 0; }
+.var-memory small { color: var(--muted); font-size: 11px; white-space: nowrap; }
 .fam-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; color: var(--muted); font-size: 12px; }
 .fam-progress { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; font-size: 11px; color: var(--muted); }
 
