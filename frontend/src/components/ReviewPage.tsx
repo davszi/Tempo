@@ -9,7 +9,7 @@ export function ReviewPage() {
   const { repertoire, now, go, startReview } = useApp();
   const lines = repertoire?.lines ?? [];
   const head = <header className="page-head"><p className="eyebrow">REPEATING MODE</p><h1>Recall without hints.</h1>
-    <p className="lead">Play your side from memory. The first mistake shows the move once; a second one lets you re-learn the line or carry on.</p></header>;
+    <p className="lead">Play your side from memory. After a mistake the right move is shown so you can carry on, up to four times; a fifth mistake ends the review and takes you back to learn the line.</p></header>;
   if (!repertoire) return <>{head}<div className="empty">Loading your repertoire…</div></>;
   if (!lines.length) return <>{head}<div className="empty"><h3>Your repertoire is empty</h3>Lines appear here automatically after you learn them.<br />
     <button className="btn primary" onClick={() => go("#/learn")}><BookOpen size={16} /> Learn your first line</button></div></>;

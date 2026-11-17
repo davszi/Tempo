@@ -2,6 +2,18 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-17 Describe the four review hints on the Repeating page
+
+The Repeating page's introduction still described the hint behavior from
+before `42a6810` ("The first mistake shows the move once; a second one lets
+you re-learn the line or carry on"). It now says the right move is shown
+after a mistake, up to four times, and that a fifth mistake ends the review
+and leads back to Learning. The App & Practice record's Repeating bullet had
+the same outdated description and now matches `LessonPage`
+(`REVIEW_HINT_LIMIT = 4`). Checks: type check and build; the page text was
+read in the browser. The commit hash is assigned by this entry's landing
+commit.
+
 ## 2026-11-17 Show current recall instead of a whole-day value
 
 The user saw 100% recall on every line in Repeating. Py-FSRS 6.3.3's
