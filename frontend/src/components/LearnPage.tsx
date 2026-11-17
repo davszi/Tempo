@@ -18,8 +18,10 @@ export function LearnPage() {
     selectedOpeningTypes, setSelectedOpeningTypes, learningSide: side, setLearningSide } = useApp();
   const [query, setQuery] = useState("");
   const [menu, setMenu] = useState<"sort" | "filter" | null>(null);
+  const [draftOpeningTypes, setDraftOpeningTypes] = useState(selectedOpeningTypes);
   const [hoveredFamily, setHoveredFamily] = useState<string | null>(null);
   const chooseSide = (value: LearningSide) => {
+    if (value !== side && menu === "filter") setMenu(null);
     setLearningSide(value);
     if (value === "white") {
       setSelectedOpeningTypes(selectedOpeningTypes.filter((type) => type !== "defense"));
@@ -82,18 +84,18 @@ export function LearnPage() {
         <div className="learning-filter">
           <button type="button" className={`btn sm ${menu === "filter" || !allTypesSelected ? "primary" : "ghost"}`}
             aria-expanded={menu === "filter"} aria-controls="learning-types"
-            onClick={() => setMenu((open) => open === "filter" ? null : "filter")}>
+            onClick={() => {
+              if (menu !== "filter") setDraftOpeningTypes(selectedOpeningTypes);
+              setMenu(menu === "filter" ? null : "filter");
+            }}>
             <SlidersHorizontal size={16} aria-hidden="true" /> Filter
           </button>
           <div id="learning-types" className="learning-menu" hidden={menu !== "filter"}>
             <fieldset><legend>Opening type</legend>
-              <button type="button" className="btn sm ghost" onClick={() => setSelectedOpeningTypes(allTypesSelected ? [] : availableOpeningTypes)}>
-                {allTypesSelected ? "Clear all" : "Select all"}
-              </button>
               {openingTypes.map(([value, label]) => {
                 const unavailable = !availableOpeningTypes.includes(value);
                 return <label key={value} className={unavailable ? "learning-type-locked" : undefined}>
-                  <input type="checkbox" checked={selectedOpeningTypes.includes(value)} aria-disabled={unavailable || undefined}
+                  <input type="checkbox" checked={draftOpeningTypes.includes(value)} aria-disabled={unavailable || undefined}
                     onClick={(event) => {
                       if (unavailable) {
                         event.preventDefault();
@@ -101,14 +103,21 @@ export function LearnPage() {
                       }
                     }}
                     onChange={(event) => {
-                      if (!unavailable) setSelectedOpeningTypes(event.target.checked
-                        ? [...selectedOpeningTypes, value]
-                        : selectedOpeningTypes.filter((type) => type !== value));
+                      if (!unavailable) {
+                        const checked = event.target.checked;
+                        setDraftOpeningTypes((types) => checked
+                          ? [...types, value]
+                          : types.filter((type) => type !== value));
+                      }
                     }} />
                   {label}{unavailable && <LockKeyhole size={14} aria-hidden="true" />}
                 </label>;
               })}
             </fieldset>
+            <button type="button" className="btn sm primary" onClick={() => {
+              setSelectedOpeningTypes(draftOpeningTypes);
+              setMenu(null);
+            }}>Apply filters</button>
           </div>
         </div>
       </div>
