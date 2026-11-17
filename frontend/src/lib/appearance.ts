@@ -41,7 +41,12 @@ export function pieceImage(set: PieceSetId, code: string, themeId: ThemeId) {
   if (!uri) {
     const theme = THEMES.find((t) => t.id === themeId) ?? THEMES[0];
     const [dark, light] = theme.pieces[code[0] as "w" | "b"];
-    const svg = svgs[set][code].replace(/%%([\d.]+)%%/g, (_, shade: string) => mix(dark, light, Number(shade)));
+    const classicBlack = set === "cburnett" && code.startsWith("b");
+    // Classic pawns, rooks and queens inherit the SVG's base fill. Match the
+    // explicit fills of the other black pieces and soften their bright details.
+    const base = classicBlack ? mix("#000000", dark, 0.55) : dark;
+    const source = classicBlack ? svgs[set][code].replace("<svg ", `<svg fill="${base}" `) : svgs[set][code];
+    const svg = source.replace(/%%([\d.]+)%%/g, (_, shade: string) => mix(base, light, Number(shade) * (classicBlack ? 0.65 : 1)));
     uri = `data:image/svg+xml,${encodeURIComponent(svg)}`;
     cache.set(key, uri);
   }

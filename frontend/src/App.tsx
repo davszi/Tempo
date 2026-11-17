@@ -43,7 +43,7 @@ export default function App() {
   const [repertoire, setRepertoire] = useState<Repertoire | null>(null);
   const [loadError, setLoadError] = useState("");
   const [loadVersion, setLoadVersion] = useState(0);
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<(Session & { withoutHints?: boolean }) | null>(null);
   const [toast, setToast] = useState("");
   const [now, setNow] = useState(Date.now);
   const [account, setAccount] = useState<Account | null>(null);
@@ -113,20 +113,21 @@ export default function App() {
     window.setTimeout(() => setToast((current) => (current === text ? "" : current)), 2800);
   }, []);
 
-  const startLearning = useCallback(async (lineId: number, { restart = false, replayFrom }: { restart?: boolean; replayFrom?: number } = {}) => {
+  const startLearning = useCallback<AppData["startLearning"]>(async (lineId, { restart = false, replayFrom, withoutHints } = {}) => {
     const line = lineById.get(lineId);
     if (!line) return;
     const side = line.family_side;          // every opening is learned from its family's side
     const saved = progress[lineId];
     const resumeAt = replayFrom ?? (!restart && saved?.side === side ? saved.ply : 0);
+    const hideHints = withoutHints ?? Boolean(resumeAt && saved?.withoutHints);
     try {
       const started = await practiceRequest<Session>("learning", { line_id: lineId, side, ...(resumeAt ? { resume_at: resumeAt } : {}) });
       if (restart || (replayFrom !== undefined && started.move_index <= (side === "black" ? 1 : 0))) {
         clearProgress(lineId);
       } else if (replayFrom !== undefined) {
-        saveProgress(lineId, { ply: started.move_index, total: started.total_plies, side, at: Date.now() });
+        saveProgress(lineId, { ply: started.move_index, total: started.total_plies, side, at: Date.now(), withoutHints: hideHints });
       }
-      setSession(started);
+      setSession({ ...started, withoutHints: hideHints });
       go("#/lesson");
     } catch (failure) {
       if (resumeAt && replayFrom === undefined) { clearProgress(lineId); showToast("The saved lesson could not be resumed, so it starts again."); }
@@ -206,7 +207,7 @@ export default function App() {
   switch (route.view) {
     case "learn": page = <LearnPage />; break;
     case "family": page = <FamilyPage name={route.arg ?? ""} />; break;
-    case "lesson": page = session ? <LessonPage key={session.session_id} initial={session} onExit={(hash) => { setSession(null); go(hash); }} />
+    case "lesson": page = session ? <LessonPage key={session.session_id} initial={session} withoutHints={session.withoutHints} onExit={(hash) => { setSession(null); go(hash); }} />
       : <LearnPage />; break;
     case "review": page = <ReviewPage />; break;
     case "repertoire": page = <RepertoirePage />; break;

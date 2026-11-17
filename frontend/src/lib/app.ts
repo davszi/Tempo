@@ -28,7 +28,7 @@ export type AppData = {
   dueCount: number;
   go: (hash: string) => void;
   showToast: (text: string) => void;
-  startLearning: (lineId: number, options?: { restart?: boolean; replayFrom?: number }) => Promise<void>;
+  startLearning: (lineId: number, options?: { restart?: boolean; replayFrom?: number; withoutHints?: boolean }) => Promise<void>;
   startReview: (lineId?: number) => Promise<void>;
   refreshRepertoire: () => Promise<Repertoire | undefined>;
   markLearned: (lineId: number) => void;

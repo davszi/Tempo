@@ -10,12 +10,14 @@ import { practiceRequest, type Grade, type RepertoireLine, type Session } from "
 import { ChessBoard } from "./ChessBoard";
 import { LineTitle, fmtDate, plural, sideName } from "./common";
 
-const MISTAKES_PER_RELEARN_PROMPT = 2;
+const REVIEW_HINT_LIMIT = 4;
 const promotions = { q: "Queen", r: "Rook", b: "Bishop", n: "Knight" } as const;
 const gradeClass: Record<Grade, string> = { Again: "g1", Hard: "g2", Good: "g3", Easy: "g4" };
 
 /** A running Learning or Repeating session against the backend. */
-export function LessonPage({ initial, onExit }: { initial: Session; onExit: (hash: string) => void }) {
+export function LessonPage({ initial, withoutHints = false, onExit }: {
+  initial: Session; withoutHints?: boolean; onExit: (hash: string) => void;
+}) {
   const { lineById, families, repertoire, progress, startLearning, startReview, refreshRepertoire, markLearned, showToast } = useApp();
   const learning = initial.mode !== "repeating";
   const line = lineById.get(initial.line_id);
@@ -28,8 +30,8 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
   const [feedback, setFeedback] = useState<{ text: string; tone: "" | "ok" | "bad" }>(() =>
     learning && initial.move_index > 0 && progress[initial.line_id] ? { text: "Welcome back. You're continuing where you left off.", tone: "ok" } : { text: "", tone: "" });
   const [mistakes, setMistakes] = useState(0);
-  const [hintMove, setHintMove] = useState<string | null>(null);   // Repeating: the move shown once after a mistake
-  const [showRelearnChoice, setShowRelearnChoice] = useState(false);
+  const [hintMove, setHintMove] = useState<string | null>(null);
+  const showRelearnChoice = !learning && mistakes > REVIEW_HINT_LIMIT;
   const [shake, setShake] = useState(0);
   const [reviewAfter, setReviewAfter] = useState<RepertoireLine | null>();
   const before = useRef(repertoire?.lines.find((item) => item.line_id === initial.line_id));
@@ -46,7 +48,10 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
   // A wrong attempt does not restart it, because only each move's first attempt is graded.
   const turnStartedAt = useRef(performance.now());
   useEffect(() => { if (yourTurn) turnStartedAt.current = performance.now(); }, [yourTurn, shown]);
-  const hint = learning ? session.hint : hintMove;
+  const guided = learning && !withoutHints;
+  const hint = guided ? session.hint : hintMove;
+  const legalMoves = useMemo(() => game.moves({ verbose: true }), [game]);
+  const allowedMoves = hintMove ? legalMoves.filter((move) => move.lan === hintMove) : legalMoves;
   const arrow = yourTurn && hint ? { from: hint.slice(0, 2) as Square, to: hint.slice(2, 4) as Square, promotion: hint[4] } : null;
   const nextSan = useMemo(() => {
     if (!hint) return null;
@@ -63,6 +68,7 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
   const nextLine = closest.find((item) => !item.line.learned && item.line.line_id !== initial.line_id)?.line;
 
   async function submit(move: string) {
+    if (!yourTurn || busy || !allowedMoves.some((candidate) => candidate.lan === move)) return;
     const previous = session.move_index;
     // Confirm the final player move on the server while showing it on the board.
     const remaining = total - previous;
@@ -83,7 +89,9 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
       if (next.correct) {
         setHintMove(null);
         setFeedback(mistakes && !learning ? { text: "Good, keep going.", tone: "ok" } : { text: "", tone: "" });
-        if (learning && next.status === "play") saveProgress(next.line_id, { ply: next.move_index, total: next.total_plies, side, at: Date.now() });
+        if (learning && next.status === "play") {
+          saveProgress(next.line_id, { ply: next.move_index, total: next.total_plies, side, at: Date.now(), withoutHints });
+        }
         if (next.status === "complete") await complete(next);
       } else wrongMove(next);
     } catch (failure) {
@@ -98,23 +106,23 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
     setShake((count) => count + 1);
     const count = mistakes + 1;
     setMistakes(count);
-    if (learning) setFeedback({ text: "Not that move. Follow the arrow and try again.", tone: "bad" });
-    else if (count === 1) {
-      setHintMove(next.expected_move ?? null);
-      setFeedback({ text: "Not quite. Here's the move once. Play it to continue.", tone: "bad" });
-    } else if (count % MISTAKES_PER_RELEARN_PROMPT === 0) {
-      setHintMove(null);
-      setShowRelearnChoice(true);
+    if (guided) setFeedback({ text: "Not that move. Follow the arrow and try again.", tone: "bad" });
+    else if (!learning && count > REVIEW_HINT_LIMIT) {
       setFeedback({ text: `${plural(count, "mistake")} in this line.`, tone: "bad" });
-    } else setFeedback({ text: "Try again. The board is unchanged.", tone: "bad" });
+    } else {
+      setHintMove((learning ? next.hint : next.expected_move) ?? null);
+      setFeedback({ text: "Follow the arrow to continue.", tone: "bad" });
+    }
   }
 
   async function complete(done: Session) {
     if (learning) {
       clearProgress(done.line_id);
-      markLearned(done.line_id);
-      showToast(`Added to your repertoire: ${line ? lineLabel(line) : done.name}`);
-      await refreshRepertoire();
+      if (!withoutHints) {
+        markLearned(done.line_id);
+        showToast(`Added to your repertoire: ${line ? lineLabel(line) : done.name}`);
+        await refreshRepertoire();
+      }
     } else {
       const fresh = await refreshRepertoire();
       setReviewAfter(fresh?.lines.find((item) => item.line_id === done.line_id) ?? null);
@@ -134,15 +142,15 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
   }
 
   function attemptMove(from: Square, to: Square) {
-    const move = from + to;
-    if (game.get(from)?.type === "p" && to.endsWith(game.turn() === "w" ? "8" : "1")) setPromotion(move);
-    else void submit(move);
+    const candidates = allowedMoves.filter((move) => move.from === from && move.to === to);
+    if (candidates.length > 1) setPromotion(from + to);
+    else if (candidates.length === 1) void submit(candidates[0].lan);
   }
 
-  async function replayLearning(replayFrom?: number) {
+  async function replayLearning(replayFrom?: number, hideHints = withoutHints) {
     setBusy(true);
     try {
-      await startLearning(session.line_id, replayFrom === undefined ? { restart: true } : { replayFrom });
+      await startLearning(session.line_id, { restart: replayFrom === undefined, replayFrom, withoutHints: hideHints });
     } finally {
       setBusy(false);
     }
@@ -150,13 +158,12 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
   function clickSquare(square: Square) {
     if (!yourTurn || busy) return;
     const piece = game.get(square);
-    if (piece?.color === game.turn()) setSelected(selected === square ? null : square);
+    if (piece?.color === game.turn()) setSelected(selected === square || !allowedMoves.some((move) => move.from === square) ? null : square);
     else if (selected) attemptMove(selected, square);
   }
 
-  const status = finished ? "Line complete." : pendingFinalMove ? "Finishing line…" : showRelearnChoice ? "Choose how to continue."
-    : learning ? `${game.turn() === "w" ? "White" : "Black"} to move. Follow the arrow, drag the piece or click it and then its square.`
-    : `${game.turn() === "w" ? "White" : "Black"} to move. Recall the move: no hints.`;
+  const status = finished ? "Line complete." : pendingFinalMove ? "Finishing line…" : showRelearnChoice ? "Review ended."
+    : `${game.turn() === "w" ? "White" : "Black"} to move. ${hint ? "Follow the arrow." : "Recall the move."}`;
   const title = line ? (lineLabel(line) === "Main line" ? line.opening_family : `${line.opening_family}: ${lineLabel(line)}`) : session.name;
 
   let panel;
@@ -164,10 +171,10 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
     panel = <div className="card learning-complete">
       <div className="learning-complete-header">
         <div className="done-icon" aria-hidden="true"><Check size={22} /></div>
-        <div><h2>Line learned</h2><p className="muted">Ready to review.</p></div>
+        <div><h2>{withoutHints ? "Practice complete" : "Line learned"}</h2>{!withoutHints && <p className="muted">Ready to review.</p>}</div>
       </div>
       <div className="done-actions">
-        <button className="btn primary full" onClick={() => void startReview(session.line_id)}><RotateCcw size={16} /> Review without hints</button>
+        <button className="btn primary full" disabled={busy} onClick={() => void replayLearning(undefined, true)}><RotateCcw size={16} /> Review without hints</button>
         {nextLine && <button className="btn ghost full" onClick={() => void startLearning(nextLine.line_id)}><Play size={16} /><span>Learn next: <LineTitle line={nextLine} /></span></button>}
         <button className="btn quiet full" onClick={() => onExit(`#/family/${encodeURIComponent(line?.opening_family ?? "")}`)}>Back to {line?.opening_family ?? "openings"}</button>
       </div></div>;
@@ -195,23 +202,20 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
         <button className="btn quiet full" onClick={() => onExit("#/review")}>Done</button>
       </div></div>;
   } else if (showRelearnChoice) {
-    const canContinue = mistakes === MISTAKES_PER_RELEARN_PROMPT;
     panel = <div className="card choice" role="alertdialog" aria-labelledby="choice-h"><p className="eyebrow" style={{ color: "var(--hard)" }}>THIS LINE IS FADING</p>
       <h2 id="choice-h">Learn this line again?</h2>
-      <p>{canContinue
-        ? "You can learn the line again with arrows or keep going on your own. Either way, this review counts as Again."
-        : "You missed two more moves. Practise the line again with arrows. This review counts as Again."}</p>
+      <p>You’ve used all four hints. Learn the line again with arrows to save this review as Again.</p>
       <button className="btn primary full" disabled={busy} onClick={() => void relearn()}><BookOpen size={16} /> Learn this line again</button>
-      {canContinue && <button className="btn ghost full" disabled={busy} onClick={() => { setShowRelearnChoice(false); setFeedback({ text: "Keep going. No more hints in this line.", tone: "" }); }}><Play size={16} /> Continue this line</button>}</div>;
+    </div>;
   } else {
     panel = <div className="card">
       <div className="progress-head"><span>Your progress</span><b>{Math.round(shown / total * 100)}%</b></div>
       <div className="bar"><i style={{ width: `${shown / total * 100}%` }} /></div>
-      {learning ? (yourTurn && nextSan ? <div className="next-move"><span className="icon"><ArrowUpRight size={24} /></span><div><span>YOUR NEXT MOVE</span><h2>{nextSan}</h2>
+      {guided ? (yourTurn && nextSan ? <div className="next-move"><span className="icon"><ArrowUpRight size={24} /></span><div><span>YOUR NEXT MOVE</span><h2>{nextSan}</h2>
           <small className="muted">{hint!.slice(0, 2)} → {hint!.slice(2, 4)}</small></div></div>
         : null)
         : <div className="next-move"><span className="icon">{hintMove ? <Lightbulb size={22} /> : <RotateCcw size={22} />}</span><div>
-          <span>{hintMove ? "ONE-TIME HINT" : "NO HINTS"}</span><h2>{hintMove ? nextSan : "Recall the move"}</h2>
+          <span>{hintMove ? "HINT" : "YOUR NEXT MOVE"}</span><h2>{hintMove ? nextSan : "Recall the move"}</h2>
           <small className="muted">{mistakes ? `${plural(mistakes, "mistake")} so far` : "Mistakes: none yet"}</small></div></div>}
       <h3 style={{ marginBottom: 10 }}>The line so far</h3>
       <div className="moves">{game.history().map((move, index) => <span key={index} className="mv">{index % 2 === 0 && <small>{index / 2 + 1}.</small>}{move}</span>)}
@@ -223,7 +227,7 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
   return <>
     <button className="back" onClick={() => onExit(learning ? `#/family/${encodeURIComponent(line?.opening_family ?? "")}` : "#/review")}>
       <ArrowLeft size={16} /> {learning ? line?.opening_family ?? "Openings" : "Repeating"}</button>
-    <div className="session-head"><div><p className="eyebrow">{learning ? "GUIDED LEARNING" : "REPEATING · NO HINTS"} · {sideName(side)}</p><h1>{title}</h1></div>
+    <div className="session-head"><div><p className="eyebrow">{guided ? "GUIDED LEARNING" : learning ? "LEARNING · RECALL PRACTICE" : "REPEATING"} · {sideName(side)}</p><h1>{title}</h1></div>
       <span className="badge">{shown} / {total} half-moves</span></div>
     <div className="session">
       <div className="board-col">
@@ -237,7 +241,7 @@ export function LessonPage({ initial, onExit }: { initial: Session; onExit: (has
         <ChessBoard fen={game.fen()} flipped={side === "black"} arrow={arrow} lastMove={lastMove} selected={selected} shake={shake}
           disabled={busy || !yourTurn || !!promotion} onSquareClick={clickSquare}
           onPieceDrop={finished ? undefined : (from, to) => { setSelected(null); if (yourTurn && !busy) attemptMove(from, to); }}
-          canDrag={(square) => yourTurn && !busy && game.get(square)?.color === game.turn()} /></div>
+          canDrag={(square) => yourTurn && !busy && allowedMoves.some((move) => move.from === square)} /></div>
         <p className={`feedback ${feedback.tone}`} role="status">{feedback.text || status}</p>
         {promotion && <div className="row" aria-label="Promotion piece">{Object.entries(promotions).map(([piece, label]) =>
           <button key={piece} className="btn sm ghost" disabled={busy} onClick={() => void submit(promotion + piece)}>{label}</button>)}

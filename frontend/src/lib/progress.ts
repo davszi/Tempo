@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import type { Side } from "./practiceApi";
 
 /** An unfinished Learning lesson, kept in this browser so the player can continue it later. */
-export type LessonProgress = { ply: number; total: number; side: Side; at: number };
+export type LessonProgress = { ply: number; total: number; side: Side; at: number; withoutHints?: boolean };
 type Saved = Record<string, LessonProgress>;
 
 const KEY = "tempo-lesson-progress";
