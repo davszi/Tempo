@@ -15,18 +15,19 @@ import { ReviewPage } from "./components/ReviewPage";
 import { RepertoirePage } from "./components/RepertoirePage";
 import { SettingsPage } from "./components/SettingsPage";
 import { AuthPage } from "./components/AuthPage";
+import { PasswordResetPage } from "./components/PasswordResetPage";
 import { ProfileSettings } from "./components/ProfileSettings";
 import { fetchAuthState, logout, rememberAccount, type Account } from "./lib/auth";
 
 function readRoute(): Route {
   const [view, ...rest] = window.location.hash.replace(/^#\/?/, "").split("/");
   const arg = rest.length ? decodeURIComponent(rest.join("/")) : undefined;
-  const known = ["home", "learn", "family", "lesson", "review", "repertoire", "settings", "login", "signup"] as const;
+  const known = ["home", "learn", "family", "lesson", "review", "repertoire", "settings", "login", "signup", "forgot-password", "reset-password"] as const;
   return { view: known.find((name) => name === view) ?? "home", arg };
 }
 const titles: Record<Route["view"], string> = {
   home: "Dashboard", learn: "Learning", family: "Learning", lesson: "Lesson", review: "Repeating", repertoire: "Repertoire", settings: "Settings",
-  login: "Sign in", signup: "Create account",
+  login: "Sign in", signup: "Create account", "forgot-password": "Forgot password", "reset-password": "Reset password",
 };
 
 export default function App() {
@@ -196,6 +197,12 @@ export default function App() {
     startLearning, startReview, refreshRepertoire, markLearned, dueCount, account, signOut, accountChanged, accountDeleted,
   };
 
+  if (route.view === "forgot-password" || route.view === "reset-password") {
+    return <AppearanceContext.Provider value={appearance}>
+      <PasswordResetPage key={route.view + (route.arg ?? "")} reset={route.view === "reset-password"} token={route.arg}
+        go={go} onReset={() => leaveAccount("Password updated. Sign in with your new password.")} />
+    </AppearanceContext.Provider>;
+  }
   if (route.view === "login" || route.view === "signup") {
     return <AppearanceContext.Provider value={appearance}>
       <AuthPage mode={route.view} googleClientId={googleClientId} onSignedIn={signedIn} go={go} />

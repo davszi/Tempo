@@ -112,7 +112,7 @@ export function AuthPage({ mode, googleClientId, onSignedIn, go }: {
         {signup && <label className="auth-field">Name<input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" placeholder="Priya" /></label>}
         <label className="auth-field">Email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="name@example.com" /></label>
         <label className="auth-field">
-          <span className="auth-label-row">Password{!signup && <button type="button" className="auth-link" onClick={() => setNote("Password reset by email isn't available yet. Ask your team admin to reset it.")}>Forgot password?</button>}</span>
+          <span className="auth-label-row">Password{!signup && <button type="button" className="auth-link" onClick={() => go("#/forgot-password")}>Forgot password?</button>}</span>
           <span className="auth-input">
             <input type={show ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={signup ? "new-password" : "current-password"} placeholder="••••••••" />
             <button type="button" className="auth-eye" onClick={() => setShow(!show)} aria-label={show ? "Hide password" : "Show password"}>{show ? <EyeOff size={16} /> : <Eye size={16} />}</button>

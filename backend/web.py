@@ -3,14 +3,17 @@
 import argparse
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import BoundedSemaphore
 from uuid import UUID
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, current_app, jsonify, request, send_from_directory
 from werkzeug.exceptions import RequestEntityTooLarge
 
-from .auth import SESSION_DAYS, AccountExists, Accounts, NotSetUp
+from .auth import SESSION_DAYS, AccountExists, Accounts, NotSetUp, _clean_email
 from .practice_controller import create_backend
+from .reset_email import gmail_reset_sender
 
 
 BACKEND = Path(__file__).resolve().parent
@@ -18,10 +21,21 @@ SESSION_COOKIE = "tempo_session"
 
 
 class Handler:
-    def __init__(self, controller, accounts, secure_cookies):
+    def __init__(self, controller, accounts, secure_cookies, send_reset):
         self.controller = controller
         self.accounts = accounts
         self.secure_cookies = secure_cookies
+        self.send_reset = send_reset
+        self.reset_jobs = ThreadPoolExecutor(max_workers=2)
+        self.reset_slots = BoundedSemaphore(16)
+
+    def deliver_reset(self, email, logger):
+        try:
+            self.accounts.request_password_reset(email, self.send_reset)
+        except Exception as error:
+            logger.warning("Password reset delivery failed (%s)", type(error).__name__)
+        finally:
+            self.reset_slots.release()
 
     def respond(self, status, result, cookie=None):
         response = jsonify(result)
@@ -104,6 +118,17 @@ class Handler:
     def handle_auth(self):
         try:
             data = self.read_json()
+            if request.path == "/api/auth/forgot-password":
+                if self.send_reset is None:
+                    raise NotSetUp("Password reset emails are not configured yet.")
+                email = _clean_email(data.get("email"))
+                if not self.reset_slots.acquire(blocking=False):
+                    return self.respond(429, {"error": "Too many requests. Try again in a few minutes."})
+                self.reset_jobs.submit(self.deliver_reset, email, current_app.logger)
+                return self.respond(202, {"ok": True})
+            if request.path == "/api/auth/reset-password":
+                self.accounts.reset_password(data.get("token"), data.get("password"))
+                return self.respond(200, {"ok": True}, cookie=self.session_cookie(None))
             if request.path == "/api/auth/logout":
                 self.accounts.logout(self.session_token())
                 return self.respond(200, {"user": None}, cookie=self.session_cookie(None))
@@ -140,20 +165,22 @@ class Handler:
             return self.respond(200, {"user": user}, cookie=self.session_cookie(token))
 
 
-def create_app(database, weights, google_client_id=None, *, secure_cookies=False):
+def create_app(database, weights, google_client_id=None, *, secure_cookies=False, send_reset=None):
     dist = BACKEND.parent / "frontend" / "dist"
     app = Flask(__name__, static_folder=None)
     app.config["MAX_CONTENT_LENGTH"] = 4096
     controller = create_backend(database, weights_file=weights)
     accounts = Accounts(controller.store, google_client_id=google_client_id)
-    handler = Handler(controller, accounts, secure_cookies)
+    handler = Handler(controller, accounts, secure_cookies, send_reset or gmail_reset_sender())
     app.add_url_rule("/api/<path:endpoint>", "api_get", lambda endpoint: handler.do_GET(), methods=["GET"])
     app.add_url_rule("/api/<path:endpoint>", "api_post", lambda endpoint: handler.do_POST(), methods=["POST"])
 
     @app.get("/", defaults={"asset": "index.html"})
     @app.get("/<path:asset>")
     def frontend(asset):
-        return send_from_directory(dist, asset)
+        response = send_from_directory(dist, asset)
+        response.headers["Referrer-Policy"] = "no-referrer"
+        return response
 
     return app
 

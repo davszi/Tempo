@@ -21,6 +21,8 @@ export const fetchAuthState = () => authRequest<AuthState>("me");
 export const register = (name: string, email: string, password: string) =>
   authRequest<{ user: Account }>("register", { name, email, password });
 export const login = (email: string, password: string) => authRequest<{ user: Account }>("login", { email, password });
+export const requestPasswordReset = (email: string) => authRequest<{ ok: boolean }>("forgot-password", { email });
+export const resetPassword = (token: string, password: string) => authRequest<{ ok: boolean }>("reset-password", { token, password });
 export const googleSignIn = (credential: string) =>
   authRequest<{ user: Account }>("google", { credential });
 export const logout = () => authRequest<{ user: null }>("logout", {});
