@@ -353,7 +353,10 @@ The simulator grades guided sessions by latency with perfect accuracy; they
 update state but are excluded from the training loss. Whether they use the
 section 3.4 bands, a fixed grade or no grade is not decided. Since
 `52e9535` they pass through `calculate_session_grade` with no mistakes, so
-in effect they use the section 3.4 bands (Easy, Good or Hard).
+in effect they use the section 3.4 bands (Easy, Good or Hard). The app
+grades no Learning session. An unaccepted
+[first review proposal](../../open/first-review-timing.md) keeps it that way
+and would change the simulator to match; that change is deferred.
 
 ### 6.3 Exported inputs
 

@@ -17,7 +17,9 @@ Zeel owns the React frontend. This merged record owns the app journey, browser s
    line rules come from [Catalog & Data](../catalog-data/catalog-data.md).
 2. The player chooses a Learning line. Correct move responses advance the
    board; unfinished successful positions are saved locally. First completion
-   adds it to the shared repertoire with a first test due immediately.
+   adds it to the shared repertoire with a first test due immediately. An
+   unaccepted [proposal](../../open/first-review-timing.md) would move that
+   first review to the next day and keep same-day practice off the schedule.
 3. Normal Start review asks for the next due line; its saved attempts and final
    grade feed the same shared SQLite history and schedule. Direct-line review
    and revealed moves remain implemented deviations, as recorded below.

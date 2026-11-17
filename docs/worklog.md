@@ -2,6 +2,24 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-17 Propose a next-day first review with same-day practice off the schedule
+
+At the user's request, after a discussion of FSRS learning steps, the
+[first review timing proposal](open/first-review-timing.md) records an
+unaccepted design: a learned line's first Repeating review is due the next
+day and sets its starting memory, while same-day unguided practice stays off
+the schedule. It records the verified current behavior at `cf7b7be` (no
+learning steps, Learning sends nothing to FSRS, the line is due at once and
+its first review initializes stability), the first-interval arithmetic from
+the per-move runtime weights shipped in `fd3fe89` (1, 1, 2 and 10 days for
+Again to Easy; 8 days for Easy under the earlier line-level weights), the rejected
+alternatives and the open questions. The user ruled out letting Learning set
+the starting memory and asked for the simulator and training changes to be
+deferred. `OPEN.md` routes to the proposal; the App & Practice flow and
+session grading section 6.2 point to it. No code changed. Checks:
+documentation build, freshness check and strict lint. The commit hash is
+assigned by this entry's landing commit.
+
 ## 2026-11-17 Sync the project context with the commits through 42a6810
 
 The project context's implementation snapshot still said the app had no
