@@ -1,5 +1,7 @@
 """Coordinate SQLite and the ML engine for Repeating."""
 
+from datetime import timezone
+
 from .store import add_event, is_learnable, timestamp
 
 
@@ -21,7 +23,7 @@ class MLController:
             add_event(db, player_id, line_id, "line_suggested", "repeating", now)
             return "ready", line_id
 
-    def initialize_progress(self, db, player_id, line_id, now):
+    def initialize_progress(self, db, player_id, line_id, now, zone=timezone.utc):
         existing = db.execute(
             "SELECT 1 FROM player_lines WHERE player_id = ? AND line_id = ?",
             (player_id, line_id),
@@ -30,7 +32,7 @@ class MLController:
             return
         if not is_learnable(db, line_id):
             raise ValueError("Only lines that no other line extends can join a repertoire")
-        due, state = self.engine.initial_schedule(now)
+        due, state = self.engine.initial_schedule(now, zone)
         db.execute(
             """INSERT INTO player_lines (player_id, line_id, learned_at, next_review_at, fsrs_state)
                VALUES (?, ?, ?, ?, ?)""",

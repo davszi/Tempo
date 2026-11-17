@@ -6,6 +6,7 @@ import { closestLines, lineLabel } from "../lib/catalog";
 import { positionAt } from "../lib/learning";
 import { MAX_RESPONSE_MS, gradeExplanation } from "../lib/grading";
 import { clearProgress, saveProgress } from "../lib/progress";
+import { firstReviewWhen } from "../lib/memory";
 import { practiceRequest, type Grade, type RepertoireLine, type Session } from "../lib/practiceApi";
 import { ChessBoard } from "./ChessBoard";
 import { LineTitle, fmtDate, plural, sideName } from "./common";
@@ -34,6 +35,7 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
   const showRelearnChoice = !learning && mistakes > REVIEW_HINT_LIMIT;
   const [shake, setShake] = useState(0);
   const [reviewAfter, setReviewAfter] = useState<RepertoireLine | null>();
+  const [learnedLine, setLearnedLine] = useState<RepertoireLine | null>(null);   // Learning: the saved first review
   const before = useRef(repertoire?.lines.find((item) => item.line_id === initial.line_id));
 
   const shown = session.move_index;
@@ -121,7 +123,8 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
       if (!withoutHints) {
         markLearned(done.line_id);
         showToast(`Added to your repertoire: ${line ? lineLabel(line) : done.name}`);
-        await refreshRepertoire();
+        const fresh = await refreshRepertoire();
+        setLearnedLine(fresh?.lines.find((item) => item.line_id === done.line_id) ?? null);
       }
     } else {
       const fresh = await refreshRepertoire();
@@ -171,10 +174,14 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
     panel = <div className="card learning-complete">
       <div className="learning-complete-header">
         <div className="done-icon" aria-hidden="true"><Check size={22} /></div>
-        <div><h2>{withoutHints ? "Practice complete" : "Line learned"}</h2>{!withoutHints && <p className="muted">Ready to review.</p>}</div>
+        <div><h2>{withoutHints ? "Practice complete" : "Line learned"}</h2>
+          <p className="muted">{withoutHints ? "Practice does not change your review schedule."
+            : learnedLine && Date.parse(learnedLine.next_review_at) > Date.now()
+              ? `First review ${firstReviewWhen(Date.parse(learnedLine.next_review_at), Date.now())}, once it has had a night to settle.`
+              : "Ready to review."}</p></div>
       </div>
       <div className="done-actions">
-        <button className="btn primary full" disabled={busy} onClick={() => void replayLearning(undefined, true)}><RotateCcw size={16} /> Review without hints</button>
+        <button className="btn primary full" disabled={busy} onClick={() => void replayLearning(undefined, true)}><RotateCcw size={16} /> Practise without hints</button>
         {nextLine && <button className="btn ghost full" onClick={() => void startLearning(nextLine.line_id)}><Play size={16} /><span>Learn next: <LineTitle line={nextLine} /></span></button>}
         <button className="btn quiet full" onClick={() => onExit(`#/family/${encodeURIComponent(line?.opening_family ?? "")}`)}>Back to {line?.opening_family ?? "openings"}</button>
       </div></div>;

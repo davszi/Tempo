@@ -1,9 +1,10 @@
 """Line selection, session grading and FSRS scheduling."""
 
 import csv
-from datetime import datetime
+from datetime import datetime, time, timedelta, timezone
 import json
 from math import isfinite
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 # Session grading rule, from docs/topics/session-grading/session-grading.md (section 3).
@@ -11,6 +12,35 @@ CAP_MS = 20000
 T_EASY_MS = 1500
 T_SLOW_MS = 3500
 T_VERY_SLOW_MS = 8000
+
+
+# First review timing, from docs/open/first-review-timing.md: a learned line is first
+# due when the player's next day starts, at this local hour (as in Anki's day rollover).
+DAY_STARTS_AT_HOUR = 4
+
+
+def player_zone(name):
+    """The player's IANA time zone, or UTC when the browser sent none."""
+    if name is None:
+        return timezone.utc
+    if not isinstance(name, str) or not name:
+        raise ValueError("time_zone must be an IANA time zone name")
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError) as error:
+        raise ValueError(f"Unknown time zone: {name}") from error
+
+
+def first_review_due(learned_at, zone=timezone.utc):
+    """Start of the player's next day after learning: DAY_STARTS_AT_HOUR local time, returned in UTC.
+
+    A day runs from DAY_STARTS_AT_HOUR to DAY_STARTS_AT_HOUR, so a line learned at 01:00 belongs
+    to the day before and is due at 04:00 that morning.
+    """
+    local = learned_at.astimezone(zone)
+    learning_day = (local - timedelta(hours=DAY_STARTS_AT_HOUR)).date()
+    due = datetime.combine(learning_day + timedelta(days=1), time(DAY_STARTS_AT_HOUR), tzinfo=zone)
+    return due.astimezone(timezone.utc)
 
 
 def mistake_limit(moves):
@@ -123,10 +153,14 @@ class MLEngine:
     def grade_session(cls, attempts):
         return cls.grade_details(attempts)["grade"]
 
-    def initial_schedule(self, now):
+    def initial_schedule(self, now, zone=timezone.utc):
+        """An empty FSRS card for a newly learned line, first due on the player's next day.
+
+        Learning sets no memory: the first Repeating review initializes stability and difficulty.
+        """
         from fsrs import Card
 
-        card = Card(due=now)
+        card = Card(due=first_review_due(now, zone))
         return card.due, json.dumps(card.to_dict())
 
     @property

@@ -14,10 +14,19 @@ export type DueInfo = { text: string; long: string; tone: Tone };
 export const dueAt = (line: Memory) => Date.parse(line.next_review_at);
 export const isDue = (line: Memory, now: number) => dueAt(line) <= now;
 
+/** When a not-yet-due first review opens, in local time: "tomorrow from 04:00". */
+export function firstReviewWhen(due: number, now: number) {
+  const days = dayDiff(due, now);
+  const day = days <= 0 ? "today" : days === 1 ? "tomorrow" : new Date(due).toLocaleDateString(undefined, { weekday: "long" });
+  return `${day} from ${new Date(due).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`;
+}
+
 export function dueInfo(line: Memory, now: number, target: number): DueInfo {
   const due = dueAt(line), days = dayDiff(due, now), percent = Math.round(target * 100);
   if (line.stability_days == null) {
-    return { text: "First test ready", long: "Learned, not tested yet. The first recall test starts its memory clock.", tone: "" };
+    if (due <= now) return { text: "First test ready", long: "Learned, not tested yet. The first recall test starts its memory clock.", tone: "" };
+    const text = days === 0 ? "First test later today" : days === 1 ? "First test tomorrow" : `First test in ${plural(days, "day")}`;
+    return { text, long: `Learned, not tested yet. The first recall test opens ${firstReviewWhen(due, now)} and starts its memory clock.`, tone: "plain" };
   }
   if (days < 0) return { text: `Overdue ${plural(-days, "day")}`, long: `Overdue by ${plural(-days, "day")}: recall is already below ${percent}%.`, tone: "bad" };
   if (due <= now) return { text: "Due now", long: `Due today: recall has reached ${percent}%.`, tone: "warn" };

@@ -2,6 +2,35 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-17 Schedule a learned line's first review on the player's next day
+
+At the user's request, the app part of the
+[first review timing record](open/first-review-timing.md#implemented-in-the-app)
+is implemented; the user chose the next local day starting at 04:00 and
+deferred the simulator and training changes. Reason: a review straight after
+a guided lesson tests short-term memory, and its grade set the line's
+starting FSRS memory (an Easy gave a 10-day first interval with the current
+weights). Backend: `first_review_due` and `player_zone` in `ml_engine.py`,
+the time zone carried from `/api/learning` through the Learning session to
+`initialize_progress`, a refused chosen-line review before an untested
+line's first due time, `tzdata` declared, and the terminal demo moving its
+clock to the first due time. Frontend: the browser sends its time zone, the
+lesson-complete screen names the first review time and offers "Practise
+without hints", per-line review of an untested line opens that practice, and
+the repertoire chip says "First test tomorrow". The App & Practice, System
+Architecture and session grading records, the App & Practice and System
+Architecture pages (one sentence each), the project context and `OPEN.md`
+follow; the reader check also passes. Checks: backend 36 of 36 (14 new), frontend 16 of 16 and the build
+on Node.js 26.13.1, and a browser run on a copy of the demo database (details
+in the record); the user then tested the app by hand on another copy and
+confirmed it works. The terminal demo passes with `--grade Easy` but still fails
+its grade check with its default `Good`, as it already did at `66176b0`,
+because its response times predate the grading rule. The simulator, training
+data and weights are unchanged, so they still assume a graded Learning
+session followed by a same-day test. The System Architecture record's
+grading paragraph still describes the earlier grading rule and was not
+corrected here. The commit hash is assigned by this entry's landing commit.
+
 ## 2026-11-17 Record the per-move runtime weights in the project context
 
 `fd3fe89` made `backend/fitted_global.csv` the per-move A1c-pass fit of seed

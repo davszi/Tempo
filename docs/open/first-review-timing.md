@@ -1,10 +1,13 @@
 # Proposal: first review the next day, same-day practice off the schedule
 
-Status: open proposal, not accepted. Written on 2026-11-17 at the user's
-request after a discussion of FSRS learning steps. The user ruled out
-letting a Learning session set a line's starting memory. No app, simulator
-or training change has been made. The simulator and training changes are
-deliberately deferred: the user asked for them not to be done yet.
+Status: the app part is implemented; the simulator and training part is
+open. Written on 2026-11-17 at the user's request after a discussion of
+FSRS learning steps. The user ruled out letting a Learning session set a
+line's starting memory. Later on 2026-11-17 the user asked for the app
+changes to be implemented and chose the next local day starting at 04:00
+(open question 1); see [Implemented in the app](#implemented-in-the-app).
+The simulator and training changes are deliberately deferred: the user
+asked for them not to be done yet.
 
 ## What is verified
 
@@ -97,7 +100,8 @@ short-term memory as proof that the line had stuck.
 
 ## Changes it would need
 
-Prospective; none is made.
+Written before the implementation; the backend and frontend items are now
+done as described in [Implemented in the app](#implemented-in-the-app).
 
 - **Backend:** `MLEngine.initial_schedule` returns a first due time on the
   next day instead of `now`. The card stays empty, so the first Repeating
@@ -119,6 +123,58 @@ Prospective; none is made.
   datasets are regenerated and the weights retrained. Until that is done,
   the trained weights assume a different first-review pattern from the app.
 
+## Implemented in the app
+
+Implemented on 2026-11-17 at the user's request; the commit hash is in the
+[worklog](../worklog.md). The simulator, training and `ml/` code are
+unchanged.
+
+- **First due time.** `first_review_due` in
+  [`backend/ml_engine.py`](../../backend/ml_engine.py) returns
+  `DAY_STARTS_AT_HOUR` (4) local time on the day after the player's learning
+  day, in UTC. A day runs from 04:00 to 04:00, as in Anki's day rollover, so
+  a line learned at 01:30 is due at 04:00 the same morning.
+  `MLEngine.initial_schedule` stores an empty py-fsrs card with that due
+  time; Learning still sets no stability or difficulty.
+- **Time zone.** The browser sends its IANA zone
+  (`Intl.DateTimeFormat().resolvedOptions().timeZone`) as `time_zone` when a
+  Learning session starts (`/api/learning`). `player_zone` turns it into a
+  `ZoneInfo`, uses UTC when it is missing and refuses an unknown name before
+  the lesson opens. `tzdata` is declared in `backend/requirements.txt`
+  because Windows has no system time zone database.
+- **No early first review.** `PracticeController.start_review_line` refuses
+  a chosen-line review of a line that has no stability and is not yet due.
+  In the browser, `startReview` sends such a line to an unguided Learning
+  session ("Practise without hints") with a message saying when the first
+  review opens, so every per-line Review or Practise button behaves the same.
+  Lines that have had their first review keep the existing chosen-line
+  behavior, which [App & Practice](../topics/app-practice/app-practice.md#unresolved-repeating-behavior)
+  still owns.
+- **Screens.** The lesson-complete screen says "First review tomorrow from
+  04:00, once it has had a night to settle" (local time format) and labels its
+  button "Practise without hints"; a finished practice says it does not
+  change the schedule. The repertoire chip of an untested line reads "First
+  test tomorrow" (or "later today") until the line is due, then "First test
+  ready".
+- **Terminal demo.** `backend/demo.py` checks that nothing is due right after
+  learning, then moves its clock to the first due time before reviewing.
+
+Checks on 2026-11-17: `python -m unittest discover -s backend/tests -t .`
+passes 36 of 36, including 14 new tests in `backend/tests/test_first_review.py`
+(due-time cases for evening, morning, 04:00, after midnight, a UTC-day
+difference and a daylight-saving change; the stored card; no review the same
+day; refused early chosen-line review; practice leaving the schedule alone).
+`npm test` passes 16 of 16 and `npm run build` passes on Node.js 26.13.1. In
+the browser, on a copy of the demo database with the browser in UTC+2, a
+learned Barnes Opening line was saved due at 02:00 UTC the next day, the
+lesson-complete screen showed "First review tomorrow from 04:00 AM", the
+opening page's review button opened unhinted practice with the first-review
+message, the repertoire showed "First test tomorrow" and the console had no
+errors. The terminal demo reaches the review on the next day and passes with
+`--grade Easy`; with its default `Good` (and with `Hard` or `Again`) it fails
+on its grade check because its fixed response times predate the session
+grading rule. That failure is unchanged from `66176b0` and is not fixed here.
+
 ## Alternatives considered
 
 - **py-fsrs learning steps** (reviews minutes apart before the card enters
@@ -134,16 +190,16 @@ Prospective; none is made.
 
 ## Open questions
 
-1. What "the next day" means: the next calendar day in the player's time
-   zone (the backend currently stores UTC times) or a minimum number of
-   hours after the lesson.
+1. Decided by the user on 2026-11-17: the next local day, starting at 04:00
+   in the browser's time zone (UTC when the browser sends none).
 2. Whether a failed same-day practice should do anything, such as offering
    the lesson again. The proposal keeps it off the schedule either way.
 3. Whether same-day practice is logged as its own event type.
 4. When the simulator and training follow, and whether the app change waits
    for retrained weights or ships first with the mismatch noted.
 
-Closure: the team accepts, changes or rejects the proposal. If accepted, the
-decision moves into the App & Practice and System Architecture records, the
-backend and frontend changes land with their checks, and the simulator and
-training follow-up gets its own route.
+Closure: the app behavior is recorded in the App & Practice and System
+Architecture records. This document stays open for the deferred simulator
+and training follow-up and questions 2–4; once those are settled, its
+remaining content moves to the owning records and it is retired with the
+user's approval.

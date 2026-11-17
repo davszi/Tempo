@@ -354,9 +354,9 @@ update state but are excluded from the training loss. Whether they use the
 section 3.4 bands, a fixed grade or no grade is not decided. Since
 `52e9535` they pass through `calculate_session_grade` with no mistakes, so
 in effect they use the section 3.4 bands (Easy, Good or Hard). The app
-grades no Learning session. An unaccepted
-[first review proposal](../../open/first-review-timing.md) keeps it that way
-and would change the simulator to match; that change is deferred.
+grades no Learning session, and since 2026-11-17 a line's first review is due
+on the player's next day ([first review timing](../../open/first-review-timing.md)).
+The simulator does not match this yet; that change is deferred.
 
 ### 6.3 Exported inputs
 

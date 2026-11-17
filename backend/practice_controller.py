@@ -1,13 +1,13 @@
 """Backend entry points for a chess UI."""
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
+from datetime import datetime, timezone, tzinfo
 from threading import Lock
 from time import monotonic
 from uuid import uuid4
 
 from .ml_controller import MLController
-from .ml_engine import MLEngine
+from .ml_engine import MLEngine, player_zone
 from .store import Store, add_event, is_learnable, repertoire_rows, timestamp
 
 
@@ -35,6 +35,7 @@ class Session:
     side: str | None = None
     move_index: int = 0
     move_started: float = 0.0
+    zone: tzinfo = field(default=timezone.utc)   # Learning: the player's time zone for the first review
 
 
 class PracticeController:
@@ -54,12 +55,17 @@ class PracticeController:
     def learning_catalog(self, player_id):
         return self.store.learning_catalog(player_id)
 
-    def start_learning(self, player_id, line_id, side, resume_at=0):
-        """Open a Learning session, optionally at a saved position where the player is to move."""
+    def start_learning(self, player_id, line_id, side, resume_at=0, time_zone=None):
+        """Open a Learning session, optionally at a saved position where the player is to move.
+
+        time_zone is the browser's IANA zone; it sets when a newly learned line is first due.
+        """
+        zone = player_zone(time_zone)
         with self.lock:
             view = self._open_line(player_id, line_id, "learning", side)
+            session_id, session = self.sessions[player_id]
+            session.zone = zone
             if resume_at:
-                session_id, session = self.sessions[player_id]
                 own_turn = side == "both" or resume_at % 2 == (side == "black")
                 if not (isinstance(resume_at, int) and 0 < resume_at < len(session.moves) and own_turn):
                     raise ValueError("The saved position does not belong to this line and side")
@@ -84,7 +90,7 @@ class PracticeController:
         with self.lock:
             with self.store.transaction() as db:
                 row = db.execute(
-                    """SELECT f.family_side FROM player_lines AS p
+                    """SELECT f.family_side, p.next_review_at, p.fsrs_state FROM player_lines AS p
                        JOIN opening_lines AS o USING (line_id)
                        JOIN opening_families AS f USING (family_id)
                        WHERE p.player_id = ? AND p.line_id = ?""",
@@ -92,6 +98,11 @@ class PracticeController:
                 ).fetchone()
             if row is None:
                 raise LookupError("This line is not in your repertoire")
+            # The first review sets the line's memory, so it waits for the player's next day;
+            # until then the line can only be practised in Learning, which leaves the schedule alone.
+            if (self.ml.engine.stability_days(row["fsrs_state"]) is None
+                    and datetime.fromisoformat(row["next_review_at"]) > self.now()):
+                raise ValueError("The first review of this line opens on your next day; practise it without hints until then")
             return self._open_line(player_id, line_id, "repeating", row["family_side"])
 
     def abandon_review(self, player_id, session_id):
@@ -217,7 +228,7 @@ class PracticeController:
                 )
                 if complete:
                     if session.mode == "learning":
-                        self.ml.initialize_progress(db, player_id, session.line_id, now)
+                        self.ml.initialize_progress(db, player_id, session.line_id, now, session.zone)
                     else:
                         grade, grading = self.ml.complete_review(db, player_id, session.line_id, session_id, now)
                     add_event(

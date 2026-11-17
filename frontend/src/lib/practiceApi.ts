@@ -68,6 +68,16 @@ export type RepertoireLine = {
 
 export type Repertoire = { now: string; target_recall: number; lines: RepertoireLine[] };
 
+/** The browser's IANA time zone as a request field, or nothing when the browser cannot tell (the server then uses UTC). */
+export function playerTimeZone(): { time_zone?: string } {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return zone ? { time_zone: zone } : {};
+  } catch {
+    return {};
+  }
+}
+
 export async function practiceRequest<T>(path: string, fields: object = {}, signal?: AbortSignal): Promise<T> {
   let playerId = localStorage.getItem("tempo-player");
   if (!playerId) {

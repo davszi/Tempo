@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { allOpeningTypes, buildFamilies, variantMoves, type OpeningSort, type OpeningType } from "./lib/catalog";
 import { AppearanceContext, loadAppearance, storeAppearance, type Appearance } from "./lib/appearance";
-import { practiceRequest, type OpeningLine, type Repertoire, type ReviewStart, type Session } from "./lib/practiceApi";
+import { playerTimeZone, practiceRequest, type OpeningLine, type Repertoire, type ReviewStart, type Session } from "./lib/practiceApi";
 import { clearProgress, saveProgress, useProgress } from "./lib/progress";
-import { isDue } from "./lib/memory";
+import { dueAt, firstReviewWhen, isDue } from "./lib/memory";
 import { AppContext, learningSideKey, type AppData, type LearningSide, type Route } from "./lib/app";
 import { Shell } from "./components/Shell";
 import { Toast } from "./components/common";
@@ -121,7 +121,10 @@ export default function App() {
     const resumeAt = replayFrom ?? (!restart && saved?.side === side ? saved.ply : 0);
     const hideHints = withoutHints ?? Boolean(resumeAt && saved?.withoutHints);
     try {
-      const started = await practiceRequest<Session>("learning", { line_id: lineId, side, ...(resumeAt ? { resume_at: resumeAt } : {}) });
+      // The time zone sets when a newly learned line is first due: 04:00 on the player's next day.
+      const started = await practiceRequest<Session>("learning", {
+        line_id: lineId, side, ...(resumeAt ? { resume_at: resumeAt } : {}), ...playerTimeZone(),
+      });
       if (restart || (replayFrom !== undefined && started.move_index <= (side === "black" ? 1 : 0))) {
         clearProgress(lineId);
       } else if (replayFrom !== undefined) {
@@ -136,6 +139,13 @@ export default function App() {
   }, [lineById, progress, go, showToast]);
 
   const startReview = useCallback(async (lineId?: number) => {
+    // A line's first review waits for the next day; before then a chosen line is practised without hints.
+    const chosen = lineId != null ? repertoire?.lines.find((line) => line.line_id === lineId) : undefined;
+    if (chosen && chosen.stability_days == null && !isDue(chosen, Date.now())) {
+      showToast(`The first review opens ${firstReviewWhen(dueAt(chosen), Date.now())}. Until then, practise without hints; it does not change the schedule.`);
+      await startLearning(chosen.line_id, { restart: true, withoutHints: true });
+      return;
+    }
     try {
       let started: ReviewStart = lineId != null
         ? await practiceRequest<Session>("review/line", { line_id: lineId })
@@ -150,7 +160,7 @@ export default function App() {
       setSession(started as Session);
       go("#/lesson");
     } catch (failure) { showToast((failure as Error).message); }
-  }, [lineById, go, showToast]);
+  }, [lineById, repertoire, startLearning, go, showToast]);
 
   const markLearned = useCallback((lineId: number) => {
     setCatalog((lines) => lines.map((line) => (line.line_id === lineId ? { ...line, learned: true } : line)));

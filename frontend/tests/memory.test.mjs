@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DAY, dayStart, dueInfo, recallLevel, timeline } from "../src/lib/memory.ts";
+import { DAY, dayStart, dueInfo, firstReviewWhen, recallLevel, timeline } from "../src/lib/memory.ts";
 import { buildFamilies, closestLines, lineLabel, sharedPlies } from "../src/lib/catalog.ts";
 
 const noon = new Date(2026, 10, 14, 12, 0).getTime();
@@ -16,6 +16,19 @@ test("days until forgetting covers new, overdue, due, later-today and future lin
   const later = dueInfo({ next_review_at: at(5 * DAY), stability_days: 9 }, noon, 0.9);
   assert.equal(later.text, "5 days left");
   assert.match(later.long, /5 days until recall drops below 90%/);
+});
+
+test("an untested line waits for its first review on the next day", () => {
+  const fourTomorrow = new Date(2026, 10, 15, 4, 0).getTime();
+  const tomorrow = dueInfo({ next_review_at: new Date(fourTomorrow).toISOString(), stability_days: null }, noon, 0.9);
+  assert.equal(tomorrow.text, "First test tomorrow");
+  assert.match(tomorrow.long, /opens tomorrow from /);
+  const lateNight = new Date(2026, 10, 15, 1, 30).getTime();   // learned after midnight: opens at 04:00 the same morning
+  assert.equal(dueInfo({ next_review_at: new Date(fourTomorrow).toISOString(), stability_days: null }, lateNight, 0.9).text,
+    "First test later today");
+  assert.match(firstReviewWhen(fourTomorrow, lateNight), /^today from /);
+  assert.equal(dueInfo({ next_review_at: new Date(fourTomorrow).toISOString(), stability_days: null }, fourTomorrow, 0.9).text,
+    "First test ready");
 });
 
 test("recall bands compare with the target", () => {

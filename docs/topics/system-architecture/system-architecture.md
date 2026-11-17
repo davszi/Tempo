@@ -95,7 +95,8 @@ it is not a learned ranking over the full event history. A selection writes
 session awaiting side. There is no log of an empty/no-due suggestion.
 
 Direct-line review instead verifies repertoire membership, uses the opening
-family side, and opens immediately, including before due time. It writes no
+family side, and opens immediately, including before due time, except that a
+line with no stability is refused until its first review is due. It writes no
 `line_suggested`. Earlier suggestions are recorded but never read by selection.
 The browser's main Start review is the planner path; its per-line actions are
 the direct path. The API surface and unresolved product choice belong to
@@ -103,7 +104,7 @@ the direct path. The API surface and unresolved product choice belong to
 
 ### Initial card, grading and update
 
-First Learning completion creates an unreviewed Py-FSRS card due immediately. Stability and current recall remain null until the first review. After Repeating, any wrong attempt yields Again even if corrected. Otherwise the engine subtracts its configured baseline from mean response time per distinct move: under 500 ms gives Easy, 500 through 1,800 ms gives Good, and above 1,800 ms gives Hard. The web server's baseline is zero; calibration beyond this is not implemented. A new grading rule was decided on 2026-11-16 and is not implemented: mistake limits by line length, Easy only without mistakes, and fixed time bands on browser-measured times without a baseline ([session grading record](../session-grading/session-grading.md)); the app keeps the rule above until it is implemented.
+First Learning completion creates an unreviewed Py-FSRS card due at 04:00 on the player's next local day (`first_review_due`; the browser's IANA time zone arrives with `/api/learning`, UTC when absent). Stability and current recall remain null until the first review, which initializes them; Learning sets no memory ([first review timing](../../open/first-review-timing.md#implemented-in-the-app)). After Repeating, any wrong attempt yields Again even if corrected. Otherwise the engine subtracts its configured baseline from mean response time per distinct move: under 500 ms gives Easy, 500 through 1,800 ms gives Good, and above 1,800 ms gives Hard. The web server's baseline is zero; calibration beyond this is not implemented. A new grading rule was decided on 2026-11-16 and is not implemented: mistake limits by line length, Easy only without mistakes, and fixed time bands on browser-measured times without a baseline ([session grading record](../session-grading/session-grading.md)); the app keeps the rule above until it is implemented.
 
 The controller records elapsed server monotonic time between attempts. Browser interaction, request waiting and any idle time contribute; it is not an isolated measurement of thought. A final correct attempt, session completion and schedule update share one SQLite transaction. Early close after a recorded mistake also saves a completion and updates the schedule as Again. Other unfinished sessions do not update it.
 

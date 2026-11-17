@@ -71,7 +71,7 @@ class Handler(SimpleHTTPRequestHandler):
         # path: (action, required fields, optional fields)
         routes = {
             "/api/catalog": (self.controller.learning_catalog, (), ()),
-            "/api/learning": (self.controller.start_learning, ("line_id", "side"), ("resume_at",)),
+            "/api/learning": (self.controller.start_learning, ("line_id", "side"), ("resume_at", "time_zone")),
             "/api/review": (self.controller.start_repeating, (), ()),
             "/api/review/side": (self.controller.choose_review_side, ("session_id", "side"), ()),
             "/api/review/line": (self.controller.start_review_line, ("line_id",), ()),

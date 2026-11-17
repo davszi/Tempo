@@ -37,6 +37,16 @@ def run_demo(database, weights, expected_grade, side):
             player, learning["session_id"], learning["move_index"], learning["hint"]
         )
 
+    # A learned line is first due on the player's next day; move the clock there.
+    if backend.start_repeating(player)["status"] != "none_due":
+        raise RuntimeError("The learned line was due before the next day")
+    with backend.store.transaction() as db:
+        first_due = db.execute(
+            "SELECT next_review_at FROM player_lines WHERE player_id = ? AND line_id = ?",
+            (player, line["line_id"]),
+        ).fetchone()["next_review_at"]
+    now = datetime.fromisoformat(first_due)
+
     suggestion = backend.start_repeating(player)
     if suggestion["status"] != "choose_side" or suggestion["line_id"] != line["line_id"]:
         raise RuntimeError("Repeating did not suggest the learned line")

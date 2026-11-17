@@ -79,7 +79,7 @@ The <a href="whole-flow.html">App & Practice overview</a> explains screens and t
 | Repertoire exists but no saved date is due | Return <code>none_due</code>; no session opens and no suggestion is logged. |
 | At least one line is due | Choose the smallest due date, then learned date, then line ID; log the suggestion and open a session awaiting side. |
 
-The selector compares saved dates with server UTC now. It uses repertoire rows, not the complete practice-event or suggestion history. Per-player card state evolves with reviews; learned ranking and live fine-tuning remain intended capabilities. First Learning creates an unreviewed card due immediately. Later Learning leaves that card and its schedule intact.
+The selector compares saved dates with server UTC now. It uses repertoire rows, not the complete practice-event or suggestion history. Per-player card state evolves with reviews; learned ranking and live fine-tuning remain intended capabilities. First Learning creates an unreviewed card due at 04:00 on the player's next local day. Later Learning leaves that card and its schedule intact.
 
 Review timing starts at side selection or a resumed session, resets after each attempt and uses elapsed server monotonic time. Request/UI waiting and idle time count; time before side selection does not. For a clean review, the engine divides total response time by the number of distinct attempted move indices, then subtracts its configured baseline. The web baseline is zero.
 

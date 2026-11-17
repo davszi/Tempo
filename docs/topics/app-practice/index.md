@@ -48,7 +48,7 @@ The <a href="opening-catalog.html">Catalog & Data overview</a> explains which li
 
 <p class="bs-lead">Both modes write to one practice history, while only a completed review changes an existing review schedule.</p>
 
-<a href="#practice-cycle">Figure 2</a> follows the normal planner-selected route. A newly learned line is due immediately; later Learning preserves its existing schedule.
+<a href="#practice-cycle">Figure 2</a> follows the normal planner-selected route. A newly learned line is first due at 04:00 on the player's next local day, and until then it can only be practised without hints; later Learning preserves its existing schedule.
 
 <figure id="practice-cycle">
 <div class="bs-flow">

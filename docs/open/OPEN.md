@@ -8,7 +8,7 @@ Routes only. The linked owner holds status, acceptance, choices and evidence.
 
 - Neural estimation of personal FSRS parameters: [proposal and current-approach assessment](neural-fsrs-weights.md) owns the unaccepted design, baseline prerequisites, comparison and execution decisions.
 
-- First review timing: [proposal](first-review-timing.md) owns the unaccepted next-day first review with same-day practice kept off the schedule, its app changes and the deferred simulator and training follow-up.
+- First review timing: [record](first-review-timing.md) owns the deferred simulator and training follow-up for the next-day first review (implemented in the app) and its open practice and telemetry questions.
 - Product acceptance: [product backlog and gaps](product-backlog.md) separates implemented features from remaining scheduling evidence, wording and reproducibility work.
 - Repeating conflicts with settled decisions: [App & Practice record](../topics/app-practice/app-practice.md) owns the hint and selected-line review choices pending the project owner's decision.
 - Remaining opening-family confirmation: [opening catalog questions](../topics/catalog-data/catalog-data.md#open-questions) owns unsettled side-label decisions.

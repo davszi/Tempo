@@ -36,6 +36,11 @@ implementation facts, not additional accepted product decisions:
   demo also support White, Black and Both. The catalog has 2,719 lines in 82
   families after cleaning and family regrouping; the dated evidence and
   learnability rule are in [opening catalog structure](topics/catalog-data/catalog-data.md).
+- A newly learned line's first Repeating review is due at 04:00 on the
+  player's next local day, and Learning sets no FSRS memory; until then the
+  line can only be practised without hints, off the schedule
+  ([first review timing](open/first-review-timing.md); simulator and training
+  not changed to match yet).
 - The runtime chooses a due repertoire line with its existing FSRS scheduler
   and grades each Repeating review with the decided
   [session grading rule](topics/session-grading/session-grading.md) (`52e9535`).
