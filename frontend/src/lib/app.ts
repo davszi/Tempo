@@ -7,7 +7,7 @@ import type { Account } from "./auth";
 export type LearningSide = "all" | "white" | "black";
 export const learningSideKey = "tempo-learning-side";
 
-export type Route = { view: "home" | "learn" | "family" | "lesson" | "review" | "repertoire" | "settings" | "login" | "signup"; arg?: string };
+export type Route = { view: "home" | "learn" | "family" | "lesson" | "review" | "repertoire" | "settings" | "login" | "signup" | "forgot-password" | "reset-password"; arg?: string };
 
 /** Everything the pages share: the catalog, the player's repertoire and the actions that start practice. */
 export type AppData = {

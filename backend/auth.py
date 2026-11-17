@@ -35,9 +35,17 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
 );
 
 CREATE INDEX IF NOT EXISTS auth_sessions_user ON auth_sessions (user_id);
+
+CREATE TABLE IF NOT EXISTS password_resets (
+    user_id TEXT PRIMARY KEY REFERENCES users ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    requested_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
 """
 
 SESSION_DAYS = 30
+RESET_MINUTES = 30
 MIN_PASSWORD_LENGTH = 8
 MAX_PASSWORD_LENGTH = 200
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -141,6 +149,43 @@ class Accounts:
                 raise PermissionError("That email and password don't match an account")
             return self._sign_in(db, row["user_id"])
 
+    def request_password_reset(self, email, send_link):
+        email = _clean_email(email)
+        now = self.now()
+        with self.store.transaction(write=True) as db:
+            user = db.execute("SELECT user_id FROM users WHERE email = ? AND password_hash IS NOT NULL", (email,)).fetchone()
+            if user is None:
+                return
+            user_id = user["user_id"]
+            recent = db.execute("SELECT 1 FROM password_resets WHERE user_id = ? AND requested_at > ?",
+                                (user_id, timestamp(now - timedelta(minutes=5)))).fetchone()
+            if recent:
+                return
+            token = secrets.token_urlsafe(32)
+            token_hash = _token_hash(token)
+            db.execute("INSERT OR REPLACE INTO password_resets VALUES (?, ?, ?, ?)",
+                       (user_id, token_hash, timestamp(now), timestamp(now + timedelta(minutes=RESET_MINUTES))))
+        try:
+            send_link(email, token)
+        except Exception:
+            with self.store.transaction(write=True) as db:
+                db.execute("DELETE FROM password_resets WHERE token_hash = ?", (token_hash,))
+            raise
+
+    def reset_password(self, token, password):
+        if not isinstance(token, str) or not re.fullmatch(r"[A-Za-z0-9_-]{43}", token):
+            raise ValueError("This reset link is invalid or expired. Request a new one.")
+        _check_password(password)
+        with self.store.transaction(write=True) as db:
+            reset = db.execute("SELECT user_id FROM password_resets WHERE token_hash = ? AND expires_at > ?",
+                               (_token_hash(token), timestamp(self.now()))).fetchone()
+            if reset is None:
+                raise ValueError("This reset link is invalid or expired. Request a new one.")
+            user_id = reset["user_id"]
+            db.execute("UPDATE users SET password_hash = ? WHERE user_id = ?", (hash_password(password), user_id))
+            db.execute("DELETE FROM password_resets WHERE user_id = ?", (user_id,))
+            db.execute("DELETE FROM auth_sessions WHERE user_id = ?", (user_id,))
+
     def google(self, credential):
         if not self.google_client_id:
             raise NotSetUp("Google sign-in isn't set up on this server yet")
@@ -194,6 +239,7 @@ class Accounts:
             if taken:
                 raise AccountExists("Another account already uses this email")
             db.execute("UPDATE users SET name = ?, email = ? WHERE user_id = ?", (name, email, user_id))
+            db.execute("DELETE FROM password_resets WHERE user_id = ?", (user_id,))
             return self.public(db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone())
 
     def change_password(self, user_id, current_password, new_password):
@@ -205,6 +251,7 @@ class Accounts:
                     isinstance(current_password, str) and password_matches(current_password, row["password_hash"])):
                 raise PermissionError("Your current password isn't right")
             db.execute("UPDATE users SET password_hash = ? WHERE user_id = ?", (hash_password(new_password), user_id))
+            db.execute("DELETE FROM password_resets WHERE user_id = ?", (user_id,))
             return self.public(db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone())
 
     def delete_account(self, user_id, password=None, confirm=None):
