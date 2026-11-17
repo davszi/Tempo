@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowDownWideNarrow, LockKeyhole, Search, SlidersHorizontal } from "lucide-react";
 import { learningSideKey, useApp, type LearningSide } from "../lib/app";
 import { allOpeningTypes, linesByType, openingTypes, playerMoveCount } from "../lib/catalog";
+import openingDifficulty from "../data/openingDifficulty.json";
 import popularity from "../data/openingPopularity.json";
 import { positionAt } from "../lib/learning";
 import type { OpeningLine } from "../lib/practiceApi";
@@ -10,6 +11,8 @@ import { SideDot, plural, sideName } from "./common";
 
 // Sample counts from 825e9d8:ml/ml_1000bots/openings/family_side_evidence.csv.
 const popularityByFamily: Readonly<Partial<Record<string, number>>> = popularity;
+const studyOrder = Object.values(openingDifficulty).flat();
+const studyRankByFamily = new Map(studyOrder.map((name, index) => [name, index]));
 const whiteDefenseMessage = "The Defenses filter is unavailable when playing White.";
 
 /** Learning mode: every opening family, filtered by the side the player plays (opening_families.family_side). */
@@ -42,14 +45,15 @@ export function LearnPage() {
     const inProgress = lines.filter((line) => progress[line.line_id]).length;
     const moveCounts = lines.map(playerMoveCount);
     return { family, lines, nameHit, lineHits, learned, inProgress,
-      difficulty: Math.min(...moveCounts),
+      studyRank: studyRankByFamily.get(family.name) ?? studyOrder.length,
+      shortestLineMoves: Math.min(...moveCounts),
       averageMoves: moveCounts.reduce((sum, count) => sum + count, 0) / moveCounts.length,
       popularity: popularityByFamily[family.name] ?? -1,
     };
   }).filter((card) => card.lines.length && (card.nameHit || card.lineHits));
   const visibleCards = cards.filter(({ family }) => side === "all" || family.side === side);
-  visibleCards.sort((a, b) => (openingSort === "popular" ? b.popularity - a.popularity : 0)
-    || a.difficulty - b.difficulty || a.averageMoves - b.averageMoves
+  visibleCards.sort((a, b) => (openingSort === "popular" ? b.popularity - a.popularity : a.studyRank - b.studyRank)
+    || a.shortestLineMoves - b.shortestLineMoves || a.averageMoves - b.averageMoves
     || a.family.root.line_id - b.family.root.line_id);
   const lineCount = visibleCards.reduce((sum, card) => sum + card.lines.length, 0);
 
@@ -78,7 +82,8 @@ export function LearnPage() {
                 <label key={value}><input type="radio" name="learning-sort" checked={openingSort === value}
                   onChange={() => setOpeningSort(value)} />{label}</label>)}
             </fieldset>
-            <small className="muted">Difficulty uses moves to learn. Popularity uses a Lichess game sample.</small>
+            <small className="muted">{openingSort === "popular" ? "Popularity uses a Lichess game sample."
+              : "Study order considers opening plans, common replies, and how precisely you need to play."}</small>
           </div>
         </div>
         <div className="learning-filter">
