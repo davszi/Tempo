@@ -2,6 +2,25 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-17 Sync the project context with the commits through 8161d57
+
+`5be8698` (Render hosting), `9e01e62` (password reset by email) and their
+merge `484e97d` landed without worklog entries, and the project context did
+not mention them. The implementation snapshot now records the password reset
+(single-use links, 30 minutes, sessions revoked, Gmail HTTPS API only when
+configured) and the hosting setup (Flask app, `Dockerfile` with Gunicorn,
+`backend/hosting.py` seeding a catalog-only database on the persistent volume,
+Secure cookies). The repository map gains `Dockerfile`, `hosting.py` and
+`reset_email.py`; the backend build section gains the Flask note, serving the
+built frontend from port 8000, the reset email settings and the advice to
+pass a database copy. Facts come from the commit messages and the changed
+source; no deployment was checked, and the commit itself says the image has
+not yet been built on Render. Checks: backend suite 36 of 36 (none starts the
+Flask server); Flask is not installed in this machine's Python, so the local
+server was not started after the rebase; documentation build, freshness check
+and strict lint. No code changed. The commit hash is assigned by this entry's
+landing commit.
+
 ## 2026-11-17 Fix the terminal demo's grade timings for the session grading rule
 
 The terminal demo failed with its default settings ("Expected grade Good,

@@ -17,8 +17,8 @@ Follow the [task routes](../AGENTS.md#read-before-the-relevant-action) before th
 The latest full source-to-documentation pass inspected `788e060` on 2026-11-15.
 The integrated implementation comes from `feature/frontend-learning` at
 `c12eb50` and main's ML work at `ea3d01d`. On 2026-11-17 this snapshot was
-synced with the commits through `42a6810` from their messages and the
-changed source; that sync was not a full source audit. These are
+synced with the commits through `8161d57` from their messages and the
+changed source; those syncs were not a full source audit. These are
 implementation facts, not additional accepted product decisions:
 
 - The React app calls the Python API for catalog, Learning, Repeating and
@@ -29,9 +29,22 @@ implementation facts, not additional accepted product decisions:
   create an account with email and password, or sign in with Google when the
   server has a client ID, and edit, sign out of or delete it under Settings →
   Profile. `backend/auth.py` keeps salted scrypt password hashes and an
-  HttpOnly session cookie; a new account starts empty. [Frontend](topics/app-practice/app-practice.md)
-  owns the routes, API and storage boundaries; its record still describes the
-  demo identity only.
+  HttpOnly session cookie; a new account starts empty. Since `9e01e62` a
+  player can ask for a password reset link by email: the link is single-use,
+  expires after 30 minutes and signs out every session of the account once
+  used. `backend/reset_email.py` sends it through the Gmail HTTPS API only
+  when a sender, Gmail OAuth credentials and an HTTPS public URL are
+  configured; otherwise a reset request is refused as not set up.
+  [Frontend](topics/app-practice/app-practice.md) owns the routes, API and
+  storage boundaries; its record still describes the demo identity only.
+- Since `5be8698` (merged in `484e97d`) `backend/web.py` is a Flask app: it
+  serves the API and the built `frontend/dist`. A `Dockerfile` builds the
+  frontend and runs the app under Gunicorn (one worker, four threads) for
+  Render hosting; `backend/hosting.py` creates the database named by
+  `TEMPO_DATABASE` (`/var/data/tempo.sqlite` on the persistent volume), fills
+  an empty one with the catalog only from `backend/tempo_demo.sqlite`, and
+  sets Secure cookies. The commit says the image has not yet been built on
+  Render; this sync did not check a deployment.
 - The current browser uses the opening family's side. The backend and terminal
   demo also support White, Black and Both. The catalog has 2,719 lines in 82
   families after cleaning and family regrouping; the dated evidence and
@@ -248,7 +261,8 @@ An earlier HTML prototype of TEMPO exists, but it is not part of the repository,
 - `.build/docs/`: ignored generated output, never source.
 
 - `frontend/`: React browser application. See [frontend ownership and scope](topics/app-practice/app-practice.md).
-- `backend/`: Python application, accounts (`auth.py`), requirements, demo data, and tests in `backend/tests/`.
+- `backend/`: Python application (Flask app in `web.py`), accounts (`auth.py`) and password reset email (`reset_email.py`), hosted entry point (`hosting.py`), requirements, demo data, and tests in `backend/tests/`.
+- `Dockerfile`: container image for Render hosting (frontend build, Gunicorn, `backend.hosting:hosted_app()`).
 
 ## Build and review
 
@@ -261,9 +275,9 @@ python -m pip install -r backend/requirements.txt
 python -m backend.web
 ```
 
-The server listens on `127.0.0.1:8000` and uses the SQLite catalog and FSRS weights in `backend/`. Google sign-in stays off until the server gets `--google-client-id` or `TEMPO_GOOGLE_CLIENT_ID`. Run `.\backend\run-demo.cmd` from the repository root for the terminal demo.
+The server (Flask since `5be8698`; reinstall the requirements on an older environment) listens on `127.0.0.1:8000` and uses the SQLite catalog and FSRS weights in `backend/`. It also serves `frontend/dist` once `npm run build` has produced it, so the built app runs at `http://127.0.0.1:8000` without the Vite server. Google sign-in stays off until the server gets `--google-client-id` or `TEMPO_GOOGLE_CLIENT_ID`. Password reset emails stay off unless `TEMPO_RESET_FROM`, `TEMPO_GMAIL_CLIENT_ID`, `TEMPO_GMAIL_CLIENT_SECRET`, `TEMPO_GMAIL_REFRESH_TOKEN` and an HTTPS `TEMPO_PUBLIC_URL` (or Render's `RENDER_EXTERNAL_URL`) are set. The server and the terminal demo write practice history into the database they use; pass a copy with `--database` to keep the tracked `backend/tempo_demo.sqlite` unchanged. Run `.\backend\run-demo.cmd` from the repository root for the terminal demo.
 
-Run the backend tests (session grading and accounts) from the repository root:
+Run the backend tests (session grading, accounts and first review timing; none starts the Flask server) from the repository root:
 
 ```powershell
 python -m unittest discover -s backend/tests -t .
