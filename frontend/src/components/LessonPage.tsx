@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Square } from "chess.js";
-import { ArrowLeft, ArrowUpRight, BookOpen, Check, ChevronLeft, ChevronRight, Lightbulb, Play, RotateCcw, Undo2 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, Check, ChevronRight, ChevronUp, Lightbulb, Play, RotateCcw, Undo2 } from "lucide-react";
 import { useApp } from "../lib/app";
 import { closestLines, lineLabel, playerMoveCount, playerMovesIn } from "../lib/catalog";
 import { positionAt } from "../lib/learning";
@@ -8,20 +8,25 @@ import { MAX_RESPONSE_MS, gradeExplanation } from "../lib/grading";
 import { clearProgress, saveProgress } from "../lib/progress";
 import { firstReviewWhen } from "../lib/memory";
 import { isMobileApp } from "../lib/platform";
-import { practiceRequest, type Grade, type RepertoireLine, type Session } from "../lib/practiceApi";
-import { dragOffset, markArrivedBySwipe, swipeOutcome, arrivedBySwipe } from "../lib/swipe";
+import { practiceRequest, type Grade, type OpeningLine, type RepertoireLine, type Session } from "../lib/practiceApi";
+import { dragOffset, swipeOutcome } from "../lib/swipe";
+import { forgetSkip, markSkipped, nextDueLine, otherDueCount, pastCard, rememberCard, type PastCard } from "../lib/reviewQueue";
+import { playSound, savedSound } from "../lib/sound";
+import { isDue } from "../lib/memory";
 import { ChessBoard } from "./ChessBoard";
 import { LineTitle, fmtDate, plural, sideName } from "./common";
 
 const REVIEW_HINT_LIMIT = 4;
 const promotions = { q: "Queen", r: "Rook", b: "Bishop", n: "Knight" } as const;
 const gradeClass: Record<Grade, string> = { Again: "g1", Hard: "g2", Good: "g3", Easy: "g4" };
+const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const lineTitle = (line: OpeningLine) => lineLabel(line) === "Main line" ? line.opening_family : `${line.opening_family}: ${lineLabel(line)}`;
 
 /** A running Learning or Repeating session against the backend. */
 export function LessonPage({ initial, withoutHints = false, onExit }: {
   initial: Session; withoutHints?: boolean; onExit: (hash: string) => void;
 }) {
-  const { lineById, families, repertoire, progress, startLearning, startReview, refreshRepertoire, markLearned, showToast, dueCount } = useApp();
+  const { lineById, families, repertoire, progress, startLearning, startReview, refreshRepertoire, markLearned, showToast } = useApp();
   const learning = initial.mode !== "repeating";
   const line = lineById.get(initial.line_id);
   const family = families.find((item) => item.name === line?.opening_family);
@@ -94,6 +99,7 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
       setPendingFinalMove(null);
       setSession(next);
       if (next.correct) {
+        if (next.status !== "complete") playSound("move");
         setHintMove(null);
         setFeedback(mistakes && !learning ? { text: "Good, keep going.", tone: "ok" } : { text: "", tone: "" });
         if (learning && next.status === "play") {
@@ -110,6 +116,7 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
   }
 
   function wrongMove(next: Session) {
+    playSound("mistake");
     setShake((count) => count + 1);
     const count = mistakes + 1;
     setMistakes(count);
@@ -132,46 +139,125 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
         setLearnedLine(fresh?.lines.find((item) => item.line_id === done.line_id) ?? null);
       }
     } else {
+      playSound(savedSound(done.fsrs_rating ?? "Again"));
       const fresh = await refreshRepertoire();
       setReviewAfter(fresh?.lines.find((item) => item.line_id === done.line_id) ?? null);
     }
   }
 
-  // Repeating in the app: once a review is saved, swipe the board left for the next one.
-  const [slideIn] = useState(() => !learning && arrivedBySwipe());
-  const [swipeX, setSwipeX] = useState(0);
+  // Repeating in the app works like Reels: each review is a full-screen card. Swipe the card up and the
+  // next due opening rises from below. Before the line is finished this skips it without a grade; it
+  // stays due and comes back after the others (lib/reviewQueue.ts).
+  const feed = !learning && isMobileApp();
+  const stage = useRef<HTMLDivElement>(null);
+  const [stageHeight, setStageHeight] = useState<number | null>(null);
+  const [swipeY, setSwipeY] = useState(0);
   const [swipeState, setSwipeState] = useState<"idle" | "dragging" | "leaving">("idle");
   const swipeStart = useRef<{ x: number; y: number; at: number; id: number } | null>(null);
-  const canSwipeNext = finished && !learning && reviewAfter !== undefined && isMobileApp();
+  const canSwipe = feed && swipeState !== "leaving" && !busy && !pendingFinalMove && !showRelearnChoice
+    && (!finished || reviewAfter !== undefined);
+  const othersDue = otherDueCount(repertoire?.lines ?? [], Date.now(), session.line_id);
+  const nextId = feed ? nextDueLine(repertoire?.lines ?? [], Date.now(), session.line_id) : null;
+  const upNext = nextId != null ? lineById.get(nextId) : undefined;
+  useEffect(() => { if (finished && feed) forgetSkip(session.line_id); }, [finished, feed, session.line_id]);
+
+  // The card fills the screen between its top and the bottom menu.
+  useEffect(() => {
+    if (!feed) return;
+    const fit = () => {
+      const top = stage.current?.getBoundingClientRect().top ?? 0;
+      const nav = document.querySelector<HTMLElement>(".bottom-nav")?.offsetHeight ?? 0;
+      setStageHeight(Math.max(320, window.innerHeight - top - nav));
+    };
+    fit();
+    window.scrollTo({ top: 0 });
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [feed]);
+
+  // Swiping down shows the cards left behind earlier in this visit, read-only; `back` counts how far.
+  const [back, setBack] = useState(0);
+  const viewing = feed && back > 0 ? pastCard(back) : null;
+  const earlier = feed ? pastCard(back + 1) : null;
+
+  // The card being left goes into the history, as reviewed or skipped (a skipped one stays due).
+  function leaveLiveCard() {
+    if (!finished) markSkipped(session.line_id);
+    rememberCard({
+      lineId: session.line_id, title, side, fen: game.fen(), status: finished ? "reviewed" : "skipped",
+      grade: finished ? session.fsrs_rating ?? null : null, nextReviewAt: reviewAfter?.next_review_at ?? null,
+    });
+  }
+
+  const pause = (ms: number) => new Promise((done) => setTimeout(done, ms));
+  async function slide(direction: 1 | -1) {
+    setSwipeState("leaving");
+    setSwipeY(direction * (stage.current?.clientHeight ?? window.innerHeight));
+    playSound("swipe");
+    await pause(260);
+  }
+  function settle() {
+    setSwipeState("dragging");   // jump back to the resting place without animating
+    setSwipeY(0);
+    requestAnimationFrame(() => setSwipeState("idle"));
+  }
+
+  async function goNext() {
+    if (nextId == null) {
+      showToast(finished ? "All caught up. Nothing else is due right now." : "This is the only opening due right now.");
+      setSwipeY(0);
+      return;
+    }
+    await slide(-1);
+    leaveLiveCard();
+    await startReview(nextId);
+    setSwipeState("idle");   // only reached when the next review did not start
+    setSwipeY(0);
+  }
+
+  async function reviewEarlier(lineId: number) {
+    await slide(-1);
+    leaveLiveCard();
+    forgetSkip(lineId);
+    await startReview(lineId);
+    settle();
+  }
+
+  async function showEarlier(step: 1 | -1) {
+    await slide(step === 1 ? 1 : -1);
+    setBack((count) => count + step);
+    settle();
+  }
 
   function swipeDown(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!canSwipeNext || swipeState === "leaving" || event.pointerType === "mouse") return;
+    if (!canSwipe || event.pointerType === "mouse") return;
+    const target = event.target as HTMLElement;
+    // A drag that starts on one of your pieces is a move, never a swipe.
+    if (!finished && !viewing && target.closest(".sq.mine")) return;
+    // Inside the info panel, a drag scrolls the panel when it has more to show.
+    const panelBox = target.closest<HTMLElement>(".reel-panel");
+    if (panelBox && panelBox.scrollHeight > panelBox.clientHeight + 1) return;
     swipeStart.current = { x: event.clientX, y: event.clientY, at: performance.now(), id: event.pointerId };
     setSwipeState("dragging");
   }
   function swipeMove(event: ReactPointerEvent<HTMLDivElement>) {
     const start = swipeStart.current;
     if (!start || start.id !== event.pointerId) return;
-    setSwipeX(dragOffset(event.clientX - start.x, event.clientY - start.y));
+    const dy = dragOffset(0, event.clientY - start.y).y;
+    // Downward drags follow the finger only when there is an earlier card to show.
+    setSwipeY(dy > 0 && earlier ? event.clientY - start.y : dy);
   }
-  async function swipeUp(event: ReactPointerEvent<HTMLDivElement>) {
+  function swipeEnd(event: ReactPointerEvent<HTMLDivElement>) {
     const start = swipeStart.current;
     if (!start || start.id !== event.pointerId) return;
     swipeStart.current = null;
-    const width = event.currentTarget.getBoundingClientRect().width;
+    const box = event.currentTarget.getBoundingClientRect();
     const outcome = event.type === "pointercancel" ? "cancel"
-      : swipeOutcome(event.clientX - start.x, event.clientY - start.y, performance.now() - start.at, width);
-    if (outcome === "next" && dueCount > 0) {
-      setSwipeState("leaving");
-      setSwipeX(-width * 1.2);
-      await new Promise((done) => setTimeout(done, 200));
-      markArrivedBySwipe();
-      await startReview();
-    } else if (outcome === "next") {
-      showToast("All caught up. Nothing else is due right now.");
-    }
+      : swipeOutcome(event.clientX - start.x, event.clientY - start.y, performance.now() - start.at, box.width, box.height);
+    if (outcome === "up") { void (viewing ? showEarlier(-1) : goNext()); return; }
+    if (outcome === "down" && earlier) { void showEarlier(1); return; }
     setSwipeState("idle");
-    setSwipeX(0);
+    setSwipeY(0);
   }
 
   async function relearn() {
@@ -209,7 +295,7 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
 
   const status = finished ? "Line complete." : pendingFinalMove ? "Finishing line…" : showRelearnChoice ? "Review ended."
     : `${game.turn() === "w" ? "White" : "Black"} to move. ${hint ? "Follow the arrow." : "Recall the move."}`;
-  const title = line ? (lineLabel(line) === "Main line" ? line.opening_family : `${line.opening_family}: ${lineLabel(line)}`) : session.name;
+  const title = line ? lineTitle(line) : session.name;
 
   let panel;
   if (finished && learning) {
@@ -246,7 +332,7 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
       </>
       {after === undefined && <p className="muted small">Loading updated schedule...</p>}
       <div className="done-actions">
-        <button className="btn primary full" onClick={() => void startReview()}><Play size={16} /> Next review</button>
+        <button className="btn primary full" onClick={() => void (feed ? goNext() : startReview())}><Play size={16} /> Next review</button>
         {grade === "Again" && <button className="btn ghost full" onClick={() => void startLearning(session.line_id, { restart: true })}><BookOpen size={16} /> Learn this line again</button>}
         <button className="btn quiet full" onClick={() => onExit("#/review")}>Done</button>
       </div></div>;
@@ -273,6 +359,53 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
     </div>;
   }
 
+  const board = <ChessBoard fen={game.fen()} flipped={side === "black"} arrow={arrow} lastMove={lastMove} selected={selected} shake={shake}
+    disabled={busy || !yourTurn || !!promotion} onSquareClick={clickSquare}
+    onPieceDrop={finished ? undefined : (from, to) => { setSelected(null); if (yourTurn && !busy) attemptMove(from, to); }}
+    canDrag={(square) => yourTurn && !busy && allowedMoves.some((move) => move.from === square)} />;
+
+  if (feed) {
+    const hint = showRelearnChoice ? null : othersDue === 0
+      ? (finished ? "All caught up. Nothing else is due right now." : "This is the only opening due right now.")
+      : <><ChevronUp size={16} /> {finished ? "Swipe up for the next opening" : "Swipe up to skip to the next opening"} · {othersDue} more due{earlier ? " · down for earlier" : ""}</>;
+    return <div className="reel-stage" ref={stage} style={stageHeight ? { height: stageHeight } : undefined}>
+      <div className={`reel-track${swipeState === "dragging" ? " dragging" : ""}`} style={swipeY ? { transform: `translateY(${swipeY}px)` } : undefined}
+        onPointerDown={swipeDown} onPointerMove={swipeMove} onPointerUp={swipeEnd} onPointerCancel={swipeEnd}>
+        {earlier && <PastReelCard card={earlier} lines={repertoire?.lines ?? []} className="reel-peek-above" />}
+        {viewing ? <PastReelCard card={viewing} lines={repertoire?.lines ?? []} onReview={(lineId) => void reviewEarlier(lineId)}
+          onExit={() => onExit("#/review")} hasEarlier={!!earlier} />
+          : <>
+        <section className="reel-card" aria-label={`Review: ${title}`}>
+            <div className="reel-top">
+              <button className="back" onClick={() => onExit("#/review")}><ArrowLeft size={16} /> Repeating</button>
+              <span className="badge">{movesDone} / {plural(movesTotal, "move")}</span>
+            </div>
+            <p className="eyebrow">REPEATING · {sideName(side)}</p>
+            <h1>{title}</h1>
+            <div className="board-frame">{board}</div>
+            <p className={`feedback ${feedback.tone}`} role="status">{feedback.text || status}</p>
+            {promotion && <div className="row" aria-label="Promotion piece">{Object.entries(promotions).map(([piece, label]) =>
+              <button key={piece} className="btn sm ghost" disabled={busy} onClick={() => void submit(promotion + piece)}>{label}</button>)}
+              <button className="btn sm quiet" onClick={() => setPromotion("")}>Cancel</button></div>}
+            <div className="reel-panel">{panel}</div>
+            {hint && <p className="swipe-hint" aria-hidden="true">{hint}</p>}
+          </section>
+          </>}
+        <section className="reel-card reel-peek" aria-hidden="true">
+          {back === 1 ? <>
+            <p className="eyebrow">NOW · {sideName(side)}</p><h1>{title}</h1>
+            <div className="board-frame"><ChessBoard fen={game.fen()} flipped={side === "black"} mini /></div>
+          </> : back > 1 && pastCard(back - 1) ? <PastPreview card={pastCard(back - 1)!} />
+          : upNext ? <>
+            <p className="eyebrow">UP NEXT · {sideName(upNext.family_side)}</p>
+            <h1>{lineTitle(upNext)}</h1>
+            <div className="board-frame"><ChessBoard fen={START_FEN} flipped={upNext.family_side === "black"} mini /></div>
+          </> : <div className="reel-end"><Check size={28} /><h2>All caught up</h2><p className="muted">Nothing else is due right now.</p></div>}
+        </section>
+      </div>
+    </div>;
+  }
+
   return <>
     <button className="back" onClick={() => onExit(learning ? `#/family/${encodeURIComponent(line?.opening_family ?? "")}` : "#/review")}>
       <ArrowLeft size={16} /> {learning ? line?.opening_family ?? "Openings" : "Repeating"}</button>
@@ -286,17 +419,8 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
           <button type="button" className="btn quiet" title="Restart lesson" aria-label="Restart lesson"
             disabled={busy || (!finished && session.move_index <= firstPlayerPly)} onClick={() => void replayLearning()}><RotateCcw size={18} /></button>
         </div>}
-        <div className={`board-frame${canSwipeNext ? " swipeable" : ""}${slideIn ? " slide-in" : ""}${swipeState === "dragging" ? " dragging" : ""}`}
-          style={swipeX ? { transform: `translateX(${swipeX}px) rotate(${swipeX / 60}deg)`, opacity: swipeState === "leaving" ? 0 : 1 } : undefined}
-          onPointerDown={swipeDown} onPointerMove={swipeMove} onPointerUp={(event) => void swipeUp(event)} onPointerCancel={(event) => void swipeUp(event)}>
-        <ChessBoard fen={game.fen()} flipped={side === "black"} arrow={arrow} lastMove={lastMove} selected={selected} shake={shake}
-          disabled={busy || !yourTurn || !!promotion} onSquareClick={clickSquare}
-          onPieceDrop={finished ? undefined : (from, to) => { setSelected(null); if (yourTurn && !busy) attemptMove(from, to); }}
-          canDrag={(square) => yourTurn && !busy && allowedMoves.some((move) => move.from === square)} /></div>
+        <div className="board-frame">{board}</div>
         <p className={`feedback ${feedback.tone}`} role="status">{feedback.text || status}</p>
-        {canSwipeNext && <p className="swipe-hint" aria-hidden="true">{dueCount > 0
-          ? <><ChevronLeft size={16} /> Swipe the board for the next review · {dueCount} due</>
-          : "All caught up. Nothing else is due right now."}</p>}
         {promotion && <div className="row" aria-label="Promotion piece">{Object.entries(promotions).map(([piece, label]) =>
           <button key={piece} className="btn sm ghost" disabled={busy} onClick={() => void submit(promotion + piece)}>{label}</button>)}
           <button className="btn sm quiet" onClick={() => setPromotion("")}>Cancel</button></div>}
@@ -334,4 +458,37 @@ function VariationItem({ lineId, shared, suggested }: { lineId: number; shared?:
     {line.learned ? <span className="chip"><Check size={12} /> Learned</span> : progress[lineId] ? <span className="chip warn">In progress</span>
       : suggested ? <span className="chip warn">Suggested next</span> : null}
     <ChevronRight size={16} /></button>;
+}
+
+/** A card left behind earlier in this visit, shown read-only when the player swipes down. */
+function PastReelCard({ card, lines, className = "", onReview, onExit, hasEarlier = false }: {
+  card: PastCard; lines: RepertoireLine[]; className?: string;
+  onReview?: (lineId: number) => void; onExit?: () => void; hasEarlier?: boolean;
+}) {
+  const now = lines.find((item) => item.line_id === card.lineId);
+  const stillDue = card.status === "skipped" && !!now && isDue(now, Date.now());
+  const nextReview = card.nextReviewAt ?? now?.next_review_at ?? null;
+  const label = card.status === "reviewed" ? "REVIEWED" : stillDue ? "SKIPPED" : "REVIEWED SINCE";
+  return <section className={`reel-card reel-past ${className}`} aria-hidden={onReview ? undefined : true}>
+    {onExit && <div className="reel-top"><button className="back" onClick={onExit}><ArrowLeft size={16} /> Repeating</button>
+      <span className="badge">Earlier</span></div>}
+    <p className="eyebrow">EARLIER · {label} · {sideName(card.side)}</p>
+    <h1>{card.title}</h1>
+    <div className="board-frame"><ChessBoard fen={card.fen} flipped={card.side === "black"} mini={!onReview} /></div>
+    <div className="reel-past-result">
+      {card.grade && <span className={`grade ${gradeClass[card.grade]}`}>{card.grade}</span>}
+      <p className="muted">{stillDue ? "Skipped. It is still due and comes back after the others."
+        : nextReview ? `Next review ${fmtDate(nextReview)}.` : "Saved."}</p>
+      {stillDue && onReview && <button className="btn primary" onClick={() => onReview(card.lineId)}><Play size={16} /> Review it now</button>}
+    </div>
+    {onReview && <p className="swipe-hint"><ChevronUp size={16} /> Swipe up to go back{hasEarlier ? " · down for earlier" : ""}</p>}
+  </section>;
+}
+
+function PastPreview({ card }: { card: PastCard }) {
+  return <>
+    <p className="eyebrow">EARLIER · {card.status === "reviewed" ? "REVIEWED" : "SKIPPED"} · {sideName(card.side)}</p>
+    <h1>{card.title}</h1>
+    <div className="board-frame"><ChessBoard fen={card.fen} flipped={card.side === "black"} mini /></div>
+  </>;
 }

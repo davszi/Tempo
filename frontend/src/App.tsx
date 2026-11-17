@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { syncReminders } from "./lib/reminders";
+import { APP_PREFS_EVENT } from "./lib/appPrefs";
 import { allOpeningTypes, buildFamilies, variantMoves, type OpeningSort, type OpeningType } from "./lib/catalog";
 import { AppearanceContext, loadAppearance, storeAppearance, type Appearance } from "./lib/appearance";
 import { playerTimeZone, practiceRequest, type OpeningLine, type Repertoire, type ReviewStart, type Session } from "./lib/practiceApi";
@@ -93,6 +95,15 @@ export default function App() {
     void refreshRepertoire();
     return () => request.abort();
   }, [loadVersion, refreshRepertoire]);
+
+  // In the Android app, keep the phone's review reminders in step with the repertoire (lib/reminders.ts).
+  useEffect(() => {
+    if (!repertoire) return;
+    const sync = () => void syncReminders(repertoire.lines);
+    sync();
+    window.addEventListener(APP_PREFS_EVENT, sync);
+    return () => window.removeEventListener(APP_PREFS_EVENT, sync);
+  }, [repertoire]);
 
   // Recall falls as time passes, so fetch fresh numbers whenever a memory view opens.
   useEffect(() => {

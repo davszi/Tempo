@@ -3,6 +3,8 @@ import { Crown, Palette, Sparkles } from "lucide-react";
 import { PIECE_CREDITS, PIECE_SETS, THEMES, pieceImage, type Appearance, type PieceSetId } from "../lib/appearance";
 import { positionAt } from "../lib/learning";
 import { ChessBoard } from "./ChessBoard";
+import { AppPrefsSettings } from "./AppPrefsSettings";
+import { isMobileApp } from "../lib/platform";
 
 const PREVIEW = positionAt("e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 c2c3 g8f6".split(" "), 8);
 
@@ -22,6 +24,7 @@ export function SettingsPage({ appearance, onChange, profile }: {
     <header className="page-head"><p className="eyebrow">SETTINGS</p><h1>Make TEMPO yours.</h1>
       <p className="lead">Your profile, your theme and your piece set.</p></header>
     {profile && <><h2 className="settings-heading">Profile</h2>{profile}</>}
+    {isMobileApp() && <><h2 className="settings-heading">Phone app</h2><AppPrefsSettings /></>}
     <h2 className="settings-heading">Theme and pieces</h2>
     <section className="card"><div className="appearance">
       <div className="ap-preview"><div className="board-frame"><ChessBoard fen={PREVIEW.fen()} arrow={{ from: "e1", to: "g1" }} /></div>

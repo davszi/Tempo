@@ -294,12 +294,39 @@ button.item:hover:not(:disabled) { border-color: var(--accent); background: var(
 /* board */
 .board { position: relative; width: 100%; aspect-ratio: 1; border-radius: 10px; overflow: hidden; container-type: inline-size; user-select: none; -webkit-user-select: none; }
 .board-frame { border: 5px solid var(--surface); border-radius: 15px; box-shadow: var(--shadow); }
-/* Repeating in the app: swipe a finished review's board left for the next review (mobile/README.md). */
-.board-frame.swipeable { touch-action: pan-y; transition: transform .2s ease, opacity .2s ease; }
-.board-frame.swipeable.dragging { transition: none; }
-.board-frame.slide-in { animation: board-slide-in .28s ease-out; }
-@keyframes board-slide-in { from { opacity: 0; transform: translateX(40%); } }
-.swipe-hint { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+/* Repeating in the app works like Reels (mobile/README.md): each review is a full-screen card and
+   swiping the card up brings the next due opening up from below. Only the app renders .reel-stage. */
+html:has(.reel-stage), html:has(.reel-stage) body { overflow: hidden; overscroll-behavior: none; }
+.mobile-app .main:has(.reel-stage) { padding: 0; }
+.reel-stage { position: relative; height: calc(100dvh - 70px); overflow: hidden; }
+.reel-track { position: relative; height: 100%; touch-action: none; transition: transform .26s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
+.reel-track.dragging { transition: none; }
+.reel-card { box-sizing: border-box; height: 100%; display: flex; flex-direction: column; padding: 8px 16px 6px; overflow: hidden; background: var(--bg); }
+.reel-peek { position: absolute; top: 100%; left: 0; right: 0; border-top: 1px solid var(--line); }
+.reel-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.reel-top .back { margin: 0; padding: 4px 0; }
+.reel-top .badge { padding: 5px 10px; }
+.reel-card .eyebrow { margin: 6px 0 2px; font-size: 10px; }
+.reel-card h1 { flex: none; margin-bottom: 8px; font-size: 19px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.reel-card .board-frame { flex: none; align-self: center; width: min(100%, max(220px, calc(100dvh - 400px))); }
+.reel-card .feedback { flex: none; min-height: 0; margin: 6px 0 0; font-size: 13px; text-align: center; }
+.reel-panel { flex: 1 1 auto; min-height: 0; margin-top: 8px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.reel-panel .card { padding: 14px 16px; }
+.reel-panel .next-move h2 { font-size: 22px; }
+.reel-card .swipe-hint { flex: none; }
+.reel-end { display: grid; place-content: center; justify-items: center; gap: 8px; height: 100%; text-align: center; color: var(--accent); }
+.reel-end p { margin: 0; }
+.reel-peek-above { position: absolute; bottom: 100%; left: 0; right: 0; justify-content: flex-end; border-bottom: 1px solid var(--line); }
+.reel-past-result { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 10px; }
+.reel-past-result p { margin: 0; font-size: 14px; }
+.reel-past .swipe-hint { margin-top: auto; }
+.app-prefs { display: grid; gap: 4px; }
+.app-pref { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--line); }
+.app-pref:first-child { border-top: 0; }
+.app-pref b { display: block; }
+.app-pref small { color: var(--muted); }
+.app-pref input { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
+.swipe-hint { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 6px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
 .squares { display: grid; grid-template-columns: repeat(8, 1fr); width: 100%; height: 100%; }
 .sq { position: relative; display: grid; place-items: center; aspect-ratio: 1; min-width: 0; border: 0; padding: 0; }
 .sq.l { background: var(--sq-light); color: var(--coord-light); }

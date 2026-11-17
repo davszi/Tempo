@@ -30,6 +30,21 @@ For styles, the `<html>` element has the class `mobile-app` inside the app only:
 Outside the app `isMobileApp()` is `false` and no `.mobile-app` rule matches, so the website stays exactly as it is.
 `frontend/tests/platform.test.mjs` checks that browsers, including phone browsers, are never treated as the app.
 
+## What the app adds to the website
+
+Everything below runs only inside the app (`isMobileApp()`); the website is unchanged.
+
+- **Repeating as a feed.** Each review is a full-screen card. Swipe up anywhere on it for the next
+  due opening, which rises from below. Before the line is finished this skips it without a grade:
+  it stays due and comes back after the others (`lib/reviewQueue.ts`). A drag that starts on one of
+  your pieces is always a move. Swipe down to look back at the cards left behind, read-only; a
+  skipped one can be reviewed from there.
+- **Sounds** for moves, mistakes and saved reviews, made with the Web Audio API (`lib/sound.ts`).
+- **Review reminders** scheduled on the phone from the repertoire's due times, never between 22:00
+  and 08:00 (`lib/reminders.ts`). They use the `@capacitor/local-notifications` plugin built into
+  the APK, so they need no server. Tapping one opens Repeating.
+- Settings has a "Phone app" section to turn sounds and reminders off.
+
 ## Testing a branch on the phone
 
 1. Install **TEMPO Dev** once (`TEMPO-Dev.apk`), next to the normal TEMPO app.
@@ -52,8 +67,9 @@ If the phone stops answering altogether, run `adb kill-server` and the script ag
 
 ## When a new APK is needed
 
-Only for changes to the app shell itself: its name, icon, version, the site it opens, or native phone features
-(notifications, offline mode). Website changes, including app-only ones, never need a new APK.
+Only for changes to the app shell itself: its name, icon, version, the site it opens, or a new native plugin.
+Website changes, including app-only ones, never need a new APK. Both apps include
+`@capacitor/local-notifications` 8.3.1 and a status-bar icon `res/drawable/ic_stat_tempo.xml`.
 
 The two Android projects are outside the repository, in `%USERPROFILE%\AndroidDev\tempo-app` (TEMPO) and
 `...\tempo-app-dev` (TEMPO Dev), with the JDK and Android SDK used to build them. To rebuild one:
