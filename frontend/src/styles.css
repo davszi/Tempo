@@ -153,7 +153,7 @@ svg.i { width: 18px; height: 18px; flex-shrink: 0; }
 .learning-filter > .btn { min-height: 44px; }
 .learning-menu:not([hidden]) { position: absolute; z-index: 5; inset-block-start: calc(100% + 8px); inset-inline-end: 0; display: grid; gap: 12px; width: 220px; max-width: calc(100vw - 32px); padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); }
 .learning-menu fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
-.learning-menu legend { margin-bottom: 4px; padding: 0; font-weight: 700; }
+.learning-type-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-weight: 700; }
 .learning-menu label { display: flex; align-items: center; gap: 8px; min-height: 36px; cursor: pointer; }
 .learning-menu input { margin: 0; accent-color: var(--accent); }
 .learning-type-locked { color: var(--muted); }

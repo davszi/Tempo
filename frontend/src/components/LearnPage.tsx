@@ -96,7 +96,13 @@ export function LearnPage() {
             <SlidersHorizontal size={16} aria-hidden="true" /> Filter
           </button>
           <div id="learning-types" className="learning-menu" hidden={menu !== "filter"}>
-            <fieldset><legend>Opening type</legend>
+            <fieldset aria-labelledby="opening-type-heading">
+              <div className="learning-type-heading">
+                <span id="opening-type-heading">Opening type</span>
+                <button type="button" className="btn sm ghost" onClick={() => setDraftOpeningTypes([])}>
+                  Clear all
+                </button>
+              </div>
               {openingTypes.map(([value, label]) => {
                 const unavailable = !availableOpeningTypes.includes(value);
                 return <label key={value} className={unavailable ? "learning-type-locked" : undefined}>
