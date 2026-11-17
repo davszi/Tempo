@@ -238,6 +238,8 @@ button.item:hover:not(:disabled) { border-color: var(--accent); background: var(
 .mem-empty .empty { margin-top: 14px; }
 
 /* families */
+.learning-sections { display: grid; gap: 28px; }
+.learning-tier-title { margin: 0 0 12px; font-size: 20px; }
 .fam-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; }
 .fam { display: flex; flex-direction: column; text-align: left; padding: 12px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); transition: border-color .15s, box-shadow .15s, transform .15s; min-width: 0; }
 .fam:hover { border-color: var(--accent); box-shadow: var(--shadow); transform: translateY(-2px); }

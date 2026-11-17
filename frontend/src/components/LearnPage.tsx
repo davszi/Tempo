@@ -56,6 +56,15 @@ export function LearnPage() {
     || a.shortestLineMoves - b.shortestLineMoves || a.averageMoves - b.averageMoves
     || a.family.root.line_id - b.family.root.line_id);
   const lineCount = visibleCards.reduce((sum, card) => sum + card.lines.length, 0);
+  const sections = openingSort === "easy"
+    ? [
+      ...Object.entries(openingDifficulty).map(([tier, names]) => ({
+        title: tier[0].toUpperCase() + tier.slice(1),
+        cards: visibleCards.filter(({ family }) => names.includes(family.name)),
+      })),
+      { title: "Unranked", cards: visibleCards.filter(({ studyRank }) => studyRank === studyOrder.length) },
+    ].filter(({ cards }) => cards.length > 0)
+    : [{ title: null, cards: visibleCards }];
 
   return <>
     <header className="page-head"><p className="eyebrow">LEARNING MODE</p><h1>Build your repertoire.</h1>
@@ -135,20 +144,25 @@ export function LearnPage() {
     </div>
     {catalog.length > 0 && <p className="result-count">{visibleCards.length} {side === "all" ? "" : `${sideName(side)} `}opening {visibleCards.length === 1 ? "family" : "families"} · {lineCount.toLocaleString()} lines to learn</p>}
     {catalog.length === 0 ? <div className="empty">Loading openings…</div>
-      : visibleCards.length ? <div className="fam-grid">{visibleCards.map(({ family, lines, lineHits, learned, inProgress }) => {
-        return <button key={family.name} className="fam" onClick={() => go(`#/family/${encodeURIComponent(family.name)}`)}
-          onPointerEnter={(event) => { if (event.pointerType !== "touch") setHoveredFamily(family.name); }}
-          onPointerLeave={() => setHoveredFamily(null)}>
-          <OpeningPreview line={selectedOpeningTypes.length === allOpeningTypes.length ? family.root : lines[0]} flipped={family.side === "black"} playing={hoveredFamily === family.name} />
-          <div className="fam-body"><h3>{family.name}</h3>
-            <div className="fam-meta"><span>{plural(lines.length, "line")}</span><span>{family.eco}</span>
-              <span className="side-tag"><SideDot side={family.side} />{sideName(family.side)}</span></div>
-            {lineHits > 0 && <span className="chip">{plural(lineHits, "matching line")}</span>}
-            <div className="fam-progress"><span className="bar"><i style={{ width: `${Math.round(learned / lines.length * 100)}%` }} /></span>
-              <span>{learned}/{lines.length}</span></div>
-            {inProgress > 0 && <span className="chip warn">{inProgress} in progress</span>}
-          </div></button>;
-      })}</div>
+      : visibleCards.length ? <div className="learning-sections">{sections.map(({ title, cards }) => (
+        <section key={title ?? "popular"} aria-label={title ?? undefined}>
+          {title && <h2 className="learning-tier-title">{title}</h2>}
+          <div className="fam-grid">{cards.map(({ family, lines, lineHits, learned, inProgress }) => {
+            return <button key={family.name} className="fam" onClick={() => go(`#/family/${encodeURIComponent(family.name)}`)}
+              onPointerEnter={(event) => { if (event.pointerType !== "touch") setHoveredFamily(family.name); }}
+              onPointerLeave={() => setHoveredFamily(null)}>
+              <OpeningPreview line={selectedOpeningTypes.length === allOpeningTypes.length ? family.root : lines[0]} flipped={family.side === "black"} playing={hoveredFamily === family.name} />
+              <div className="fam-body"><h3>{family.name}</h3>
+                <div className="fam-meta"><span>{plural(lines.length, "line")}</span><span>{family.eco}</span>
+                  <span className="side-tag"><SideDot side={family.side} />{sideName(family.side)}</span></div>
+                {lineHits > 0 && <span className="chip">{plural(lineHits, "matching line")}</span>}
+                <div className="fam-progress"><span className="bar"><i style={{ width: `${Math.round(learned / lines.length * 100)}%` }} /></span>
+                  <span>{learned}/{lines.length}</span></div>
+                {inProgress > 0 && <span className="chip warn">{inProgress} in progress</span>}
+              </div></button>;
+          })}</div>
+        </section>
+      ))}</div>
       : <div className="empty"><h3>No openings match</h3>Try another search or change your filters.</div>}
   </>;
 }
