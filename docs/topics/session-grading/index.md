@@ -15,11 +15,11 @@ math = true
 
 ## A review is graded by its mistakes first and its time second
 
-<p class="bs-lead">A finished Repeating review is Again when it has more mistakes than its line length allows; otherwise the mean time of the moves the player knew picks Easy, Good or Hard. The rule was decided on 2026-11-16 and is not implemented yet.</p>
+<p class="bs-lead">A finished Repeating review is Again when it has more mistakes than its line length allows; otherwise the mean time of the moves the player knew picks Easy, Good or Hard. The rule was decided on 2026-11-16 and now runs in the app and the simulator; the training data and weights still come from the earlier rule.</p>
 
 <div class="bs-checks">
 <div class="bs-check"><span class="bs-badge bs-ok">Decided</span><h3>Rule decided on 2026-11-16</h3><p>Mistake limits by line length, four time bands, Easy only without mistakes.</p></div>
-<div class="bs-check"><span class="bs-badge bs-wait">Not implemented</span><h3>The simulator and the app still use the earlier rule</h3><p>Every recorded synthetic dataset and trained weight was graded with the earlier rule.</p></div>
+<div class="bs-check"><span class="bs-badge bs-ok">Implemented</span><h3>The app and the simulator use the rule</h3><p>Added in commit <code>52e9535</code>. Every recorded synthetic dataset and trained weight, including the app's weights, was still graded with the earlier rule.</p></div>
 <div class="bs-check"><span class="bs-badge bs-wait">Not calibrated</span><h3>The time values are starting values</h3><p>Chosen from published orders of magnitude, not from human data. They are checked once the app records browser times.</p></div>
 </div>
 
@@ -43,12 +43,12 @@ math = true
 
 ### What changed from the earlier rule
 
-The earlier rule is still the one the simulator and the app run. The table compares it with the decided rule, point by point.
+The simulator and the app ran the earlier rule until commit `52e9535`, and every recorded dataset and trained weight was graded with it. The table compares it with the decided rule, point by point.
 
 <div class="scroll" role="region" aria-label="Earlier and decided grading rule compared; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
 <div style="min-width:760px">
 
-| Question | Earlier rule (still implemented) | Decided rule (2026-11-16) |
+| Question | Earlier rule (replaced) | Decided rule (2026-11-16) |
 |---|---|---|
 | What does one mistake do? | Again, on every line. | Again only on lines of 3 moves or fewer. Hard on 4–7 moves. On 8 moves or more it can still be Good. |
 | How many mistakes give Again? | Any. | More than the line's limit: 0, 1, 2 or 3 by line length. |
@@ -447,7 +447,7 @@ The full table spells out [Figure 5](#fig-grade-matrix) for each length band. Th
 
 ### Worked examples
 
-These reviews come from the record's [test vectors](docs.topics.session-grading.session-grading.md.html#37-test-vectors), which the implementation will use as its tests. Move times are listed per player move in order; `x` marks a move with a mistake, whose time is ignored, and `1000 ×8` means eight moves of 1000 ms. The first move is never timed.
+These reviews come from the record's [test vectors](docs.topics.session-grading.session-grading.md.html#37-test-vectors), which the backend and simulator tests check. Move times are listed per player move in order; `x` marks a move with a mistake, whose time is ignored, and `1000 ×8` means eight moves of 1000 ms. The first move is never timed.
 
 <div class="scroll" role="region" aria-label="Worked grading examples; scroll horizontally on narrow screens" tabindex="0" data-reader-horizontal style="overflow-x:auto">
 <div style="min-width:900px">
@@ -610,14 +610,14 @@ The rule grades unassisted Repeating reviews only. Grading of guided Learning se
 
 <section class="card" id="next">
 
-## Implementation is not started, and four questions plus the time calibration remain open
+## The app and the simulator run the rule; data, weights, four questions and the time calibration remain open
 
-<p class="bs-lead">The simulator, the training labels, the app and the recorded data change together in one step; the time values then wait for checks against real browser times.</p>
+<p class="bs-lead">The simulator and the app changed in commit <code>52e9535</code>. The hidden truth, the recorded data and the weights still have to follow; the time values then wait for checks against real browser times.</p>
 
 <div class="bs-checks">
-<div class="bs-check"><span class="bs-badge bs-wait">Not started</span><h3>Simulator</h3><p>A new grading function from per-move data replaces the old one. A lapse becomes "graded Again" instead of "any mistake". The old threshold tests give way to the test vectors.</p></div>
-<div class="bs-check"><span class="bs-badge bs-wait">Not started</span><h3>Training and evaluation</h3><p>A pass is still a grade above Again, but it now means "mistakes within the limit" instead of "no mistakes". The hidden truth changes to match.</p></div>
-<div class="bs-check"><span class="bs-badge bs-wait">Not started</span><h3>App</h3><p>The browser times each move and sends the time with it. The backend grades with the new rule, without a baseline. The result screen stops saying "Any mistake means Again".</p></div>
+<div class="bs-check"><span class="bs-badge bs-ok">Done</span><h3>Simulator</h3><p>A new grading function from per-move data replaces the old one. A lapse is now "graded Again" instead of "any mistake". The test vectors replace the old threshold tests.</p></div>
+<div class="bs-check"><span class="bs-badge bs-wait">Partly done</span><h3>Training and evaluation</h3><p>A pass is still a grade above Again, but it now means "mistakes within the limit" instead of "no mistakes"; the training code says so. The hidden truth has not been changed to match yet.</p></div>
+<div class="bs-check"><span class="bs-badge bs-ok">Done</span><h3>App</h3><p>The browser times each move and sends the time with it. The backend grades with the new rule, without a baseline, and the result screen explains each grade from its mistakes and pace.</p></div>
 <div class="bs-check"><span class="bs-badge bs-wait">Not started</span><h3>Data and pages</h3><p>Synthetic datasets are regenerated and weights retrained as new dated experiments; existing experiments stay as results of the earlier rule. Pages describing the grade are updated.</p></div>
 </div>
 
@@ -628,8 +628,8 @@ $$p_{\text{pass}} = \sum_{k=0}^{L(M)} \binom{M}{k} (1-R)^k R^{M-k}$$
 [Record section 5](docs.topics.session-grading.session-grading.md.html#5-implementation-targets) names the exact files, functions and constants for each change.
 
 <div class="bs-board">
-<div class="bs-row"><span class="bs-state bs-wait">Open</span><b>Memory after a passed review with mistakes</b><span>Both hidden memory models treat any mistake as a lapse, but such a review can now be Hard or Good. Options: count it as a success with the grade's update, or as a reduced success for multiplicative memory. The practice count needs the same decision.</span></div>
-<div class="bs-row"><span class="bs-state bs-wait">Open</span><b>Guided Learning sessions</b><span>Whether they use the time bands, a fixed grade or no grade is not decided.</span></div>
+<div class="bs-row"><span class="bs-state bs-wait">Open</span><b>Memory after a passed review with mistakes</b><span>Both hidden memory models treat any mistake as a lapse, but such a review can now be Hard or Good. Options: count it as a success with the grade's update, or as a reduced success for multiplicative memory. The practice count needs the same decision. For now, without a decision, the simulator counts it as a success but still lowers the practice count.</span></div>
+<div class="bs-row"><span class="bs-state bs-wait">Open</span><b>Guided Learning sessions</b><span>Whether they use the time bands, a fixed grade or no grade is not decided. For now the simulator grades them by the time bands, with no mistakes.</span></div>
 <div class="bs-row"><span class="bs-state bs-wait">Open</span><b>Grading inputs in the export</b><span>The session CSV has neither \(M\), \(k\) nor \(\bar{T}\), so a dataset cannot be regraded from it. Adding them is recommended, not decided.</span></div>
 <div class="bs-row"><span class="bs-state bs-wait">Open</span><b>Time values</b><span>1500, 3500, 8000 and 20000 ms await the checks below.</span></div>
 <div class="bs-row"><span class="bs-state bs-ok">Decided</span><b>One pause on 3-move lines</b><span>Accepted as real struggle on a short line; see vector 3 under <a href="#grades">worked examples</a>.</span></div>

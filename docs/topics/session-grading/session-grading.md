@@ -16,12 +16,15 @@ into an FSRS grade (1 Again, 2 Hard, 3 Good, 4 Easy).
 | Synthetic move times and hidden memory | [Synthetic-client record](../synthetic-clients/record.md) |
 | Pass label and fitting | [FSRS training record](../fsrs-training/fsrs-training.md) |
 
-**Status (2026-11-16): decided, not implemented.** The rule in section 3 was
-decided in the 2026-11-16 grading discussion. The simulator
+**Status (2026-11-17): decided and implemented in the app and the
+simulator; data and weights not yet regenerated.** The rule in section 3 was
+decided in the 2026-11-16 grading discussion and implemented in commit
+`52e9535` (sections 5.1 and 5.3): the simulator
 (`ml/tempo_ml/simulator/grading.py`) and the app (`backend/ml_engine.py`)
-still apply the earlier rule (section 7.1). Every recorded synthetic dataset
-and trained weight was graded with the earlier rule. Section 5 lists the
-implementation work; section 6 lists what is still open.
+both apply it. Every recorded synthetic dataset and trained weight,
+including the app's `backend/fitted_global.csv`, was still graded with the
+earlier rule (section 7.1); sections 5.2 and 5.4 are not done. Section 5
+tracks the implementation work; section 6 lists what is still open.
 
 The time boundaries in section 3.4 are **starting values chosen from
 published orders of magnitude, not calibrated against human data**
@@ -213,10 +216,19 @@ sessions is not covered (section 6.2).
 
 ## 5. Implementation targets
 
-Not started. Implement as one change across the simulator, the app and the
-documentation, then regenerate data (section 5.4).
+Sections 5.1 and 5.3 are done (commit `52e9535`, 2026-11-16). Section 5.2
+is done only for the docstring (item 1); its truth column (item 2) and all
+of section 5.4 are not started. The items below keep their original
+wording; each subsection states its status.
 
 ### 5.1 Simulator (`ml/tempo_ml/simulator/`)
+
+**Done** in `52e9535`. `grading.py` exposes
+`calculate_session_grade(first_correct, first_times_ms)`, `mistake_limit`
+and `time_band` with the section 3.4 constants; `clients.py` grades from
+each move's first attempt and treats a review as a lapse only when it is
+Again. Item 3's `reps` rule and the memory update for a non-Again review
+with mistakes remain open (section 6.1).
 
 1. `grading.py`: replace `calculate_session_grade(blunder_count,
    total_time_ms, num_moves, baseline_ms)` with a function implementing
@@ -240,6 +252,11 @@ documentation, then regenerate data (section 5.4).
 
 ### 5.2 Training and evaluation (`ml/tempo_ml/fsrs/`, `ml/tempo_ml/evaluate/`)
 
+**Partly done.** Item 1 is done in `52e9535`: the `fsrs/model.py` docstring
+now says a pass means the review was not Again. Item 2 is not started:
+`generate.py` still writes `p_clean = R^M` and `evaluate/metrics.py` still
+reads `p_clean`.
+
 1. The pass label stays `grade > 1` (`fsrs/model.py`, `load_cards`), but its
    meaning changes from "no mistakes" to "mistakes within `L(M)`". Update
    the module docstring that says the line was played without a blunder.
@@ -252,6 +269,17 @@ documentation, then regenerate data (section 5.4).
    read the chosen column.
 
 ### 5.3 App (`backend/`, `frontend/`)
+
+**Done** in `52e9535`. `LessonPage.tsx` starts a clock when the player's
+position is ready and sends each attempt's time as `response_time_ms` with
+the move. `practice_controller.py` stores it; a missing time falls back to
+the server's own interval, and a time outside 0 to 3,600,000 ms is
+rejected (`checked_response_time`). `ml_engine.py` `grade_details` applies
+section 3 to the stored attempts with no baseline parameter and returns the
+grading breakdown, which `frontend/src/lib/grading.ts`
+(`gradeExplanation`) explains on the result screen. Abandoning a review is
+passed to the scheduler as a forced Again; the relearn prompts are
+unchanged.
 
 1. Browser timing: measure each attempt's time in `LessonPage.tsx` as in
    section 3.3 and send it with the move request; the backend stores it in
@@ -270,6 +298,8 @@ documentation, then regenerate data (section 5.4).
 4. Keep the relearn prompts and the abandon-as-Again path (section 4.2).
 
 ### 5.4 Data and documentation
+
+**Not started.**
 
 1. Regenerate synthetic datasets and retrain weights; record them as new
    dated experiments. Existing experiments stay as historical results of
@@ -294,11 +324,18 @@ grade's update (FSRS memory already does this by grade; multiplicative
 memory has no grade input); (b) a reduced success for multiplicative
 memory. The `reps` rule (+1 clean, −2 blunder) needs the same decision.
 
+Current behaviour since `52e9535`, not a decision: a non-Again review with
+mistakes updates stability as a success (option a) in both memory models,
+while `reps` still drops by 2 on any mistake (`clients.py` `_finish`,
+`next_reps(..., blundered=blunders > 0)`).
+
 ### 6.2 Guided Learning sessions
 
 The simulator grades guided sessions by latency with perfect accuracy; they
 update state but are excluded from the training loss. Whether they use the
-section 3.4 bands, a fixed grade or no grade is not decided.
+section 3.4 bands, a fixed grade or no grade is not decided. Since
+`52e9535` they pass through `calculate_session_grade` with no mistakes, so
+in effect they use the section 3.4 bands (Easy, Good or Hard).
 
 ### 6.3 Exported inputs
 
@@ -324,10 +361,12 @@ All decided 2026-11-16 unless marked.
 
 ### 7.1 Earlier rule, superseded
 
-Implemented in the simulator and the app until section 5 lands: any mistake
-gives Again; otherwise `total_time_ms / M − baseline_ms` gives Easy below
-500 ms, Good from 500 to 1,800 ms, Hard above 1,800 ms. The app's baseline
-is 0 and its time is server-measured.
+Historical. Implemented in the simulator and the app until `52e9535`
+(2026-11-16) replaced it: any mistake gave Again; otherwise
+`total_time_ms / M − baseline_ms` gave Easy below 500 ms, Good from 500 to
+1,800 ms, Hard above 1,800 ms. The app's baseline was 0 and its time was
+server-measured. All recorded synthetic datasets and trained weights,
+including `backend/fitted_global.csv`, were graded with this rule.
 
 ### 7.2 Grade from mistakes and time
 
@@ -526,6 +565,19 @@ label), `backend/ml_engine.py` (`grade_session`, `schedule_review`),
 `gradeReason`). Nothing was changed or executed in them. The only run was
 the section 8 script. No simulation, training, app session or human
 measurement was performed for this record.
+
+Implementation check on 2026-11-17 at `7ef4fe7` (`main`), Python 3.13 and
+Node with `--experimental-strip-types`: targeted reads of
+`backend/ml_engine.py`, `backend/practice_controller.py`,
+`frontend/src/components/LessonPage.tsx`, `frontend/src/lib/grading.ts`,
+`ml/tempo_ml/simulator/grading.py` and `simulator/clients.py`.
+`python -m unittest backend.tests.test_session_grading` passed 8 of 8
+tests, including the section 3.7 vectors;
+`node --experimental-strip-types --test tests/grading.test.mjs` in
+`frontend/` passed 3 of 3. The 14 section 3.7 vectors were also run
+directly against the simulator's `calculate_session_grade` and all gave the
+listed grades. The full ML test suite was not run, because pytest was not
+installed in that environment.
 
 ## Page presentation and numeric sources
 
