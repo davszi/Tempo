@@ -174,6 +174,7 @@ errors. The terminal demo reaches the review on the next day and passes with
 `--grade Easy`; with its default `Good` (and with `Hard` or `Again`) it fails
 on its grade check because its fixed response times predate the session
 grading rule. That failure is unchanged from `66176b0` and is not fixed here.
+It was fixed separately later on 2026-11-17 (see the [worklog](../worklog.md)).
 
 ## Alternatives considered
 

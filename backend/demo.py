@@ -5,11 +5,22 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from .ml_engine import T_EASY_MS, T_SLOW_MS, T_VERY_SLOW_MS, mistake_limit
 from .practice_controller import create_backend
 from .store import LEARNABLE
 
 
-RESPONSE_SECONDS = {"Again": 0.7, "Hard": 2.0, "Good": 0.7, "Easy": 0.3}
+# Simulated seconds per move that give each grade under the session grading rule
+# (docs/topics/session-grading/session-grading.md): Easy is fast with no mistakes,
+# Good is in the normal band, Hard is very slow with no mistakes, and Again plays at
+# normal speed but makes one more first-attempt mistake than the line allows.
+NORMAL_SECONDS = (T_EASY_MS + T_SLOW_MS) / 2 / 1000
+RESPONSE_SECONDS = {
+    "Easy": T_EASY_MS / 2 / 1000,
+    "Good": NORMAL_SECONDS,
+    "Hard": (T_VERY_SLOW_MS + 1000) / 1000,
+    "Again": NORMAL_SECONDS,
+}
 
 
 def run_demo(database, weights, expected_grade, side):
@@ -51,19 +62,24 @@ def run_demo(database, weights, expected_grade, side):
     if suggestion["status"] != "choose_side" or suggestion["line_id"] != line["line_id"]:
         raise RuntimeError("Repeating did not suggest the learned line")
     review = backend.choose_review_side(player, suggestion["session_id"], side)
-    if expected_grade == "Again":
-        elapsed += RESPONSE_SECONDS[expected_grade]
-        retry = backend.submit_move(player, review["session_id"], review["move_index"], "0000")
-        if retry["correct"] or retry["move_index"] != review["move_index"]:
-            raise RuntimeError("The wrong move did not trigger a retry")
+    player_moves = len(moves[review["move_index"]::1 if side == "both" else 2])
+    # Again needs more first-attempt mistakes than the line's limit, on different moves.
+    wrong_moves = mistake_limit(player_moves) + 1 if expected_grade == "Again" else 0
 
     while review["status"] == "play":
-        elapsed += RESPONSE_SECONDS[expected_grade]
         index = review["move_index"]
+        if wrong_moves:
+            wrong_moves -= 1
+            elapsed += RESPONSE_SECONDS[expected_grade]
+            retry = backend.submit_move(player, review["session_id"], index, "0000")
+            if retry["correct"] or retry["move_index"] != index:
+                raise RuntimeError("The wrong move did not trigger a retry")
+        elapsed += RESPONSE_SECONDS[expected_grade]
         review = backend.submit_move(player, review["session_id"], index, moves[index])
     grade = review["fsrs_rating"]
     if grade != expected_grade:
         raise RuntimeError(f"Expected grade {expected_grade}, got {grade}")
+    grading = review["grading"]
 
     with backend.store.transaction() as db:
         progress = db.execute(
@@ -76,6 +92,8 @@ def run_demo(database, weights, expected_grade, side):
 
     print(f"Player: {player}\nOpening: {line['name']} ({side})")
     print(f"Learning complete. Review grade: {grade}")
+    print(f"Grading: {grading['mistakes']} mistakes (limit {grading['limit']}) in {grading['moves']} moves, "
+          f"mean {grading['mean_ms']} ms ({grading['band'].replace('_', ' ')})")
     print(f"FSRS stability: {stability:.4f} days\nNext review (UTC): {progress['next_review_at']}")
 
 

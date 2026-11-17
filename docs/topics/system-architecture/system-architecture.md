@@ -154,9 +154,15 @@ controllers without HTTP or browser state. `--grade` selects Again, Hard,
 Good or Easy; `--side` selects White, Black or Both. The default launcher runs
 Good/Both with the supplied database and weights. It overrides the controller's
 clock with one UTC timestamp and a synthetic elapsed counter: 0.7 s per
-Learning move, and 0.7/2.0/0.7/0.3 s per review attempt for
-Again/Hard/Good/Easy. Again first submits `0000`, asserts that the index did
-not advance, then submits correct moves.
+Learning move. It then checks that nothing is due and moves the timestamp to
+the line's first due time on the next day. Review times per attempt come from
+the [session grading](../session-grading/session-grading.md) constants in
+`ml_engine.py`: Easy 0.75 s (fast), Good 2.5 s (normal), Hard 9 s (very slow)
+with no mistakes, and Again 2.5 s with one more first-attempt mistake than the
+line's limit (3 for Both on the 11-ply demo line, 2 for White or Black). Each
+mistake submits `0000` on a different move and asserts that the index did not
+advance before the correct move. The demo prints the grading breakdown:
+mistakes, limit, moves, mean time and band.
 
 The demo contains executable assertions for the learned-line suggestion,
 expected grade, positive persisted stability and a future due timestamp. The

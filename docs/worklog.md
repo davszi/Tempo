@@ -2,6 +2,26 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-17 Fix the terminal demo's grade timings for the session grading rule
+
+The terminal demo failed with its default settings ("Expected grade Good,
+got Easy"), as it had since the session grading rule landed (`52e9535`): its
+fixed review times (0.7/2.0/0.7/0.3 s for Again/Hard/Good/Easy) and single
+wrong move matched the earlier rule. `backend/demo.py` now derives the times
+from the grading constants in `ml_engine.py` (Easy 0.75 s, Good 2.5 s, Hard
+9 s, Again 2.5 s) and, for Again, makes `mistake_limit(player moves) + 1`
+first-attempt mistakes on different moves, so the result holds for every
+side. It also prints the grading breakdown. The web app's grading is
+unchanged; it never used these times. The System Architecture record's
+presentation demo section follows, including the move to the next day added
+by `5264e64`. Checks: the demo, run against a copy of the demo database,
+gives the requested grade for all four grades on all three sides (12 runs);
+the default run gives Good (0 mistakes, limit 2, 11 moves, mean 2500 ms,
+normal); the backend suite passes 36 of 36; documentation build, freshness
+check and strict lint. `backend\run-demo.cmd` itself was not run because it
+writes to the tracked `backend/tempo_demo.sqlite`. The commit hash is
+assigned by this entry's landing commit.
+
 ## 2026-11-17 Schedule a learned line's first review on the player's next day
 
 At the user's request, the app part of the
