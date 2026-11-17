@@ -1,2 +1,6 @@
 # Keep the bytes of manifest-hashed documentation figures stable across hosts.
 docs/figures/*.svg text eol=lf
+
+# The Render container runs these with sh, which fails on CRLF line endings.
+deploy/*.sh text eol=lf
+deploy/*.yml text eol=lf

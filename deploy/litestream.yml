@@ -1,0 +1,10 @@
+# Litestream keeps a copy of the TEMPO database in S3-compatible storage (deploy/README.md).
+# Credentials come from LITESTREAM_ACCESS_KEY_ID and LITESTREAM_SECRET_ACCESS_KEY.
+dbs:
+  - path: ${TEMPO_DATABASE}
+    replica:
+      type: s3
+      bucket: ${LITESTREAM_BUCKET}
+      path: tempo
+      endpoint: ${LITESTREAM_ENDPOINT}
+      region: ${LITESTREAM_REGION}
