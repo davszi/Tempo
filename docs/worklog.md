@@ -2,6 +2,18 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-17 Record the per-move runtime weights in the project context
+
+`fd3fe89` made `backend/fitted_global.csv` the per-move A1c-pass fit of seed
+20261111 from the move-recall experiment (verified identical to its
+`fsrs6_general_parameters.json`) and landed without a worklog entry. The
+project context still said the experiment's weights were not the runtime
+weights. It now says the demos load them while the scheduler stays
+line-level, which the move recall record's invariant says should not be
+combined, and that which weights ship is still a team decision. No code
+changed. Checks: documentation build, freshness check and strict lint. The
+commit hash is assigned by this entry's landing commit.
+
 ## 2026-11-17 Propose a next-day first review with same-day practice off the schedule
 
 At the user's request, after a discussion of FSRS learning steps, the

@@ -41,10 +41,15 @@ implementation facts, not additional accepted product decisions:
   [session grading rule](topics/session-grading/session-grading.md) (`52e9535`).
   Offline model fitting and the synthetic-client simulator live in `ml/tempo_ml/`;
   since `54446db` they train on [per-move recall](topics/move-recall/move-recall.md),
-  which beat line-level recall on synthetic data. The app does not yet schedule
-  by the per-move pass chance, and which weights it ships is open. The dated
+  which beat line-level recall on synthetic data. Since `fd3fe89` the web and
+  terminal demos load the per-move A1c-pass fit (seed 20261111) from that
+  experiment as `backend/fitted_global.csv`, but the scheduler still works at
+  line level rather than by the per-move pass chance. The move recall record
+  says those weights and that scheduler should ship together, and leaves which
+  weights ship to a team decision, so this pairing is an unresolved
+  difference, not an accepted choice. The dated
   [FSRS experiments](topics/fsrs-training/fsrs-training.md) are synthetic
-  evidence; their weights are not the app's runtime weights.
+  evidence.
 - The implementation permits a selected-line review (Review or Practise early
   from the opening, repertoire and schedule pages) and, since `42a6810`, shows
   the expected move as an arrow after each Repeating mistake, up to four hints;
