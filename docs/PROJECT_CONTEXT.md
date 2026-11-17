@@ -17,13 +17,20 @@ Follow the [task routes](../AGENTS.md#read-before-the-relevant-action) before th
 The latest full source-to-documentation pass inspected `788e060` on 2026-11-15.
 The integrated implementation comes from `feature/frontend-learning` at
 `c12eb50` and main's ML work at `ea3d01d`. On 2026-11-17 this snapshot was
-synced with the commits through `8161d57` from their messages and the
+synced with the commits through `db7c4ea` from their messages and the
 changed source; those syncs were not a full source audit. These are
 implementation facts, not additional accepted product decisions:
 
 - The React app calls the Python API for catalog, Learning, Repeating and
   repertoire data. It includes resumable lessons, a 30-day review schedule,
-  repertoire history and appearance settings. The browser stores lesson
+  repertoire history and appearance settings. Screens count a line's length
+  and progress in the player's own moves, not half-moves (`6e7ecc1`). Since
+  `db7c4ea` the Repertoire tab shows opening families; a family's page lists
+  its learned lines first with their memory detail, then lessons in progress
+  and the family's other lines. Recall shown anywhere is current: the
+  backend uses the FSRS-6 curve with fractional elapsed days instead of
+  Py-FSRS's whole days, and the browser recomputes it each minute
+  (`8a218b7`). The browser stores lesson
   progress and appearance locally. Guests still play under a browser-stored
   demo player identifier. Since `4754804` and `7ef4fe7`, a player can also
   create an account with email and password, or sign in with Google when the
@@ -71,7 +78,8 @@ implementation facts, not additional accepted product decisions:
 - The implementation permits a selected-line review (Review or Practise early
   from the opening, repertoire and schedule pages) and, since `42a6810`, shows
   the expected move as an arrow after each Repeating mistake, up to four hints;
-  a fifth mistake ends the review, which counts as Again, and offers relearning.
+  a fifth mistake ends the review, which counts as Again, and offers relearning
+  (the Repeating page has described this since `7b4643f`).
   Illegal moves are ignored, and the "Review without hints" button after a lesson
   now runs an unguided Learning session. The selected-line review and the hints
   conflict with the settled Repeating behavior in sections 4 and 9 below. The

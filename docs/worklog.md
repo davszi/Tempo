@@ -2,6 +2,18 @@
 
 Append-only chronology, newest entries first. Keep detailed evidence in its producing experiment or topic.
 
+## 2026-11-17 Sync the project context with the commits through db7c4ea
+
+The project context's implementation snapshot now records the four app
+changes since `346b642`: lengths and progress counted in the player's own
+moves (`6e7ecc1`), current recall from fractional elapsed days, recomputed
+each minute (`8a218b7`), the Repeating page describing the four hints
+(`7b4643f`), and the Repertoire tab grouped by opening family (`db7c4ea`).
+Each of those commits already updated its owning records and has its own
+worklog entry; no other commits landed. No code changed. Checks:
+documentation build, freshness check and strict lint. The commit hash is
+assigned by this entry's landing commit.
+
 ## 2026-11-17 Show opening families in the Repertoire tab
 
 At the user's request the Repertoire tab lists opening families instead of
