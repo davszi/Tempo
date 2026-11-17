@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Square } from "chess.js";
-import { ArrowLeft, ArrowUpRight, BookOpen, Check, ChevronRight, Lightbulb, Play, RotateCcw, Undo2 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, Check, ChevronLeft, ChevronRight, Lightbulb, Play, RotateCcw, Undo2 } from "lucide-react";
 import { useApp } from "../lib/app";
 import { closestLines, lineLabel, playerMoveCount, playerMovesIn } from "../lib/catalog";
 import { positionAt } from "../lib/learning";
 import { MAX_RESPONSE_MS, gradeExplanation } from "../lib/grading";
 import { clearProgress, saveProgress } from "../lib/progress";
 import { firstReviewWhen } from "../lib/memory";
+import { isMobileApp } from "../lib/platform";
 import { practiceRequest, type Grade, type RepertoireLine, type Session } from "../lib/practiceApi";
+import { dragOffset, markArrivedBySwipe, swipeOutcome, arrivedBySwipe } from "../lib/swipe";
 import { ChessBoard } from "./ChessBoard";
 import { LineTitle, fmtDate, plural, sideName } from "./common";
 
@@ -19,7 +21,7 @@ const gradeClass: Record<Grade, string> = { Again: "g1", Hard: "g2", Good: "g3",
 export function LessonPage({ initial, withoutHints = false, onExit }: {
   initial: Session; withoutHints?: boolean; onExit: (hash: string) => void;
 }) {
-  const { lineById, families, repertoire, progress, startLearning, startReview, refreshRepertoire, markLearned, showToast } = useApp();
+  const { lineById, families, repertoire, progress, startLearning, startReview, refreshRepertoire, markLearned, showToast, dueCount } = useApp();
   const learning = initial.mode !== "repeating";
   const line = lineById.get(initial.line_id);
   const family = families.find((item) => item.name === line?.opening_family);
@@ -135,6 +137,43 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
     }
   }
 
+  // Repeating in the app: once a review is saved, swipe the board left for the next one.
+  const [slideIn] = useState(() => !learning && arrivedBySwipe());
+  const [swipeX, setSwipeX] = useState(0);
+  const [swipeState, setSwipeState] = useState<"idle" | "dragging" | "leaving">("idle");
+  const swipeStart = useRef<{ x: number; y: number; at: number; id: number } | null>(null);
+  const canSwipeNext = finished && !learning && reviewAfter !== undefined && isMobileApp();
+
+  function swipeDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!canSwipeNext || swipeState === "leaving" || event.pointerType === "mouse") return;
+    swipeStart.current = { x: event.clientX, y: event.clientY, at: performance.now(), id: event.pointerId };
+    setSwipeState("dragging");
+  }
+  function swipeMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = swipeStart.current;
+    if (!start || start.id !== event.pointerId) return;
+    setSwipeX(dragOffset(event.clientX - start.x, event.clientY - start.y));
+  }
+  async function swipeUp(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = swipeStart.current;
+    if (!start || start.id !== event.pointerId) return;
+    swipeStart.current = null;
+    const width = event.currentTarget.getBoundingClientRect().width;
+    const outcome = event.type === "pointercancel" ? "cancel"
+      : swipeOutcome(event.clientX - start.x, event.clientY - start.y, performance.now() - start.at, width);
+    if (outcome === "next" && dueCount > 0) {
+      setSwipeState("leaving");
+      setSwipeX(-width * 1.2);
+      await new Promise((done) => setTimeout(done, 200));
+      markArrivedBySwipe();
+      await startReview();
+    } else if (outcome === "next") {
+      showToast("All caught up. Nothing else is due right now.");
+    }
+    setSwipeState("idle");
+    setSwipeX(0);
+  }
+
   async function relearn() {
     setBusy(true);
     try {
@@ -247,12 +286,17 @@ export function LessonPage({ initial, withoutHints = false, onExit }: {
           <button type="button" className="btn quiet" title="Restart lesson" aria-label="Restart lesson"
             disabled={busy || (!finished && session.move_index <= firstPlayerPly)} onClick={() => void replayLearning()}><RotateCcw size={18} /></button>
         </div>}
-        <div className="board-frame">
+        <div className={`board-frame${canSwipeNext ? " swipeable" : ""}${slideIn ? " slide-in" : ""}${swipeState === "dragging" ? " dragging" : ""}`}
+          style={swipeX ? { transform: `translateX(${swipeX}px) rotate(${swipeX / 60}deg)`, opacity: swipeState === "leaving" ? 0 : 1 } : undefined}
+          onPointerDown={swipeDown} onPointerMove={swipeMove} onPointerUp={(event) => void swipeUp(event)} onPointerCancel={(event) => void swipeUp(event)}>
         <ChessBoard fen={game.fen()} flipped={side === "black"} arrow={arrow} lastMove={lastMove} selected={selected} shake={shake}
           disabled={busy || !yourTurn || !!promotion} onSquareClick={clickSquare}
           onPieceDrop={finished ? undefined : (from, to) => { setSelected(null); if (yourTurn && !busy) attemptMove(from, to); }}
           canDrag={(square) => yourTurn && !busy && allowedMoves.some((move) => move.from === square)} /></div>
         <p className={`feedback ${feedback.tone}`} role="status">{feedback.text || status}</p>
+        {canSwipeNext && <p className="swipe-hint" aria-hidden="true">{dueCount > 0
+          ? <><ChevronLeft size={16} /> Swipe the board for the next review · {dueCount} due</>
+          : "All caught up. Nothing else is due right now."}</p>}
         {promotion && <div className="row" aria-label="Promotion piece">{Object.entries(promotions).map(([piece, label]) =>
           <button key={piece} className="btn sm ghost" disabled={busy} onClick={() => void submit(promotion + piece)}>{label}</button>)}
           <button className="btn sm quiet" onClick={() => setPromotion("")}>Cancel</button></div>}
